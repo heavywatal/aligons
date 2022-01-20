@@ -48,6 +48,20 @@ def list_files(species: str, version: str = VERSION, format: str = "fasta"):
     return (prefix(version) / format / species).glob(patt[format])
 
 
+def rglob(pattern: str, species: str = "", format: str = "fasta"):
+    if species:
+        path = prefix() / format / species
+    else:
+        path = prefix() / format
+    return path.rglob(pattern)
+
+
+def single_path(pattern: str, species: str = "", format: str = "fasta"):
+    found = list(rglob(pattern, species, format))
+    assert len(found) == 1
+    return found[0]
+
+
 def main(argv: list[str] | None = None):
     import argparse
 
