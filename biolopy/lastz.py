@@ -44,28 +44,21 @@ class PairwiseAlignment:
         patt = "*.chromosome.*.2bit"
         target_chromosomes = sorted(ensemblgenomes.rglob(patt, self._target))
         query_chromosomes = sorted(ensemblgenomes.rglob(patt, self._query))
-        assert target_chromosomes
-        assert query_chromosomes
-        chains: dict[Path, list[Path]] = {}
         with confu.ThreadPoolExecutor(max_workers=self._jobs) as executor:
-            futures = [
-                executor.submit(self.align_chromosome_pair, t, q)
-                for t in target_chromosomes
-                for q in query_chromosomes
-            ]
-            (_done, _notdone) = confu.wait(futures)
-            for future in futures:
-                chain = future.result()
-                chains.setdefault(chain.parent, []).append(chain)
-        with confu.ThreadPoolExecutor(max_workers=self._jobs) as executor:
-            futures = [executor.submit(self.integrate, v) for v in chains.values()]
-            (_done, _notdone) = confu.wait(futures)
-            for future in futures:
-                sing_maf = future.result()
-                if not sing_maf.exists():
-                    print(f"## {sing_maf} does not exist!")
+            nested: list[list[confu.Future[Path]]] = []
+            for t in target_chromosomes:
+                futures = [
+                    executor.submit(self.align_chr_pair, t, q)
+                    for q in query_chromosomes
+                ]
+                nested.append(futures)
+            subexe = confu.ThreadPoolExecutor(max_workers=None)
+            waiters = [subexe.submit(wait_results, fs) for fs in nested]
+            for future in confu.as_completed(waiters):
+                executor.submit(self.integrate, future.result())
+            subexe.shutdown()
 
-    def align_chromosome_pair(self, target_2bit: Path, query_2bit: Path):
+    def align_chr_pair(self, target_2bit: Path, query_2bit: Path):
         axtgz = self.lastz(target_2bit, query_2bit)
         chain = self.axt_chain(target_2bit, query_2bit, axtgz)
         return chain
@@ -77,13 +70,9 @@ class PairwiseAlignment:
         return sing_maf
 
     def lastz(self, target_2bit: Path, query_2bit: Path):
-        def extract_seqlabel(x: Path):
-            mobj = re.search(r"(?<=dna_sm\.)(.+)$", x.stem)
-            assert mobj
-            return mobj.group(1)
-
-        target_label = extract_seqlabel(target_2bit)
-        query_label = extract_seqlabel(query_2bit)
+        patt = r"(?<=dna_sm\.)(.+)$"
+        target_label = re_search(patt, target_2bit.stem).group(1)
+        query_label = re_search(patt, query_2bit.stem).group(1)
         subdir = self._outdir / f"{target_label}"
         if not self._dry_run:
             subdir.mkdir(0o755, exist_ok=True)
@@ -173,6 +162,8 @@ class PairwiseAlignment:
             f" {self._target_sizes} {self._query_sizes} {sing_maf}"
         )
         self.run_if(not sing_maf.exists(), args, stdin=sort.stdout)
+        if not sing_maf.exists():
+            print(f"## {sing_maf} does not exist.")
         return sing_maf
 
     def popen_if(
@@ -196,6 +187,16 @@ class PairwiseAlignment:
         return subprocess.run(["sleep", "0"], **kwargs)
 
 
+def wait_results(futures: list[confu.Future[Any]]):
+    return [f.result() for f in futures]
+
+
+def re_search(pattern: str, string: str):
+    mobj = re.search(pattern, string)
+    assert mobj  # shut up None warning
+    return mobj
+
+
 def main():
     import argparse
 
@@ -203,15 +204,14 @@ def main():
     parser.add_argument("-n", "--dry_run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("--quick", action="store_true")
-    parser.add_argument("-t", "--target", default=os.getenv("TARGET"))
-    parser.add_argument("-q", "--query", default=os.getenv("QUERY"))
+    parser.add_argument("target", default=os.getenv("TARGET"))
+    parser.add_argument("query", default=os.getenv("QUERY"))
     args = parser.parse_args()
 
     targets = [x.strip() for x in args.target.split(",") if x]
     queries = [x.strip() for x in args.query.split(",") if x]
     print(f"{targets=}")
     print(f"{queries=}")
-    i = 0
     for target in targets:
         for query in queries:
             if target == query:
@@ -220,7 +220,6 @@ def main():
             PairwiseAlignment(
                 target, query, quick=args.quick, jobs=args.jobs, dry_run=args.dry_run
             )
-            i += 1
 
 
 if __name__ == "__main__":
