@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pairwise genome alignment
 
 src: ensemblgenomes/plants/release-${VERSION}/fasta/*_*
@@ -8,8 +7,8 @@ https://lastz.github.io/lastz/
 """
 import concurrent.futures as confu
 import gzip
+import logging
 import os
-import re
 import shlex
 import shutil
 import subprocess
@@ -18,6 +17,9 @@ from subprocess import PIPE
 from typing import Any, IO
 
 from .db import ensemblgenomes, name
+from . import cli
+
+_log = logging.getLogger(__name__)
 
 
 class PairwiseAlignment:
@@ -27,15 +29,13 @@ class PairwiseAlignment:
         self._quick = quick
         self._jobs = jobs
         self._dry_run = dry_run
-        self._target_sizes = ensemblgenomes.single_path("fasize.chrom.sizes", target)
-        self._query_sizes = ensemblgenomes.single_path("fasize.chrom.sizes", query)
-        self._target_2bit = ensemblgenomes.single_path("*.genome.2bit", target)
-        self._query_2bit = ensemblgenomes.single_path("*.genome.2bit", query)
+        self._target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
+        self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
+        self._target_2bit = ensemblgenomes.get_file("*.genome.2bit", target)
+        self._query_2bit = ensemblgenomes.get_file("*.genome.2bit", query)
         self._target_nickname = name.shorten(target)
         self._query_nickname = name.shorten(query)
-        outdir = f"{self._target_nickname}_{self._query_nickname}"
-        print(f"{outdir=}")
-        self._outdir = Path(outdir)
+        self._outdir = Path(f"{self._target_nickname}_{self._query_nickname}")
         self.run()
 
     def run(self):
@@ -54,9 +54,14 @@ class PairwiseAlignment:
                 nested.append(futures)
             subexe = confu.ThreadPoolExecutor(max_workers=None)
             waiters = [subexe.submit(wait_results, fs) for fs in nested]
-            for future in confu.as_completed(waiters):
+            futures = [
                 executor.submit(self.integrate, future.result())
-            subexe.shutdown()
+                for future in confu.as_completed(waiters)
+            ]
+            for future in confu.as_completed(futures):
+                product = future.result()
+                if product.exists():
+                    print(product)
 
     def align_chr_pair(self, target_2bit: Path, query_2bit: Path):
         axtgz = self.lastz(target_2bit, query_2bit)
@@ -70,10 +75,9 @@ class PairwiseAlignment:
         return sing_maf
 
     def lastz(self, target_2bit: Path, query_2bit: Path):
-        patt = r"(?<=dna_sm\.)(.+)$"
-        target_label = re_search(patt, target_2bit.stem).group(1)
-        query_label = re_search(patt, query_2bit.stem).group(1)
-        subdir = self._outdir / f"{target_label}"
+        target_label = target_2bit.stem.rsplit("dna_sm.", 1)[1]
+        query_label = query_2bit.stem.rsplit("dna_sm.", 1)[1]
+        subdir = self._outdir / target_label
         if not self._dry_run:
             subdir.mkdir(0o755, exist_ok=True)
         axtgz = subdir / f"{query_label}.axt.gz"
@@ -162,8 +166,6 @@ class PairwiseAlignment:
             f" {self._target_sizes} {self._query_sizes} {sing_maf}"
         )
         self.run_if(not sing_maf.exists(), args, stdin=sort.stdout)
-        if not sing_maf.exists():
-            print(f"## {sing_maf} does not exist.")
         return sing_maf
 
     def popen_if(
@@ -174,16 +176,16 @@ class PairwiseAlignment:
         stdout: IO[bytes] | int | None = None,
     ):  # kwargs hinders type inference to Popen[bytes]
         if cond and not self._dry_run:
-            print(" ".join(args))
+            _log.info(" ".join(args))
             return subprocess.Popen(args, stdin=stdin, stdout=stdout)
-        print("# " + " ".join(args))
+        _log.info("# " + " ".join(args))
         return subprocess.Popen(["sleep", "0"], stdin=stdin, stdout=stdout)
 
     def run_if(self, cond: bool, args: list[str], **kwargs: Any):
         if cond and not self._dry_run:
-            print(" ".join(args))
+            _log.info(" ".join(args))
             return subprocess.run(args, **kwargs)
-        print("# " + " ".join(args))
+        _log.info("# " + " ".join(args))
         return subprocess.run(["sleep", "0"], **kwargs)
 
 
@@ -191,35 +193,31 @@ def wait_results(futures: list[confu.Future[Any]]):
     return [f.result() for f in futures]
 
 
-def re_search(pattern: str, string: str):
-    mobj = re.search(pattern, string)
-    assert mobj  # shut up None warning
-    return mobj
-
-
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(parents=[cli.logging_argparser("v")])
     parser.add_argument("-n", "--dry_run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("--quick", action="store_true")
     parser.add_argument("target", default=os.getenv("TARGET"))
     parser.add_argument("query", default=os.getenv("QUERY"))
     args = parser.parse_args()
+    cli.logging_config(args.loglevel)
 
     targets = [x.strip() for x in args.target.split(",") if x]
     queries = [x.strip() for x in args.query.split(",") if x]
-    print(f"{targets=}")
-    print(f"{queries=}")
+    _log.info(f"## {targets=}")
+    _log.info(f"## {queries=}")
     for target in targets:
         for query in queries:
             if target == query:
                 continue
-            print(target, query)
+            _log.info(f"## {target} {query} start")
             PairwiseAlignment(
                 target, query, quick=args.quick, jobs=args.jobs, dry_run=args.dry_run
             )
+            _log.info(f"## {target} {query} end")
 
 
 if __name__ == "__main__":
