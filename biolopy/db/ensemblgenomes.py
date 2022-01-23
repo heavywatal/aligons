@@ -2,7 +2,6 @@ import logging
 import os
 from ftplib import FTP
 from pathlib import Path
-from collections.abc import Iterable
 
 from . import name
 from .. import cli
@@ -79,12 +78,6 @@ def rglob(
     return path.rglob(pattern)
 
 
-def filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
-    map = {k: v for v in species if (k := name.shorten(v)) in queries}
-    for key in queries:
-        yield map[key]
-
-
 def main(argv: list[str] | None = None):
     import argparse
 
@@ -111,7 +104,7 @@ def main(argv: list[str] | None = None):
     else:
         species = list_species(args.version)
     if args.species:
-        species = filter_by_shortname(species, args.species)
+        species = name.filter_by_shortname(species, args.species)
     if not args.format:
         for sp in species:
             print(sp)
