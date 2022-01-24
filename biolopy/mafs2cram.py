@@ -22,25 +22,27 @@ def mafs2cram(path: Path, jobs: int = 1):
     (target, _query) = path.name.split("_")
     target_species = ensemblgenomes.expand_shortname(target)
     reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species)
+    outdir = path / "cram"
+    outdir.mkdir(0o755, exist_ok=True)
+    outfile = outdir / f"pairwise-{path.name}.cram"
     crams: list[str] = []
     with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
         futures: list[confu.Future[Path]] = []
         for dir in list(path.glob("chromosome.*")):
-            futures.append(executor.submit(maf2cram, dir, reference))
+            maf = dir / "sing.maf"
+            cram = outdir / (dir.name + ".cram")
+            futures.append(executor.submit(maf2cram, maf, cram, reference))
         for future in futures:
-            sing_cram = str(future.result())
-            _log.info(sing_cram)
-            crams.append(sing_cram)
-    outfile = path / f"pairwise-{path.name}.cram"
+            cram = str(future.result())
+            _log.info(cram)
+            crams.append(cram)
     cmd = f"samtools merge --no-PG -O CRAM -@ 2 -f -o {str(outfile)} "
     popen(cmd + " ".join(crams)).communicate()
     return outfile
 
 
-def maf2cram(chromosome_dir: Path, reference: Path):
-    infile = chromosome_dir / "sing.maf"
-    outfile = chromosome_dir / "sing.cram"
-    assert infile.exists()
+def maf2cram(infile: Path, outfile: Path, reference: Path):
+    assert infile.exists() and outfile.parent.exists()
     mafconv = popen(f"maf-convert sam {str(infile)}", stdout=PIPE)
     samview = sanitize_cram(reference, mafconv.stdout)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {str(outfile)}"
