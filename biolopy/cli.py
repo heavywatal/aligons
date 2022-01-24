@@ -1,5 +1,18 @@
 import argparse
 import logging
+import shlex
+
+
+def prepare_args(args: list[str] | str, dry_run: bool = False):
+    if isinstance(args, str):
+        cmd = args
+        args = shlex.split(args)
+    else:
+        cmd = " ".join(args)
+    if dry_run:
+        cmd = "# " + cmd
+        args = ["sleep", "0"]
+    return (args, cmd)
 
 
 def logging_argparser(options: str = "v"):

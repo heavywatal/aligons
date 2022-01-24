@@ -9,7 +9,6 @@ import concurrent.futures as confu
 import gzip
 import logging
 import os
-import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -33,9 +32,9 @@ class PairwiseAlignment:
         self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
         self._target_2bit = ensemblgenomes.get_file("*.genome.2bit", target)
         self._query_2bit = ensemblgenomes.get_file("*.genome.2bit", query)
-        self._target_nickname = name.shorten(target)
-        self._query_nickname = name.shorten(query)
-        self._outdir = Path(f"{self._target_nickname}_{self._query_nickname}")
+        self._target_short = name.shorten(target)
+        self._query_short = name.shorten(query)
+        self._outdir = Path(f"{self._target_short}_{self._query_short}")
         self.run()
 
     def run(self):
@@ -81,11 +80,9 @@ class PairwiseAlignment:
         if not self._dry_run:
             subdir.mkdir(0o755, exist_ok=True)
         axtgz = subdir / f"{query_label}.axt.gz"
-        args = shlex.split(
-            f"lastz {target_2bit} {query_2bit} --format=axt --inner=2000 --step=7"
-        )
+        args = f"lastz {target_2bit} {query_2bit} --format=axt --inner=2000 --step=7"
         if self._quick:
-            args.extend(["--notransition", "--nogapped"])
+            args += " --notransition --nogapped"
         lastz = self.popen_if(not axtgz.exists(), args, stdout=PIPE)
         if not axtgz.exists() and not self._dry_run:
             assert lastz.stdout
@@ -95,11 +92,9 @@ class PairwiseAlignment:
 
     def axt_chain(self, target_2bit: Path, query_2bit: Path, axtgz: Path):
         chain = axtgz.with_suffix("").with_suffix(".chain")
-        args = shlex.split(
-            "axtChain -minScore=5000 -linearGap=medium"
-            f" stdin {target_2bit} {query_2bit} {chain}"
-        )
-        p = self.popen_if(not chain.exists(), args, stdin=PIPE)
+        cmd = "axtChain -minScore=5000 -linearGap=medium stdin"
+        cmd += f" {target_2bit} {query_2bit} {chain}"
+        p = self.popen_if(not chain.exists(), cmd, stdin=PIPE)
         if not chain.exists() and not self._dry_run:
             assert p.stdin
             with gzip.open(axtgz, "rb") as fout:
@@ -113,13 +108,16 @@ class PairwiseAlignment:
         subdir = parent.pop()
         assert not parent, "chains are in the same directory"
         pre_chain = subdir / "pre.chain.gz"
-        args = ["chainMergeSort"] + [str(x) for x in chains]
-        merge = self.popen_if(not pre_chain.exists(), args, stdout=PIPE)
-        args = shlex.split(
-            f"chainPreNet stdin {self._target_sizes} {self._query_sizes} stdout"
+        merge = self.popen_if(
+            not pre_chain.exists(),
+            ["chainMergeSort"] + [str(x) for x in chains],
+            stdout=PIPE,
         )
         pre = self.popen_if(
-            not pre_chain.exists(), args, stdin=merge.stdout, stdout=PIPE
+            not pre_chain.exists(),
+            f"chainPreNet stdin {self._target_sizes} {self._query_sizes} stdout",
+            stdin=merge.stdout,
+            stdout=PIPE,
         )
         if not pre_chain.exists() and not self._dry_run:
             assert pre.stdout
@@ -129,40 +127,47 @@ class PairwiseAlignment:
 
     def chain_net_syntenic(self, pre_chain: Path):
         syntenic_net = pre_chain.parent / "syntenic.net"
-        args = shlex.split(
-            f"chainNet stdin {self._target_sizes} {self._query_sizes} stdout /dev/null"
+        cn = self.popen_if(
+            not syntenic_net.exists(),
+            f"chainNet stdin {self._target_sizes} {self._query_sizes} stdout /dev/null",
+            stdin=PIPE,
+            stdout=PIPE,
         )
-        cn = self.popen_if(not syntenic_net.exists(), args, stdin=PIPE, stdout=PIPE)
         if not syntenic_net.exists() and not self._dry_run:
             assert cn.stdin
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, cn.stdin)
                 cn.stdin.close()
-        args = shlex.split(f"netSyntenic stdin {syntenic_net}")
-        self.run_if(not syntenic_net.exists(), args, stdin=cn.stdout)
+        self.run_if(
+            not syntenic_net.exists(),
+            f"netSyntenic stdin {syntenic_net}",
+            stdin=cn.stdout,
+        )
         return syntenic_net
 
     def net_axt_maf(self, syntenic_net: Path, pre_chain: Path):
         sing_maf = syntenic_net.parent / "sing.maf"
-        args = shlex.split(
-            f"netToAxt {syntenic_net} stdin {self._target_2bit} {self._query_2bit} stdout"
-        )
-        toaxt: subprocess.Popen[bytes] = self.popen_if(
-            not sing_maf.exists(), args, stdin=PIPE, stdout=PIPE
+        toaxt = self.popen_if(
+            not sing_maf.exists(),
+            f"netToAxt {syntenic_net} stdin {self._target_2bit} {self._query_2bit} stdout",
+            stdin=PIPE,
+            stdout=PIPE,
         )
         if not sing_maf.exists() and not self._dry_run:
             assert toaxt.stdin
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, toaxt.stdin)
                 toaxt.stdin.close()
-        args = shlex.split("axtSort stdin stdout")
         sort = self.popen_if(
-            not sing_maf.exists(), args, stdin=toaxt.stdout, stdout=PIPE
+            not sing_maf.exists(),
+            "axtSort stdin stdout",
+            stdin=toaxt.stdout,
+            stdout=PIPE,
         )
-        args = shlex.split(
+        args = (
             "axtToMaf"
-            f" -tPrefix={self._target_nickname}."
-            f" -qPrefix={self._query_nickname}. stdin"
+            f" -tPrefix={self._target_short}."
+            f" -qPrefix={self._query_short}. stdin"
             f" {self._target_sizes} {self._query_sizes} {sing_maf}"
         )
         self.run_if(not sing_maf.exists(), args, stdin=sort.stdout)
@@ -171,22 +176,18 @@ class PairwiseAlignment:
     def popen_if(
         self,
         cond: bool,
-        args: list[str],
+        args: list[str] | str,
         stdin: IO[bytes] | int | None = None,
         stdout: IO[bytes] | int | None = None,
     ):  # kwargs hinders type inference to Popen[bytes]
-        if cond and not self._dry_run:
-            _log.info(" ".join(args))
-            return subprocess.Popen(args, stdin=stdin, stdout=stdout)
-        _log.info("# " + " ".join(args))
-        return subprocess.Popen(["sleep", "0"], stdin=stdin, stdout=stdout)
+        (args, cmd) = cli.prepare_args(args, (not cond) or self._dry_run)
+        _log.info(cmd)
+        return subprocess.Popen(args, stdin=stdin, stdout=stdout)
 
-    def run_if(self, cond: bool, args: list[str], **kwargs: Any):
-        if cond and not self._dry_run:
-            _log.info(" ".join(args))
-            return subprocess.run(args, **kwargs)
-        _log.info("# " + " ".join(args))
-        return subprocess.run(["sleep", "0"], **kwargs)
+    def run_if(self, cond: bool, args: list[str] | str, **kwargs: Any):
+        (args, cmd) = cli.prepare_args(args, (not cond) or self._dry_run)
+        _log.info(cmd)
+        return subprocess.run(args, **kwargs)
 
 
 def wait_results(futures: list[confu.Future[Any]]):
