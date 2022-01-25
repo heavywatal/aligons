@@ -1,7 +1,7 @@
 """Pairwise genome alignment
 
-src: ensemblgenomes/plants/release-${VERSION}/fasta/*_*
-dst: osat_****/chromosome.*/sing.maf
+src: {ensemblgenomes.prefix}/fasta/{species}/*.fa.gz
+dst: ./pairwise/{target}/{query}/chromosome.*/sing.maf
 
 https://lastz.github.io/lastz/
 """
@@ -32,14 +32,12 @@ class PairwiseAlignment:
         self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
         self._target_2bit = ensemblgenomes.get_file("*.genome.2bit", target)
         self._query_2bit = ensemblgenomes.get_file("*.genome.2bit", query)
-        self._target_short = name.shorten(target)
-        self._query_short = name.shorten(query)
-        self._outdir = Path(f"{self._target_short}_{self._query_short}")
+        self._outdir = Path(f"pairwise/{self._target}/{self._query}")
         self.run()
 
     def run(self):
         if not self._dry_run:
-            self._outdir.mkdir(0o755, exist_ok=True)
+            self._outdir.mkdir(0o755, parents=True, exist_ok=True)
         patt = "*.chromosome.*.2bit"
         target_chromosomes = sorted(ensemblgenomes.rglob(patt, self._target))
         query_chromosomes = sorted(ensemblgenomes.rglob(patt, self._query))
@@ -164,10 +162,10 @@ class PairwiseAlignment:
             stdin=toaxt.stdout,
             stdout=PIPE,
         )
+        tprefix = name.shorten(self._target)
+        qprefix = name.shorten(self._query)
         args = (
-            "axtToMaf"
-            f" -tPrefix={self._target_short}."
-            f" -qPrefix={self._query_short}. stdin"
+            f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
             f" {self._target_sizes} {self._query_sizes} {sing_maf}"
         )
         self.run_if(not sing_maf.exists(), args, stdin=sort.stdout)

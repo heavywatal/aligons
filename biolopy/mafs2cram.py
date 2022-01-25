@@ -1,5 +1,8 @@
 """
 Convert MAF to SAM/BAM/CRAM for visualzation.
+
+src: ./pairwise/{target}/{query}/chromosome.*/sing.maf
+dst: ./pairwise/{target}/{query}/cram/*.cram
 """
 import concurrent.futures as confu
 import logging
@@ -19,12 +22,11 @@ _dry_run = False
 
 
 def mafs2cram(path: Path, jobs: int = 1):
-    (target, _query) = path.name.split("_")
-    target_species = ensemblgenomes.expand_shortname(target)
+    target_species = path.parent.name
     reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species)
     outdir = path / "cram"
     outdir.mkdir(0o755, exist_ok=True)
-    outfile = outdir / f"pairwise-{path.name}.cram"
+    outfile = outdir / "genome.cram"
     crams: list[str] = []
     with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
         futures: list[confu.Future[Path]] = []
