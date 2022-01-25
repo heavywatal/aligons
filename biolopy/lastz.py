@@ -21,6 +21,25 @@ from . import cli
 _log = logging.getLogger(__name__)
 
 
+def main(argv: list[str] = []):
+    import argparse
+
+    parser = argparse.ArgumentParser(parents=[cli.logging_argparser("v")])
+    parser.add_argument("-n", "--dry_run", action="store_true")
+    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
+    parser.add_argument("--quick", action="store_true")
+    parser.add_argument("target")
+    parser.add_argument("query")
+    args = parser.parse_args(argv or None)
+    _log.info(f"{args}")
+    cli.logging_config(args.loglevel)
+    assert args.target in ensemblgenomes.list_species()
+    assert args.query in ensemblgenomes.list_species()
+    PairwiseAlignment(
+        args.target, args.query, quick=args.quick, jobs=args.jobs, dry_run=args.dry_run
+    )
+
+
 class PairwiseAlignment:
     def __init__(self, target: str, query: str, quick: str, jobs: int, dry_run: bool):
         self._target = target
@@ -190,33 +209,6 @@ class PairwiseAlignment:
 
 def wait_results(futures: list[confu.Future[Any]]):
     return [f.result() for f in futures]
-
-
-def main():
-    import argparse
-
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser("v")])
-    parser.add_argument("-n", "--dry_run", action="store_true")
-    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
-    parser.add_argument("--quick", action="store_true")
-    parser.add_argument("target", default=os.getenv("TARGET"))
-    parser.add_argument("query", default=os.getenv("QUERY"))
-    args = parser.parse_args()
-    cli.logging_config(args.loglevel)
-
-    targets = [x.strip() for x in args.target.split(",") if x]
-    queries = [x.strip() for x in args.query.split(",") if x]
-    _log.info(f"## {targets=}")
-    _log.info(f"## {queries=}")
-    for target in targets:
-        for query in queries:
-            if target == query:
-                continue
-            _log.info(f"## {target} {query} start")
-            PairwiseAlignment(
-                target, query, quick=args.quick, jobs=args.jobs, dry_run=args.dry_run
-            )
-            _log.info(f"## {target} {query} end")
 
 
 if __name__ == "__main__":

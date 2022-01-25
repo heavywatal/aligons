@@ -13,14 +13,14 @@ _log = logging.getLogger(__name__)
 _dry_run = False
 
 
-def main():
+def main(argv: list[str] = []):
     import argparse
 
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser("v")])
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
     parser.add_argument("clade")  # monocot, poaceae, bep, pacmad
-    args = parser.parse_args()
+    args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     outdir = prepare(args.indir, args.clade)
     chromodirs = outdir.glob("chromosome.*")
