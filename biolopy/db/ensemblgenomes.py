@@ -78,8 +78,8 @@ def rglob(
     return path.rglob(pattern)
 
 
-def expand_shortname(shortname: str):
-    return list(name.filter_by_shortname(list_species(), [shortname]))[0]
+def expand_shortnames(shortnames: list[str]):
+    return name.filter_by_shortname(list_species(), shortnames)
 
 
 def main(argv: list[str] | None = None):
