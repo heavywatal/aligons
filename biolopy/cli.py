@@ -15,7 +15,7 @@ def prepare_args(args: list[str] | str, dry_run: bool = False):
     return (args, cmd)
 
 
-def logging_argparser(options: str = "v"):
+def logging_argparser(options: str = "v") -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(add_help=False)
     group = parser.add_mutually_exclusive_group()
     if "v" in options:
