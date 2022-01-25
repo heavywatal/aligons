@@ -8,10 +8,7 @@ authors = [{name = "Watal M. Iwasaki", email = "heavywatal@gmail.com"}]
 license = {file = "LICENSE"}
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-  "Biopython",
-  "pysam",
-]
+dependencies = []
 dynamic = ["description", "version"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
