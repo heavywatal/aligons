@@ -1,3 +1,4 @@
+import functools
 import logging
 import os
 from ftplib import FTP
@@ -35,6 +36,7 @@ def list_ftp_species(version: str, format: str = "fasta"):
         return ftp.nlst()
 
 
+@functools.cache
 def list_all_species(version: str = VERSION):
     cache = prefix(version) / "species.tsv"
     if not cache.exists():
@@ -44,13 +46,14 @@ def list_all_species(version: str = VERSION):
             fout.write("\n".join(species) + "\n")
     _log.debug(f"{cache=}")
     with open(cache, "r") as fin:
-        return (x.rstrip() for x in fin.readlines())
+        return [x.rstrip() for x in fin.readlines()]
 
 
+@functools.cache
 def list_species(version: str = VERSION, format: str = "fasta"):
     path = prefix(version) / format
     _log.debug(f"{path=}")
-    return (x.name for x in path.iterdir())
+    return [x.name for x in path.iterdir()]
 
 
 def list_files(
