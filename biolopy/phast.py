@@ -31,7 +31,7 @@ def main(argv: list[str] = []):
     cli.logging_config(args.loglevel)
     global _dry_run
     _dry_run = args.dry_run
-    _log.info("## phyloBoot, msa_view, phyloBoot")
+    _log.info("## msa_view, phyloFit, phyloBoot")
     (cons_mod, noncons_mod) = prepare(args.chromosome)
     _log.info("## phastCons")
     for dir in args.chromosome:
@@ -75,7 +75,7 @@ def make_mods(chromosome: Path):
     _4d_codons_ss = msa_view_features(maf, gff, False)
     _4d_sites_ss = msa_view_ss(_4d_codons_ss)
     codons_mods = phyloFit(codons_ss, treefile, True)
-    _4d_sites_mod = phyloFit(_4d_sites_ss, treefile, False)
+    _4d_sites_mod = phyloFit(_4d_sites_ss, treefile, False)[0]
     cons_mod = most_conserved_mod(codons_mods)
     return (cons_mod, _4d_sites_mod)
 
