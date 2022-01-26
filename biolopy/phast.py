@@ -5,9 +5,11 @@ dst: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
 
 http://compgen.cshl.edu/phast/
 """
+import concurrent.futures as confu
 import csv
 import logging
 import gzip
+import os
 import re
 import subprocess
 import sys
@@ -26,6 +28,7 @@ def main(argv: list[str] = []):
 
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
+    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("clade", type=Path)
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
@@ -34,16 +37,18 @@ def main(argv: list[str] = []):
     _log.info("## msa_view, phyloFit, phyloBoot")
     (cons_mod, noncons_mod) = prepare(args.clade)
     _log.info("## phastCons")
-    for dir in args.clade.glob("chromosome*"):
-        wig = phastCons(dir, cons_mod, noncons_mod)
-        print(wig)
+    with confu.ThreadPoolExecutor(max_workers=args.jobs) as pool:
+        chrs = args.clade.glob("chromosome*")
+        futures = [pool.submit(phastCons, d, cons_mod, noncons_mod) for d in chrs]
+        for future in confu.as_completed(futures):
+            print(future.result())
 
 
 def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
     maf = str(path / "multiz.maf")
     cmd = (
         "phastCons --target-coverage 0.25 --expected-length 12"
-        f"--seqname {path.name} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
+        f" --seqname {path.name} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
     )
     wig = path / "phastcons.wig.gz"
     with gzip.open(wig, "w") as fout:
@@ -52,18 +57,19 @@ def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
 
 
 def prepare(clade: Path):
-    target = clade.parent.name
-    prepare_labeled_gff3(target)
-    cons_mods: list[str] = []
-    _4d_sites_mods: list[str] = []
-    for dir in clade.glob("chromosome*"):
-        (cons, noncons) = make_mods(dir)
-        cons_mods.append(str(cons))
-        _4d_sites_mods.append(str(noncons))
     cons_mod = clade / "cons.mod"
     noncons_mod = clade / "noncons.mod"
-    phyloBoot(cons_mods, cons_mod)
-    phyloBoot(_4d_sites_mods, noncons_mod)
+    if not cons_mod.exists() or not noncons_mod.exists():
+        target = clade.parent.name
+        prepare_labeled_gff3(target)
+        cons_mods: list[str] = []
+        _4d_sites_mods: list[str] = []
+        for dir in clade.glob("chromosome*"):
+            (cons, noncons) = make_mods(dir)
+            cons_mods.append(str(cons))
+            _4d_sites_mods.append(str(noncons))
+        phyloBoot(cons_mods, cons_mod)
+        phyloBoot(_4d_sites_mods, noncons_mod)
     return (cons_mod, noncons_mod)
 
 
