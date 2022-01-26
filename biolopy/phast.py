@@ -35,7 +35,7 @@ def main(argv: list[str] = []):
     global _dry_run
     _dry_run = args.dry_run
     _log.info("## msa_view, phyloFit, phyloBoot")
-    (cons_mod, noncons_mod) = prepare(args.clade)
+    (cons_mod, noncons_mod) = prepare_mods(args.clade, args.jobs)
     _log.info("## phastCons")
     with confu.ThreadPoolExecutor(max_workers=args.jobs) as pool:
         chrs = args.clade.glob("chromosome*")
@@ -56,35 +56,37 @@ def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
     return wig
 
 
-def prepare(clade: Path):
+def prepare_mods(clade: Path, jobs: int):
     cons_mod = clade / "cons.mod"
     noncons_mod = clade / "noncons.mod"
-    if not cons_mod.exists() or not noncons_mod.exists():
-        target = clade.parent.name
-        prepare_labeled_gff3(target)
-        cons_mods: list[str] = []
-        _4d_sites_mods: list[str] = []
-        for dir in clade.glob("chromosome*"):
-            (cons, noncons) = make_mods(dir)
-            cons_mods.append(str(cons))
-            _4d_sites_mods.append(str(noncons))
-        phyloBoot(cons_mods, cons_mod)
-        phyloBoot(_4d_sites_mods, noncons_mod)
+    if cons_mod.exists() and noncons_mod.exists():
+        return (cons_mod, noncons_mod)
+    treefile = clade / "tree.nh"
+    target = clade.parent.name
+    prepare_labeled_gff3(target)
+    cfutures: list[confu.Future[Path]] = []
+    nfutures: list[confu.Future[Path]] = []
+    with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
+        for chromosome in clade.glob("chromosome*"):
+            maf = chromosome / "multiz.maf"
+            gff = labeled_gff3(target, chromosome.name)
+            cfutures.append(pool.submit(make_cons_mod, maf, gff, treefile))
+            nfutures.append(pool.submit(make_noncons_mod, maf, gff, treefile))
+    phyloBoot([str(f.result()) for f in cfutures], cons_mod)
+    phyloBoot([str(f.result()) for f in nfutures], noncons_mod)
     return (cons_mod, noncons_mod)
 
 
-def make_mods(chromosome: Path):
-    treefile = chromosome.parent / "tree.nh"
-    target = chromosome.parent.parent.name
-    gff = labeled_gff3(target, chromosome.name)
-    maf = chromosome / "multiz.maf"
+def make_cons_mod(maf: Path, gff: Path, treefile: Path):
     codons_ss = msa_view_features(maf, gff, True)
+    codons_mods = phyloFit(codons_ss, treefile, True)
+    return most_conserved_mod(codons_mods)
+
+
+def make_noncons_mod(maf: Path, gff: Path, treefile: Path):
     _4d_codons_ss = msa_view_features(maf, gff, False)
     _4d_sites_ss = msa_view_ss(_4d_codons_ss)
-    codons_mods = phyloFit(codons_ss, treefile, True)
-    _4d_sites_mod = phyloFit(_4d_sites_ss, treefile, False)[0]
-    cons_mod = most_conserved_mod(codons_mods)
-    return (cons_mod, _4d_sites_mod)
+    return phyloFit(_4d_sites_ss, treefile, False)[0]
 
 
 def msa_view_features(maf: Path, gff: Path, conserved: bool):
