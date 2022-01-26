@@ -1,8 +1,7 @@
-"""
-Convert MAF to SAM/BAM/CRAM for visualzation.
+"""Convert MAF to SAM/BAM/CRAM for visualzation.
 
-src: ./pairwise/{target}/{query}/chromosome.*/sing.maf
-dst: ./pairwise/{target}/{query}/cram/*.cram
+src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
+dst: ./pairwise/{target}/{query}/cram/genome.cram
 """
 import concurrent.futures as confu
 import logging
@@ -19,6 +18,23 @@ from .db import ensemblgenomes
 
 _log = logging.getLogger(__name__)
 _dry_run = False
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
+    parser.add_argument("query", nargs="+", type=Path)
+    args = parser.parse_args()
+    cli.logging_config(args.loglevel)
+    global _dry_run
+    _dry_run = args.dry_run
+
+    for path in args.query:
+        outfile = mafs2cram(path, args.jobs)
+        print(outfile)
 
 
 def mafs2cram(path: Path, jobs: int = 1):
@@ -40,6 +56,7 @@ def mafs2cram(path: Path, jobs: int = 1):
             crams.append(cram)
     cmd = f"samtools merge --no-PG -O CRAM -@ 2 -f -o {str(outfile)} "
     popen(cmd + " ".join(crams)).communicate()
+    popen(f"samtools index {str(outfile)}").communicate()
     return outfile
 
 
@@ -83,23 +100,6 @@ def popen(
     (args, cmd) = cli.prepare_args(args, _dry_run)
     _log.info(cmd)
     return subprocess.Popen(args, stdin=stdin, stdout=stdout)
-
-
-def main():
-    import argparse
-
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser("v")])
-    parser.add_argument("-n", "--dry-run", action="store_true")
-    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
-    parser.add_argument("paths", nargs="+", type=Path)
-    args = parser.parse_args()
-    cli.logging_config(args.loglevel)
-    global _dry_run
-    _dry_run = args.dry_run
-
-    for path in args.paths:
-        outfile = mafs2cram(path, args.jobs)
-        print(outfile)
 
 
 if __name__ == "__main__":

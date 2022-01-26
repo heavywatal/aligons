@@ -1,7 +1,7 @@
 """Pairwise genome alignment
 
 src: {ensemblgenomes.prefix}/fasta/{species}/*.fa.gz
-dst: ./pairwise/{target}/{query}/chromosome.*/sing.maf
+dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 
 https://lastz.github.io/lastz/
 """
@@ -24,14 +24,13 @@ _log = logging.getLogger(__name__)
 def main(argv: list[str] = []):
     import argparse
 
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser("v")])
+    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry_run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("--quick", action="store_true")
     parser.add_argument("target")
     parser.add_argument("query")
     args = parser.parse_args(argv or None)
-    _log.info(f"{args}")
     cli.logging_config(args.loglevel)
     assert args.target in ensemblgenomes.list_species()
     assert args.query in ensemblgenomes.list_species()
@@ -49,8 +48,6 @@ class PairwiseAlignment:
         self._dry_run = dry_run
         self._target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
         self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
-        self._target_2bit = ensemblgenomes.get_file("*.genome.2bit", target)
-        self._query_2bit = ensemblgenomes.get_file("*.genome.2bit", query)
         self._outdir = Path(f"pairwise/{self._target}/{self._query}")
         self.run()
 
@@ -164,9 +161,11 @@ class PairwiseAlignment:
 
     def net_axt_maf(self, syntenic_net: Path, pre_chain: Path):
         sing_maf = syntenic_net.parent / "sing.maf"
+        target_2bit = ensemblgenomes.get_file("*.genome.2bit", self._target)
+        query_2bit = ensemblgenomes.get_file("*.genome.2bit", self._query)
         toaxt = self.popen_if(
             not sing_maf.exists(),
-            f"netToAxt {syntenic_net} stdin {self._target_2bit} {self._query_2bit} stdout",
+            f"netToAxt {syntenic_net} stdin {target_2bit} {query_2bit} stdout",
             stdin=PIPE,
             stdout=PIPE,
         )

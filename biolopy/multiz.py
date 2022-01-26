@@ -1,3 +1,11 @@
+"""Multiple genome alignment
+
+src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
+lnk: ./multiple/{target}/{clade}/{chromosome}/{target}.{query}.sing.maf
+dst: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
+
+https://github.com/multiz/multiz
+"""
 import concurrent.futures as confu
 import os
 import logging
@@ -16,7 +24,7 @@ _dry_run = False
 def main(argv: list[str] = []):
     import argparse
 
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser("v")])
+    parser = argparse.ArgumentParser(parents=[cli.logging_argparser("")])
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
     parser.add_argument("clade")  # monocot, poaceae, bep, pacmad
@@ -83,11 +91,6 @@ def prepare(indir: Path, clade: str):
 
 
 def symlink(indir: Path, outdir: Path, species: Iterable[str]):
-    """Create symlinks for multiz
-
-    src: pairwise/{target}/{query}/chromosome.*/sing.maf
-    dst: multiple/{target}/{clade}/chromosome.*/{target}.{query}.sing.maf
-    """
     target = indir.name
     for query in species:
         if query == target:
