@@ -5,7 +5,7 @@ dst: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
 
 http://compgen.cshl.edu/phast/
 """
-
+import csv
 import logging
 import gzip
 import re
@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, IO
 
 from . import cli
-from .db import ensemblgenomes
+from .db import ensemblgenomes, name
 
 _log = logging.getLogger(__name__)
 _dry_run = False
@@ -26,17 +26,17 @@ def main(argv: list[str] = []):
 
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
-    parser.add_argument("chromosome", nargs="+", type=Path)
+    parser.add_argument("clade", type=Path)
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     global _dry_run
     _dry_run = args.dry_run
     _log.info("## msa_view, phyloFit, phyloBoot")
-    (cons_mod, noncons_mod) = prepare(args.chromosome)
+    (cons_mod, noncons_mod) = prepare(args.clade)
     _log.info("## phastCons")
-    for dir in args.chromosome:
-        phastCons(dir, cons_mod, noncons_mod)
-    _log.info("## done")
+    for dir in args.clade.glob("chromosome*"):
+        wig = phastCons(dir, cons_mod, noncons_mod)
+        print(wig)
 
 
 def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
@@ -51,16 +51,17 @@ def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
     return wig
 
 
-def prepare(paths: list[Path]):
+def prepare(clade: Path):
+    target = clade.parent.name
+    prepare_labeled_gff3(target)
     cons_mods: list[str] = []
     _4d_sites_mods: list[str] = []
-    for dir in paths:
+    for dir in clade.glob("chromosome*"):
         (cons, noncons) = make_mods(dir)
         cons_mods.append(str(cons))
         _4d_sites_mods.append(str(noncons))
-    outdir = paths[0].parent
-    cons_mod = outdir / "cons.mod"
-    noncons_mod = outdir / "noncons.mod"
+    cons_mod = clade / "cons.mod"
+    noncons_mod = clade / "noncons.mod"
     phyloBoot(cons_mods, cons_mod)
     phyloBoot(_4d_sites_mods, noncons_mod)
     return (cons_mod, noncons_mod)
@@ -69,7 +70,7 @@ def prepare(paths: list[Path]):
 def make_mods(chromosome: Path):
     treefile = chromosome.parent / "tree.nh"
     target = chromosome.parent.parent.name
-    gff = ensemblgenomes.get_file(f"*.{chromosome.name}.gff3.gz", target, "gff3")
+    gff = labeled_gff3(target, chromosome.name)
     maf = chromosome / "multiz.maf"
     codons_ss = msa_view_features(maf, gff, True)
     _4d_codons_ss = msa_view_features(maf, gff, False)
@@ -153,6 +154,42 @@ def extract_tree(content: str):
 
 def branch_lengths(newick: str):
     return [float(m.group(0)) for m in re.finditer(r"[\d.]+", newick)]
+
+
+def labeled_gff3(species: str, chromosome: str):
+    return Path("gff3") / species / f"labeled-{chromosome}.gff3.gz"
+
+
+def prepare_labeled_gff3(species: str):
+    """
+    src: {ensemblgenomes.prefix}/gff3/{species}/*.{chromosome}.gff3.gz
+    dst: ./gff3/{species}/labeled-{chromosome}.gff3.gz
+    """
+    shortname = name.shorten(species)
+    for infile in ensemblgenomes.rglob("*.chromosome*.gff3.gz", species, "gff3"):
+        mobj = re.search(r"(chromosome.+)\.gff3\.gz$", infile.name)
+        assert mobj
+        outfile = labeled_gff3(species, mobj.group(1))
+        if not outfile.exists() and not _dry_run:
+            _log.info(f"{outfile}")
+            add_label_to_chr(infile, outfile, shortname + ".")
+
+
+def add_label_to_chr(infile: Path, outfile: Path, label: str):
+    """Modify GFF3 for msa_view
+
+    - Add species name to chromosome name, e.g., osat.1, zmay.2
+    - Extract CDS
+    """
+    if not _dry_run:
+        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
+    with gzip.open(infile, "rt") as fin, gzip.open(outfile, "wt") as fout:
+        reader = csv.reader(fin, delimiter="\t")
+        for row in reader:
+            if len(row) < 8 or row[0].startswith("#"):
+                continue
+            if row[2] == "CDS":
+                fout.write(label + "\t".join(row) + "\n")
 
 
 def bash(cmd: str, stdout: IO[Any] | int | None = None):
