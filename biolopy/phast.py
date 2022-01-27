@@ -55,7 +55,9 @@ def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
         f" --seqname {seqname} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
     )
     wig = path / "phastcons.wig.gz"
-    run(cmd, stdout=wig)
+    p = run(cmd, stdout=subprocess.PIPE)
+    with open_if_not_dry_run(wig, "wb") as fout:
+        fout.write(p.stdout)
     return wig
 
 
@@ -108,7 +110,9 @@ def msa_view_features(maf: Path, gff: Path, conserved: bool):
 def msa_view_ss(codons_ss: Path):
     outfile = codons_ss.parent / "4d-sites.ss"
     s = f"msa_view {str(codons_ss)} --in-format SS --out-format SS --tuple-size 1"
-    run(s, stdout=outfile)
+    p = run(s, stdout=subprocess.PIPE)
+    with open_if_not_dry_run(outfile, "wb") as fout:
+        fout.write(p.stdout)
     return outfile
 
 
@@ -224,15 +228,11 @@ def bash(cmd: str, stdout: Path) -> subprocess.CompletedProcess[Any]:
 
 def run(
     args: list[str] | str,
-    stdout: Path | None = None,
-    shell: bool = False,
+    stdout: int | None = None
 ):  # kwargs hinders type inference to Popen[bytes]
     (args, cmd) = cli.prepare_args(args, _dry_run)
     _log.info(cmd)
-    if stdout is None:
-        return subprocess.run(args, shell=shell)
-    with open_if_not_dry_run(stdout, "w") as f:
-        return subprocess.run(args, stdout=f, shell=shell)
+    return subprocess.run(args, stdout=stdout)
 
 
 def open_if_not_dry_run(file: Path, mode: str = "r") -> IO[Any]:
