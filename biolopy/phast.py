@@ -49,9 +49,10 @@ def main(argv: list[str] = []):
 
 def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
     maf = str(path / "multiz.maf")
+    seqname = path.name.split(".", 1)[1]  # remove "chromosome."
     cmd = (
         "phastCons --target-coverage 0.25 --expected-length 12"
-        f" --seqname {path.name} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
+        f" --seqname {seqname} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
     )
     wig = path / "phastcons.wig.gz"
     run(cmd, stdout=wig)
