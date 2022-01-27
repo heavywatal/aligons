@@ -7,8 +7,9 @@ http://compgen.cshl.edu/phast/
 """
 import concurrent.futures as confu
 import csv
-import logging
 import gzip
+import itertools
+import logging
 import os
 import re
 import subprocess
@@ -27,6 +28,7 @@ def main(argv: list[str] = []):
     import argparse
 
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("clade", type=Path)
@@ -34,9 +36,10 @@ def main(argv: list[str] = []):
     cli.logging_config(args.loglevel)
     global _dry_run
     _dry_run = args.dry_run
-    _log.info("## msa_view, phyloFit, phyloBoot")
+    if args.clean:
+        clean(args.clade)
+        return
     (cons_mod, noncons_mod) = prepare_mods(args.clade, args.jobs)
-    _log.info("## phastCons")
     with confu.ThreadPoolExecutor(max_workers=args.jobs) as pool:
         chrs = args.clade.glob("chromosome*")
         futures = [pool.submit(phastCons, d, cons_mod, noncons_mod) for d in chrs]
@@ -51,8 +54,7 @@ def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
         f" --seqname {path.name} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
     )
     wig = path / "phastcons.wig.gz"
-    with gzip.open(wig, "w") as fout:
-        run(cmd, stdout=fout)  # type: ignore
+    run(cmd, stdout=wig)
     return wig
 
 
@@ -98,16 +100,14 @@ def msa_view_features(maf: Path, gff: Path, conserved: bool):
     else:
         outfile = maf.parent / "4d-codons.ss"
         cmd += " --4d"
-    with open(outfile, "w") as fout:
-        bash(cmd, stdout=fout)
+    bash(cmd, stdout=outfile)
     return outfile
 
 
 def msa_view_ss(codons_ss: Path):
     outfile = codons_ss.parent / "4d-sites.ss"
     s = f"msa_view {str(codons_ss)} --in-format SS --out-format SS --tuple-size 1"
-    with open(outfile, "w") as fout:
-        run(s, stdout=fout)
+    run(s, stdout=outfile)
     return outfile
 
 
@@ -200,21 +200,48 @@ def add_label_to_chr(infile: Path, outfile: Path, label: str):
                 fout.write(label + "\t".join(row) + "\n")
 
 
-def bash(cmd: str, stdout: IO[Any] | int | None = None):
+def clean(path: Path):
+    it = itertools.chain(
+        path.glob("*.mod"),
+        path.glob("*.ss"),
+        path.glob("chromosome*/*.mod"),
+        path.glob("chromosome*/*.ss"),
+        path.glob("chromosome*/phastcons.wig.gz"),
+    )
+    for file in it:
+        print(file)
+        if not _dry_run:
+            file.unlink()
+
+
+def bash(cmd: str, stdout: Path) -> subprocess.CompletedProcess[Any]:
     (_args, cmd) = cli.prepare_args(cmd, _dry_run)
     _log.info(cmd)
-    return subprocess.run(cmd, stdout=stdout, shell=True, executable="/bin/bash")
+    with open_if_not_dry_run(stdout, "w") as fout:
+        return subprocess.run(cmd, stdout=fout, shell=True, executable="/bin/bash")
 
 
 def run(
     args: list[str] | str,
-    stdin: IO[Any] | int | None = None,
-    stdout: IO[Any] | int | None = None,
+    stdout: Path | None = None,
     shell: bool = False,
 ):  # kwargs hinders type inference to Popen[bytes]
     (args, cmd) = cli.prepare_args(args, _dry_run)
     _log.info(cmd)
-    return subprocess.run(args, stdin=stdin, stdout=stdout, shell=shell)
+    if stdout is None:
+        return subprocess.run(args, shell=shell)
+    with open_if_not_dry_run(stdout, "w") as f:
+        return subprocess.run(args, stdout=f, shell=shell)
+
+
+def open_if_not_dry_run(file: Path, mode: str = "r") -> IO[Any]:
+    if str(file).endswith(".gz"):
+        fun = gzip.open
+    else:
+        fun = open
+    if _dry_run:
+        file = Path("/dev/null")
+    return fun(file, mode)  # type: ignore
 
 
 if __name__ == "__main__":

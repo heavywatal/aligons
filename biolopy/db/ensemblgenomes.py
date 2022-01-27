@@ -91,7 +91,7 @@ def expand_shortnames(shortnames: list[str]):
 def main(argv: list[str] | None = None):
     import argparse
 
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser("")])
+    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-r", "--version", default=VERSION)
     parser.add_argument("-V", "--versions", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")

@@ -9,6 +9,7 @@ https://github.com/multiz/multiz
 import concurrent.futures as confu
 import os
 import logging
+import shutil
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
@@ -24,14 +25,22 @@ _dry_run = False
 def main(argv: list[str] = []):
     import argparse
 
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser("")])
+    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser.add_argument("--clean", action="store_true")
+    parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
     parser.add_argument("clade")  # monocot, poaceae, bep, pacmad
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
+    global _dry_run
+    _dry_run = args.dry_run
     outdir = prepare(args.indir, args.clade)
     chromodirs = outdir.glob("chromosome.*")
+    if args.clean:
+        for d in chromodirs:
+            clean(d)
+        return
     with confu.ThreadPoolExecutor(max_workers=args.jobs) as executor:
         futures = [executor.submit(multiz, p) for p in chromodirs]
     for future in confu.as_completed(futures):
@@ -125,6 +134,21 @@ def shell(script: str):
     return subprocess.run(
         script, text=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
+
+
+def clean(path: Path):
+    for entry in path.iterdir():
+        if entry.name in ("multiz.maf", "roasted.sh", ".tmp"):
+            print(entry)
+            if not _dry_run:
+                rm_rf(entry)
+
+
+def rm_rf(path: Path):
+    if path.is_dir():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
 
 
 if __name__ == "__main__":
