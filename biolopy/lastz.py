@@ -111,8 +111,8 @@ class PairwiseAlignment:
         p = self.popen_if(not chain.exists(), cmd, stdin=PIPE)
         if not chain.exists() and not self._dry_run:
             assert p.stdin
-            with gzip.open(axtgz, "rb") as fout:
-                shutil.copyfileobj(fout, p.stdin)
+            with gzip.open(axtgz, "rb") as fin:
+                shutil.copyfileobj(fin, p.stdin)
                 p.stdin.close()
         p.communicate()
         return chain

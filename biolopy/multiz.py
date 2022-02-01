@@ -54,7 +54,7 @@ def multiz(path: Path):
     with open(roasted, "rt") as fin:
         script = fin.read()
     _log.debug(script)
-    p = shell(f"set -eu; cd {str(path)}\n" + script)
+    p = shell("set -eu\n" + script, cwd=path)
     if p.returncode > 0:
         for line in p.stdout.strip().splitlines():
             _log.error(f"{path.name}:{line}")
@@ -130,9 +130,14 @@ def run(
     return subprocess.run(args, stdin=stdin, stdout=stdout, text=text)
 
 
-def shell(script: str):
+def shell(script: str, cwd: Path):
     return subprocess.run(
-        script, text=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        script,
+        text=True,
+        shell=True,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
 
 
