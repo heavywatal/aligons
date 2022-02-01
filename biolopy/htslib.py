@@ -10,7 +10,6 @@ from typing import Any, IO
 from . import cli, fs
 
 _log = logging.getLogger(__name__)
-_dry_run = False
 
 
 def main(argv: list[str] | None = None):
@@ -26,8 +25,7 @@ def main(argv: list[str] | None = None):
     )
     parser.add_argument("path", type=Path)
     args = parser.parse_args(argv or None)
-    global _dry_run
-    _dry_run = args.dry_run
+    cli.dry_run = args.dry_run
     cli.logging_config(args.loglevel)
     if args.format == "fasta":
         index_fasta(args.path)
@@ -65,7 +63,7 @@ def create_genome_bgzip(path: Path, ext: str = "fa"):
 
 
 def bgzip(infiles: Iterable[Path], outfile: Path, format: str = "fasta"):
-    if fs.is_outdated(outfile) and not _dry_run:
+    if fs.is_outdated(outfile) and not cli.dry_run:
         with open(outfile, "wb") as fout:
             bgzip = popen("bgzip -@2", stdin=subprocess.PIPE, stdout=fout)
             assert bgzip.stdin
@@ -101,7 +99,7 @@ def faToTwoBit(fa_gz: Path):
     # TODO: separate to kent.py
     """https://github.com/ENCODE-DCC/kentUtils/"""
     outfile = fa_gz.with_suffix("").with_suffix(".2bit")
-    if fs.is_outdated(outfile, fa_gz) and not _dry_run:
+    if fs.is_outdated(outfile, fa_gz) and not cli.dry_run:
         with gzip.open(fa_gz, "rb") as fin:
             args = ["faToTwoBit", "stdin", str(outfile)]
             p = popen(args, stdin=subprocess.PIPE)
@@ -118,7 +116,7 @@ def faSize(genome_fa_gz: Path):
     if not genome_fa_gz.name.endswith("genome.fa.gz"):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
     outfile = genome_fa_gz.parent / "fasize.chrom.sizes"
-    if fs.is_outdated(outfile, genome_fa_gz) and not _dry_run:
+    if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
         with open(outfile, "wb") as fout:
             run(["faSize", "-detailed", str(genome_fa_gz)], stdout=fout)
     return outfile
@@ -136,7 +134,7 @@ def popen(
     stdin: IO[Any] | int | None = None,
     stdout: IO[Any] | int | None = None,
 ):  # kwargs hinders type inference to Popen[bytes]
-    (args, cmd) = cli.prepare_args(args, _dry_run)
+    (args, cmd) = cli.prepare_args(args)
     _log.info(cmd)
     return subprocess.Popen(args, stdin=stdin, stdout=stdout)
 
@@ -146,7 +144,7 @@ def run(
     stdin: IO[Any] | int | None = None,
     stdout: IO[Any] | int | None = None,
 ):
-    (args, cmd) = cli.prepare_args(args, _dry_run)
+    (args, cmd) = cli.prepare_args(args)
     _log.info(cmd)
     return subprocess.run(args, stdin=stdin, stdout=stdout)
 

@@ -2,14 +2,16 @@ import argparse
 import logging
 import shlex
 
+dry_run = False
 
-def prepare_args(args: list[str] | str, dry_run: bool = False):
+
+def prepare_args(args: list[str] | str, cond: bool = True):
     if isinstance(args, str):
         cmd = args
         args = shlex.split(args)
     else:
         cmd = " ".join(args)
-    if dry_run:
+    if dry_run or not cond:
         cmd = "# " + cmd
         args = ["sleep", "0"]
     return (args, cmd)

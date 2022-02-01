@@ -16,7 +16,6 @@ from . import cli, fs
 from .db import ensemblgenomes
 
 _log = logging.getLogger(__name__)
-_dry_run = False
 
 
 def main():
@@ -29,8 +28,7 @@ def main():
     parser.add_argument("query", nargs="+", type=Path)
     args = parser.parse_args()
     cli.logging_config(args.loglevel)
-    global _dry_run
-    _dry_run = args.dry_run
+    cli.dry_run = args.dry_run
 
     if args.test:
         for path in args.query:
@@ -121,7 +119,7 @@ def popen_if(
     stdin: IO[bytes] | int | None = None,
     stdout: IO[bytes] | int | None = None,
 ):
-    (args, cmd) = cli.prepare_args(args, (not cond) or _dry_run)
+    (args, cmd) = cli.prepare_args(args, cond)
     _log.info(cmd)
     return subprocess.Popen(args, stdin=stdin, stdout=stdout)
 

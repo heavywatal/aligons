@@ -25,34 +25,32 @@ def main(argv: list[str] = []):
     import argparse
 
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
-    parser.add_argument("-n", "--dry_run", action="store_true")
+    parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("--quick", action="store_true")
     parser.add_argument("target")
     parser.add_argument("query")
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
+    cli.dry_run = args.dry_run
     assert args.target in ensemblgenomes.list_species()
     assert args.query in ensemblgenomes.list_species()
-    PairwiseAlignment(
-        args.target, args.query, quick=args.quick, jobs=args.jobs, dry_run=args.dry_run
-    )
+    PairwiseAlignment(args.target, args.query, quick=args.quick, jobs=args.jobs)
 
 
 class PairwiseAlignment:
-    def __init__(self, target: str, query: str, quick: str, jobs: int, dry_run: bool):
+    def __init__(self, target: str, query: str, quick: str, jobs: int):
         self._target = target
         self._query = query
         self._quick = quick
         self._jobs = jobs
-        self._dry_run = dry_run
         self._target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
         self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
         self._outdir = Path(f"pairwise/{self._target}/{self._query}")
         self.run()
 
     def run(self):
-        if not self._dry_run:
+        if not cli.dry_run:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
         patt = "*.chromosome.*.2bit"
         target_chromosomes = sorted(ensemblgenomes.rglob(patt, self._target))
@@ -91,14 +89,14 @@ class PairwiseAlignment:
         target_label = target_2bit.stem.rsplit("dna_sm.", 1)[1]
         query_label = query_2bit.stem.rsplit("dna_sm.", 1)[1]
         subdir = self._outdir / target_label
-        if not self._dry_run:
+        if not cli.dry_run:
             subdir.mkdir(0o755, exist_ok=True)
         axtgz = subdir / f"{query_label}.axt.gz"
         args = f"lastz {target_2bit} {query_2bit} --format=axt --inner=2000 --step=7"
         if self._quick:
             args += " --notransition --nogapped"
         lastz = self.popen_if(not axtgz.exists(), args, stdout=PIPE)
-        if not axtgz.exists() and not self._dry_run:
+        if not axtgz.exists() and not cli.dry_run:
             assert lastz.stdout
             with gzip.open(axtgz, "wb") as fout:
                 shutil.copyfileobj(lastz.stdout, fout)
@@ -109,7 +107,7 @@ class PairwiseAlignment:
         cmd = "axtChain -minScore=5000 -linearGap=medium stdin"
         cmd += f" {target_2bit} {query_2bit} {chain}"
         p = self.popen_if(not chain.exists(), cmd, stdin=PIPE)
-        if not chain.exists() and not self._dry_run:
+        if not chain.exists() and not cli.dry_run:
             assert p.stdin
             with gzip.open(axtgz, "rb") as fin:
                 shutil.copyfileobj(fin, p.stdin)
@@ -133,7 +131,7 @@ class PairwiseAlignment:
             stdin=merge.stdout,
             stdout=PIPE,
         )
-        if not pre_chain.exists() and not self._dry_run:
+        if not pre_chain.exists() and not cli.dry_run:
             assert pre.stdout
             with gzip.open(pre_chain, "wb") as fout:
                 shutil.copyfileobj(pre.stdout, fout)
@@ -147,7 +145,7 @@ class PairwiseAlignment:
             stdin=PIPE,
             stdout=PIPE,
         )
-        if not syntenic_net.exists() and not self._dry_run:
+        if not syntenic_net.exists() and not cli.dry_run:
             assert cn.stdin
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, cn.stdin)
@@ -169,7 +167,7 @@ class PairwiseAlignment:
             stdin=PIPE,
             stdout=PIPE,
         )
-        if not sing_maf.exists() and not self._dry_run:
+        if not sing_maf.exists() and not cli.dry_run:
             assert toaxt.stdin
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, toaxt.stdin)
@@ -196,12 +194,12 @@ class PairwiseAlignment:
         stdin: IO[bytes] | int | None = None,
         stdout: IO[bytes] | int | None = None,
     ):  # kwargs hinders type inference to Popen[bytes]
-        (args, cmd) = cli.prepare_args(args, (not cond) or self._dry_run)
+        (args, cmd) = cli.prepare_args(args, cond)
         _log.info(cmd)
         return subprocess.Popen(args, stdin=stdin, stdout=stdout)
 
     def run_if(self, cond: bool, args: list[str] | str, **kwargs: Any):
-        (args, cmd) = cli.prepare_args(args, (not cond) or self._dry_run)
+        (args, cmd) = cli.prepare_args(args, cond)
         _log.info(cmd)
         return subprocess.run(args, **kwargs)
 

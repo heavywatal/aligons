@@ -19,7 +19,6 @@ from .db import ensemblgenomes, name, phylo
 from . import cli
 
 _log = logging.getLogger(__name__)
-_dry_run = False
 
 
 def main(argv: list[str] = []):
@@ -33,8 +32,7 @@ def main(argv: list[str] = []):
     parser.add_argument("clade")  # monocot, poaceae, bep, pacmad
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
-    global _dry_run
-    _dry_run = args.dry_run
+    cli.dry_run = args.dry_run
     outdir = prepare(args.indir, args.clade)
     chromodirs = outdir.glob("chromosome.*")
     if args.clean:
@@ -125,7 +123,7 @@ def run(
     stdout: IO[Any] | int | None = None,
     text: bool = False,
 ):  # kwargs hinders type inference to Popen[bytes]
-    (args, cmd) = cli.prepare_args(args, _dry_run)
+    (args, cmd) = cli.prepare_args(args)
     _log.info(cmd)
     return subprocess.run(args, stdin=stdin, stdout=stdout, text=text)
 
@@ -145,7 +143,7 @@ def clean(path: Path):
     for entry in path.iterdir():
         if entry.name in ("multiz.maf", "roasted.sh", ".tmp"):
             print(entry)
-            if not _dry_run:
+            if not cli.dry_run:
                 rm_rf(entry)
 
 

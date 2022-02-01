@@ -16,9 +16,7 @@ from typing import Any, IO
 from . import cli
 from .db import ensemblgenomes
 
-
 _log = logging.getLogger(__name__)
-_dry_run = False
 
 
 def main(argv: list[str] = []):
@@ -31,8 +29,7 @@ def main(argv: list[str] = []):
     parser.add_argument("clade", type=Path)
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
-    global _dry_run
-    _dry_run = args.dry_run
+    cli.dry_run = args.dry_run
     outfile = integrate_wigs(args.clade)
     print(outfile)
     _log.info(bigWigInfo(outfile).stdout)
@@ -53,10 +50,10 @@ def wigToBigWig(
     infile: IO[Any] | fileinput.FileInput[Any], chrom_sizes: Path, outfile: Path
 ):
     args = ["wigToBigWig", "stdin", str(chrom_sizes), str(outfile)]
-    (args, cmd) = cli.prepare_args(args, outfile.exists() or _dry_run)
+    (args, cmd) = cli.prepare_args(args, not outfile.exists())
     _log.info(cmd)
     p = subprocess.Popen(args, stdin=subprocess.PIPE)
-    if not outfile.exists() and not _dry_run:
+    if not outfile.exists() and not cli.dry_run:
         assert p.stdin
         for line in infile:
             p.stdin.write(line)

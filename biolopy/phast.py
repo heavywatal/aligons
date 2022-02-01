@@ -21,7 +21,6 @@ from . import cli
 from .db import ensemblgenomes, name
 
 _log = logging.getLogger(__name__)
-_dry_run = False
 
 
 def main(argv: list[str] = []):
@@ -34,8 +33,7 @@ def main(argv: list[str] = []):
     parser.add_argument("clade", type=Path)
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
-    global _dry_run
-    _dry_run = args.dry_run
+    cli.dry_run = args.dry_run
     if args.clean:
         clean(args.clade)
         return
@@ -140,7 +138,7 @@ def phyloBoot(mods: list[str], outfile: Path):
 
 def most_conserved_mod(mod_files: list[Path]):
     outfile = mod_files[0].parent / "cons.mod"
-    if _dry_run:
+    if cli.dry_run:
         return outfile
     shortest_length = sys.float_info.max
     conserved = ""
@@ -183,7 +181,7 @@ def prepare_labeled_gff3(species: str):
         mobj = re.search(r"(chromosome.+)\.gff3\.gz$", infile.name)
         assert mobj
         outfile = labeled_gff3(species, mobj.group(1))
-        if not outfile.exists() and not _dry_run:
+        if not outfile.exists() and not cli.dry_run:
             _log.info(f"{outfile}")
             add_label_to_chr(infile, outfile, shortname + ".")
 
@@ -194,7 +192,7 @@ def add_label_to_chr(infile: Path, outfile: Path, label: str):
     - Add species name to chromosome name, e.g., osat.1, zmay.2
     - Extract CDS
     """
-    if not _dry_run:
+    if not cli.dry_run:
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
     with gzip.open(infile, "rt") as fin, gzip.open(outfile, "wt") as fout:
         reader = csv.reader(fin, delimiter="\t")
@@ -215,22 +213,21 @@ def clean(path: Path):
     )
     for file in it:
         print(file)
-        if not _dry_run:
+        if not cli.dry_run:
             file.unlink()
 
 
 def bash(cmd: str, stdout: Path) -> subprocess.CompletedProcess[Any]:
-    (_args, cmd) = cli.prepare_args(cmd, _dry_run)
+    (_args, cmd) = cli.prepare_args(cmd)
     _log.info(cmd)
     with open_if_not_dry_run(stdout, "w") as fout:
         return subprocess.run(cmd, stdout=fout, shell=True, executable="/bin/bash")
 
 
 def run(
-    args: list[str] | str,
-    stdout: int | None = None
+    args: list[str] | str, stdout: int | None = None
 ):  # kwargs hinders type inference to Popen[bytes]
-    (args, cmd) = cli.prepare_args(args, _dry_run)
+    (args, cmd) = cli.prepare_args(args)
     _log.info(cmd)
     return subprocess.run(args, stdout=stdout)
 
@@ -240,7 +237,7 @@ def open_if_not_dry_run(file: Path, mode: str = "r") -> IO[Any]:
         fun = gzip.open
     else:
         fun = open
-    if _dry_run:
+    if cli.dry_run:
         file = Path("/dev/null")
     return fun(file, mode)  # type: ignore
 
