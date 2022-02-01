@@ -55,26 +55,28 @@ def mafs2cram(path: Path, jobs: int = 1):
             _log.info(cram)
             crams.append(cram)
     cmd = f"samtools merge --no-PG -O CRAM -@ 2 -f -o {str(outfile)} "
-    popen(cmd + " ".join(crams)).communicate()
-    popen(f"samtools index {str(outfile)}").communicate()
+    outfile_is_outdated = is_out_of_date(outfile, Path(crams[0]))
+    popen_if(outfile_is_outdated, cmd + " ".join(crams)).communicate()
+    popen_if(outfile_is_outdated, f"samtools index {str(outfile)}").communicate()
     return outfile
 
 
 def maf2cram(infile: Path, outfile: Path, reference: Path):
     assert infile.exists() and outfile.parent.exists()
-    mafconv = popen(f"maf-convert sam {str(infile)}", stdout=PIPE)
-    samview = sanitize_cram(reference, mafconv.stdout)
+    cond = is_out_of_date(outfile)
+    mafconv = popen_if(cond, f"maf-convert sam {str(infile)}", stdout=PIPE)
+    samview = sanitize_cram(cond, reference, mafconv.stdout)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {str(outfile)}"
-    popen(cmd, stdin=samview.stdout).communicate()
+    popen_if(cond, cmd, stdin=samview.stdout).communicate()
     return outfile
 
 
-def sanitize_cram(reference: Path, stdin: IO[bytes] | None):
+def sanitize_cram(cond: bool, reference: Path, stdin: IO[bytes] | None):
     shortname = name.shorten(reference.parent.parent.name)
-    patt_refseq = re.compile(fr"(?<=\t){shortname}\.".encode())
+    patt_refseq = re.compile(rf"(?<=\t){shortname}\.".encode())
     patt_cigar = re.compile(rb"\d+H")
     cmd = f"samtools view --no-PG -h -C -@ 2 -T {str(reference)}"
-    samview = popen(cmd, stdin=PIPE, stdout=PIPE)
+    samview = popen_if(cond, cmd, stdin=PIPE, stdout=PIPE)
     assert samview.stdin
     for line in stdin or []:
         line = patt_refseq.sub(b"", line, 1)
@@ -84,20 +86,33 @@ def sanitize_cram(reference: Path, stdin: IO[bytes] | None):
     return samview
 
 
-def sanitize_cram_sed(reference: Path, stdin: IO[bytes] | None):
+def sanitize_cram_sed(cond: bool, reference: Path, stdin: IO[bytes] | None):
     shortname = name.shorten(reference.parent.parent.name)
-    sed_refseq = popen(f"sed -e s/{shortname}.//", stdin=stdin, stdout=PIPE)
-    sed_cigar = popen(r"sed -e s/[0-9]\+H//g", stdin=sed_refseq.stdout, stdout=PIPE)
+    sed_refseq = popen_if(cond, f"sed -e s/{shortname}.//", stdin=stdin, stdout=PIPE)
+    sed_cigar = popen_if(
+        cond, r"sed -e s/[0-9]\+H//g", stdin=sed_refseq.stdout, stdout=PIPE
+    )
     cmd = f"samtools view --no-PG -h -C -@ 2 -T {str(reference)}"
-    return popen(cmd, stdin=sed_cigar.stdout, stdout=PIPE)
+    return popen_if(cond, cmd, stdin=sed_cigar.stdout, stdout=PIPE)
 
 
-def popen(
+def is_out_of_date(destination: Path, source: Path | None = None):
+    if not destination.exists():
+        return True
+    if destination.stat().st_size == 0:
+        return True
+    if source and destination.stat().st_ctime < source.stat().st_ctime:
+        return True
+    return False
+
+
+def popen_if(
+    cond: bool,
     args: list[str] | str,
     stdin: IO[bytes] | int | None = None,
     stdout: IO[bytes] | int | None = None,
-):  # kwargs hinders type inference to Popen[bytes]
-    (args, cmd) = cli.prepare_args(args, _dry_run)
+):
+    (args, cmd) = cli.prepare_args(args, (not cond) or _dry_run)
     _log.info(cmd)
     return subprocess.Popen(args, stdin=stdin, stdout=stdout)
 
