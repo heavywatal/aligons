@@ -16,7 +16,7 @@ from subprocess import PIPE
 from typing import Any, IO
 
 from .db import ensemblgenomes, name
-from . import cli
+from . import cli, fs
 
 _log = logging.getLogger(__name__)
 
@@ -53,18 +53,18 @@ class PairwiseAlignment:
         if not cli.dry_run:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
         patt = "*.chromosome.*.2bit"
-        target_chromosomes = sorted(ensemblgenomes.rglob(patt, self._target))
-        query_chromosomes = sorted(ensemblgenomes.rglob(patt, self._query))
+        target_chromosomes = ensemblgenomes.rglob(patt, self._target)
+        query_chromosomes = ensemblgenomes.rglob(patt, self._query)
         with confu.ThreadPoolExecutor(max_workers=self._jobs) as executor:
             nested: list[list[confu.Future[Path]]] = []
-            for t in target_chromosomes:
+            for t in fs.sorted_naturally(target_chromosomes):
                 futures = [
                     executor.submit(self.align_chr_pair, t, q)
-                    for q in query_chromosomes
+                    for q in fs.sorted_naturally(query_chromosomes)
                 ]
                 nested.append(futures)
             subexe = confu.ThreadPoolExecutor(max_workers=None)
-            waiters = [subexe.submit(wait_results, fs) for fs in nested]
+            waiters = [subexe.submit(wait_results, fts) for fts in nested]
             futures = [
                 executor.submit(self.integrate, future.result())
                 for future in confu.as_completed(waiters)

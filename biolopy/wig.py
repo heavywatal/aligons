@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, IO
 
-from . import cli
+from . import cli, fs
 from .db import ensemblgenomes
 
 _log = logging.getLogger(__name__)
@@ -38,7 +38,8 @@ def main(argv: list[str] = []):
 def integrate_wigs(clade: Path):
     species = clade.parent.name
     chrom_sizes = ensemblgenomes.get_file("*chrom.sizes", species)
-    wigs = list(sorted_wigs(clade, chrom_sizes))
+    name = "phastcons.wig.gz"
+    wigs = [p / name for p in fs.sorted_naturally(clade.glob("chromosome.*"))]
     _log.info(f"{[str(x) for x in wigs]}")
     outfile = clade / "phastcons.bw"
     with fileinput.input(wigs, mode="rb", openhook=fileinput.hook_compressed) as reader:
@@ -63,13 +64,6 @@ def wigToBigWig(
 def bigWigInfo(path: Path):
     args = ["bigWigInfo", str(path)]
     return subprocess.run(args, stdout=subprocess.PIPE, text=True)
-
-
-def sorted_wigs(path: Path, chrom_sizes: Path):
-    with open(chrom_sizes, "r") as fin:
-        for line in fin:
-            seqname = line.split("\t")[0]
-            yield path / f"chromosome.{seqname}" / "phastcons.wig.gz"
 
 
 if __name__ == "__main__":
