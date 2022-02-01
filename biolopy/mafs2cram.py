@@ -10,10 +10,9 @@ import re
 import subprocess
 from subprocess import PIPE
 from pathlib import Path
-from typing import IO
+from typing import IO, Match
 
 from . import cli, fs
-from .db import name
 from .db import ensemblgenomes
 
 _log = logging.getLogger(__name__)
@@ -25,12 +24,20 @@ def main():
 
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
+    parser.add_argument("-t", "--test", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("query", nargs="+", type=Path)
     args = parser.parse_args()
     cli.logging_config(args.loglevel)
     global _dry_run
     _dry_run = args.dry_run
+
+    if args.test:
+        for path in args.query:
+            target_species = "oryza_sativa"
+            reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species)
+            maf2cram(path, Path(path.parent.name + ".cram"), reference)
+        return
 
     for path in args.query:
         outfile = mafs2cram(path, args.jobs)
@@ -65,35 +72,47 @@ def maf2cram(infile: Path, outfile: Path, reference: Path):
     assert infile.exists() and outfile.parent.exists()
     cond = fs.is_outdated(outfile)
     mafconv = popen_if(cond, f"maf-convert sam {str(infile)}", stdout=PIPE)
-    samview = sanitize_cram(cond, reference, mafconv.stdout)
+    (stdout, _stderr) = mafconv.communicate()
+    content = sanitize_cram(cond, reference, stdout)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {str(outfile)}"
-    popen_if(cond, cmd, stdin=samview.stdout).communicate()
+    popen_if(cond, cmd, stdin=PIPE).communicate(content)
     return outfile
 
 
-def sanitize_cram(cond: bool, reference: Path, stdin: IO[bytes] | None):
-    shortname = name.shorten(reference.parent.parent.name)
-    patt_refseq = re.compile(rf"(?<=\t){shortname}\.".encode())
-    patt_cigar = re.compile(rb"\d+H")
+def sanitize_cram(cond: bool, reference: Path, sam: bytes):
+    def repl(mobj: Match[bytes]):
+        if int(mobj["flag"]) & 16:  # reverse strand
+            qstart = int(mobj["tail_cigar"]) + 1
+        else:
+            qstart = int(mobj["head_cigar"]) + 1
+        qend = qstart + len(mobj["seq"]) - 1
+        cells = [
+            mobj["qname"] + f":{qstart}-{qend}".encode(),
+            mobj["flag"],
+            mobj["rname"],
+            mobj["pos"],
+            mobj["mapq"],
+            mobj["cigar"],
+            mobj["rnext"],
+            mobj["pnext"],
+            mobj["tlen"],
+            mobj["seq"],
+            mobj["misc"],
+        ]
+        return b"\t".join(cells)
+
+    patt = re.compile(
+        rb"^(?P<qname>\S+)\t(?P<flag>\d+)\t"
+        rb"\w+\.(?P<rname>\S+)\t(?P<pos>\d+)\t(?P<mapq>\d+)\t"
+        rb"(?P<head_cigar>\d+)H(?P<cigar>\S+?)(?P<tail_cigar>\d+)H\t"
+        rb"(?P<rnext>\S+)\t(?P<pnext>\w+)\t(?P<tlen>\d+)\t"
+        rb"(?P<seq>\w+)\t(?P<misc>.+$)"
+    )
+    lines = [patt.sub(repl, line) for line in sam.splitlines(keepends=True)]
     cmd = f"samtools view --no-PG -h -C -@ 2 -T {str(reference)}"
     samview = popen_if(cond, cmd, stdin=PIPE, stdout=PIPE)
-    assert samview.stdin
-    for line in stdin or []:
-        line = patt_refseq.sub(b"", line, 1)
-        line = patt_cigar.sub(b"", line, 2)
-        samview.stdin.write(line)
-    samview.stdin.close()
-    return samview
-
-
-def sanitize_cram_sed(cond: bool, reference: Path, stdin: IO[bytes] | None):
-    shortname = name.shorten(reference.parent.parent.name)
-    sed_refseq = popen_if(cond, f"sed -e s/{shortname}.//", stdin=stdin, stdout=PIPE)
-    sed_cigar = popen_if(
-        cond, r"sed -e s/[0-9]\+H//g", stdin=sed_refseq.stdout, stdout=PIPE
-    )
-    cmd = f"samtools view --no-PG -h -C -@ 2 -T {str(reference)}"
-    return popen_if(cond, cmd, stdin=sed_cigar.stdout, stdout=PIPE)
+    (stdout, _stderr) = samview.communicate(b"".join(lines))
+    return stdout
 
 
 def popen_if(
