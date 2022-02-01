@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, IO
 
-from . import cli
+from . import cli, fs
 
 _log = logging.getLogger(__name__)
 _dry_run = False
@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None):
         "-g", "--gff3", action="store_const", const="gff3", dest="format"
     )
     parser.add_argument("path", type=Path)
-    args = parser.parse_args()
+    args = parser.parse_args(argv or None)
     global _dry_run
     _dry_run = args.dry_run
     cli.logging_config(args.loglevel)
@@ -37,7 +37,7 @@ def main(argv: list[str] | None = None):
 
 def index_fasta(path: Path):
     outfile = create_genome_bgzip(path)
-    for chromosome in sorted_naturally(path.glob(r"*.chromosome.*.fa.gz")):
+    for chromosome in fs.sorted_naturally(path.glob(r"*.chromosome.*.fa.gz")):
         print(faToTwoBit(chromosome))
     print(outfile)
     print(faidx(outfile))
@@ -54,7 +54,7 @@ def index_gff3(path: Path):
 
 
 def create_genome_bgzip(path: Path, ext: str = "fa"):
-    files = sorted_naturally(path.glob(rf"*.chromosome.*.{ext}.gz"))
+    files = fs.sorted_naturally(path.glob(rf"*.chromosome.*.{ext}.gz"))
     assert files
     _log.debug(str(files))
     name = files[0].name
@@ -65,7 +65,7 @@ def create_genome_bgzip(path: Path, ext: str = "fa"):
 
 
 def bgzip(infiles: Iterable[Path], outfile: Path, format: str = "fasta"):
-    if is_out_of_date(outfile) and not _dry_run:
+    if fs.is_outdated(outfile) and not _dry_run:
         with open(outfile, "wb") as fout:
             bgzip = popen("bgzip -@2", stdin=subprocess.PIPE, stdout=fout)
             assert bgzip.stdin
@@ -84,7 +84,7 @@ def bgzip(infiles: Iterable[Path], outfile: Path, format: str = "fasta"):
 def faidx(bgz: Path):
     """http://www.htslib.org/doc/samtools-faidx.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
-    if is_out_of_date(outfile, bgz):
+    if fs.is_outdated(outfile, bgz):
         run(["samtools", "faidx", str(bgz)])
     return outfile
 
@@ -92,7 +92,7 @@ def faidx(bgz: Path):
 def tabix(bgz: Path):
     """http://www.htslib.org/doc/tabix.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".tbi")
-    if is_out_of_date(outfile, bgz):
+    if fs.is_outdated(outfile, bgz):
         run(["tabix", str(bgz)])
     return outfile
 
@@ -101,7 +101,7 @@ def faToTwoBit(fa_gz: Path):
     # TODO: separate to kent.py
     """https://github.com/ENCODE-DCC/kentUtils/"""
     outfile = fa_gz.with_suffix("").with_suffix(".2bit")
-    if is_out_of_date(outfile, fa_gz) and not _dry_run:
+    if fs.is_outdated(outfile, fa_gz) and not _dry_run:
         with gzip.open(fa_gz, "rb") as fin:
             args = ["faToTwoBit", "stdin", str(outfile)]
             p = popen(args, stdin=subprocess.PIPE)
@@ -118,7 +118,7 @@ def faSize(genome_fa_gz: Path):
     if not genome_fa_gz.name.endswith("genome.fa.gz"):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
     outfile = genome_fa_gz.parent / "fasize.chrom.sizes"
-    if is_out_of_date(outfile, genome_fa_gz) and not _dry_run:
+    if fs.is_outdated(outfile, genome_fa_gz) and not _dry_run:
         with open(outfile, "wb") as fout:
             run(["faSize", "-detailed", str(genome_fa_gz)], stdout=fout)
     return outfile
@@ -129,35 +129,6 @@ def sort_clean_chromosome_gff3(infile: Path):
     p1 = popen(f"zgrep -v '^#' {str(infile)}", stdout=subprocess.PIPE)
     p2 = popen("grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=subprocess.PIPE)
     return popen("sort -k4,4n", stdin=p2.stdout, stdout=subprocess.PIPE)
-
-
-def is_out_of_date(destination: Path, source: Path | None = None):
-    if not destination.exists():
-        return True
-    if destination.stat().st_size == 0:
-        return True
-    if source and destination.stat().st_ctime < source.stat().st_ctime:
-        return True
-    return False
-
-
-def sorted_naturally(iterable: Iterable[Path]):
-    return sorted(iterable, key=natural_key)
-
-
-def natural_key(x: Path):
-    return [try_zeropad(s) for s in re.split(r"\W", x.name)]
-
-
-def name_if_path(x: str | Path):
-    return x if isinstance(x, str) else x.name
-
-
-def try_zeropad(s: str):
-    try:
-        return f"{int(s):03}"
-    except (ValueError, TypeError):
-        return s
 
 
 def popen(

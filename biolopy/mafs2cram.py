@@ -12,7 +12,7 @@ from subprocess import PIPE
 from pathlib import Path
 from typing import IO
 
-from . import cli
+from . import cli, fs
 from .db import name
 from .db import ensemblgenomes
 
@@ -55,7 +55,7 @@ def mafs2cram(path: Path, jobs: int = 1):
             _log.info(cram)
             crams.append(cram)
     cmd = f"samtools merge --no-PG -O CRAM -@ 2 -f -o {str(outfile)} "
-    outfile_is_outdated = is_out_of_date(outfile, Path(crams[0]))
+    outfile_is_outdated = fs.is_outdated(outfile, Path(crams[0]))
     popen_if(outfile_is_outdated, cmd + " ".join(crams)).communicate()
     popen_if(outfile_is_outdated, f"samtools index {str(outfile)}").communicate()
     return outfile
@@ -63,7 +63,7 @@ def mafs2cram(path: Path, jobs: int = 1):
 
 def maf2cram(infile: Path, outfile: Path, reference: Path):
     assert infile.exists() and outfile.parent.exists()
-    cond = is_out_of_date(outfile)
+    cond = fs.is_outdated(outfile)
     mafconv = popen_if(cond, f"maf-convert sam {str(infile)}", stdout=PIPE)
     samview = sanitize_cram(cond, reference, mafconv.stdout)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {str(outfile)}"
@@ -94,16 +94,6 @@ def sanitize_cram_sed(cond: bool, reference: Path, stdin: IO[bytes] | None):
     )
     cmd = f"samtools view --no-PG -h -C -@ 2 -T {str(reference)}"
     return popen_if(cond, cmd, stdin=sed_cigar.stdout, stdout=PIPE)
-
-
-def is_out_of_date(destination: Path, source: Path | None = None):
-    if not destination.exists():
-        return True
-    if destination.stat().st_size == 0:
-        return True
-    if source and destination.stat().st_ctime < source.stat().st_ctime:
-        return True
-    return False
 
 
 def popen_if(
