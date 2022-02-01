@@ -4,11 +4,13 @@
 src: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
 dst: ./multiple/{target}/{clade}/phastcons.bw
 
-https://github.com/ENCODE-DCC/kentUtils/blob/master/src/utils/wigToBigWig/wigToBigWig.c
+https://github.com/ucscGenomeBrowser/kent
 """
 import fileinput
+import gzip
 import logging
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, IO
@@ -64,6 +66,49 @@ def wigToBigWig(
 def bigWigInfo(path: Path):
     args = ["bigWigInfo", str(path)]
     return subprocess.run(args, stdout=subprocess.PIPE, text=True)
+
+
+def faToTwoBit(fa_gz: Path):
+    outfile = fa_gz.with_suffix("").with_suffix(".2bit")
+    if fs.is_outdated(outfile, fa_gz) and not cli.dry_run:
+        with gzip.open(fa_gz, "rb") as fin:
+            args = ["faToTwoBit", "stdin", str(outfile)]
+            p = popen(args, stdin=subprocess.PIPE)
+            assert p.stdin
+            shutil.copyfileobj(fin, p.stdin)
+            p.stdin.close()
+        p.communicate()
+    return outfile
+
+
+def faSize(genome_fa_gz: Path):
+    if not genome_fa_gz.name.endswith("genome.fa.gz"):
+        _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
+    outfile = genome_fa_gz.parent / "fasize.chrom.sizes"
+    if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
+        with open(outfile, "wb") as fout:
+            run(["faSize", "-detailed", str(genome_fa_gz)], stdout=fout)
+    return outfile
+
+
+def popen(
+    args: list[str] | str,
+    stdin: IO[Any] | int | None = None,
+    stdout: IO[Any] | int | None = None,
+):  # kwargs hinders type inference to Popen[bytes]
+    (args, cmd) = cli.prepare_args(args)
+    _log.info(cmd)
+    return subprocess.Popen(args, stdin=stdin, stdout=stdout)
+
+
+def run(
+    args: list[str] | str,
+    stdin: IO[Any] | int | None = None,
+    stdout: IO[Any] | int | None = None,
+):
+    (args, cmd) = cli.prepare_args(args)
+    _log.info(cmd)
+    return subprocess.run(args, stdin=stdin, stdout=stdout)
 
 
 if __name__ == "__main__":

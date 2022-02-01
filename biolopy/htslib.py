@@ -1,13 +1,12 @@
 import gzip
 import logging
 import re
-import shutil
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, IO
 
-from . import cli, fs
+from . import cli, fs, kent
 
 _log = logging.getLogger(__name__)
 
@@ -36,11 +35,11 @@ def main(argv: list[str] | None = None):
 def index_fasta(path: Path):
     outfile = create_genome_bgzip(path)
     for chromosome in fs.sorted_naturally(path.glob(r"*.chromosome.*.fa.gz")):
-        print(faToTwoBit(chromosome))
+        print(kent.faToTwoBit(chromosome))
     print(outfile)
     print(faidx(outfile))
-    print(faToTwoBit(outfile))
-    print(faSize(outfile))
+    print(kent.faToTwoBit(outfile))
+    print(kent.faSize(outfile))
     return outfile
 
 
@@ -92,33 +91,6 @@ def tabix(bgz: Path):
     outfile = bgz.with_suffix(bgz.suffix + ".tbi")
     if fs.is_outdated(outfile, bgz):
         run(["tabix", str(bgz)])
-    return outfile
-
-
-def faToTwoBit(fa_gz: Path):
-    # TODO: separate to kent.py
-    """https://github.com/ENCODE-DCC/kentUtils/"""
-    outfile = fa_gz.with_suffix("").with_suffix(".2bit")
-    if fs.is_outdated(outfile, fa_gz) and not cli.dry_run:
-        with gzip.open(fa_gz, "rb") as fin:
-            args = ["faToTwoBit", "stdin", str(outfile)]
-            p = popen(args, stdin=subprocess.PIPE)
-            assert p.stdin
-            shutil.copyfileobj(fin, p.stdin)
-            p.stdin.close()
-        p.communicate()
-    return outfile
-
-
-def faSize(genome_fa_gz: Path):
-    # TODO: separate to kent.py
-    """https://github.com/ENCODE-DCC/kentUtils/"""
-    if not genome_fa_gz.name.endswith("genome.fa.gz"):
-        _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
-    outfile = genome_fa_gz.parent / "fasize.chrom.sizes"
-    if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
-        with open(outfile, "wb") as fout:
-            run(["faSize", "-detailed", str(genome_fa_gz)], stdout=fout)
     return outfile
 
 
