@@ -1,4 +1,5 @@
 import gzip
+import itertools
 import logging
 import re
 import subprocess
@@ -66,6 +67,11 @@ def bgzip(infiles: Iterable[Path], outfile: Path, format: str = "fasta"):
         with open(outfile, "wb") as fout:
             bgzip = popen("bgzip -@2", stdin=subprocess.PIPE, stdout=fout)
             assert bgzip.stdin
+            if "gff" in outfile.name:
+                infiles, it2 = itertools.tee(infiles)
+                header = collect_gff3_header(it2)
+                bgzip.stdin.write(header)
+                _log.debug(header.decode())
             for file in infiles:
                 if format.startswith("gff"):
                     p = sort_clean_chromosome_gff3(file)
@@ -76,6 +82,19 @@ def bgzip(infiles: Iterable[Path], outfile: Path, format: str = "fasta"):
                         bgzip.stdin.write(fin.read())
             bgzip.communicate()
     return outfile
+
+
+def collect_gff3_header(infiles: Iterable[Path]):
+    header = b"##gff-version 3\n"
+    for file in infiles:
+        with gzip.open(file, "rt") as fin:
+            for line in fin:
+                if line.startswith("##sequence-region"):
+                    header += line.encode()
+                    break
+                if not line.startswith("#"):
+                    break
+    return header
 
 
 def faidx(bgz: Path):
