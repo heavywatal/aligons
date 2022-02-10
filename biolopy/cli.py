@@ -2,7 +2,7 @@ import argparse
 import logging
 import shlex
 import subprocess
-from typing import Any, IO
+from typing import Any, AnyStr, IO
 
 dry_run = False
 
@@ -11,8 +11,8 @@ _log = logging.getLogger(__name__)
 
 def popen(
     args: list[str] | str,
-    stdin: IO[Any] | int | None = None,
-    stdout: IO[Any] | int | None = None,
+    stdin: IO[AnyStr] | int | None = None,
+    stdout: IO[AnyStr] | int | None = None,
 ):
     return popen_if(True, args, stdin=stdin, stdout=stdout)
 
@@ -24,8 +24,8 @@ def run(args: list[str] | str, **kwargs: Any):
 def popen_if(
     cond: bool,
     args: list[str] | str,
-    stdin: IO[bytes] | int | None = None,
-    stdout: IO[bytes] | int | None = None,
+    stdin: IO[AnyStr] | int | None = None,
+    stdout: IO[AnyStr] | int | None = None,
 ):  # kwargs hinders type inference to Popen[bytes]
     (args, cmd) = prepare_args(args, cond)
     _log.info(cmd)
@@ -79,11 +79,11 @@ def logging_config(level: int | None = None):
     logging.logMultiprocessing = False
 
 
-class ConsoleHandler(logging.StreamHandler):
+class ConsoleHandler(logging.StreamHandler):  # type: ignore
     def format(self, record: logging.LogRecord):
         if record.levelno < logging.WARNING:
             return record.msg
-        return super(ConsoleHandler, self).format(record)
+        return super().format(record)
 
 
 def _from_verbosity(level: int):

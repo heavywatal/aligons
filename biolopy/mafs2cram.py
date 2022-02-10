@@ -9,7 +9,6 @@ import os
 import re
 from subprocess import PIPE
 from pathlib import Path
-from typing import Match
 
 from . import cli, fs
 from .db import ensemblgenomes
@@ -77,7 +76,7 @@ def maf2cram(infile: Path, outfile: Path, reference: Path):
 
 
 def sanitize_cram(cond: bool, reference: Path, sam: bytes):
-    def repl(mobj: Match[bytes]):
+    def repl(mobj: re.Match[bytes]):
         if int(mobj["flag"]) & 16:  # reverse strand
             qstart = int(mobj["tail_cigar"]) + 1
         else:

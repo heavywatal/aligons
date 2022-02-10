@@ -13,7 +13,7 @@ import os
 import shutil
 from pathlib import Path
 from subprocess import PIPE
-from typing import Any, IO
+from typing import Iterable
 
 from . import cli, fs
 from .db import ensemblgenomes
@@ -49,9 +49,7 @@ def integrate_wigs(clade: Path):
     return outfile
 
 
-def wigToBigWig(
-    infile: IO[Any] | fileinput.FileInput[Any], chrom_sizes: Path, outfile: Path
-):
+def wigToBigWig(infile: Iterable[bytes], chrom_sizes: Path, outfile: Path):
     args = ["wigToBigWig", "stdin", str(chrom_sizes), str(outfile)]
     p = cli.popen_if(not outfile.exists(), args, stdin=PIPE)
     if not outfile.exists() and not cli.dry_run:

@@ -15,7 +15,7 @@ import re
 import sys
 from pathlib import Path
 from subprocess import PIPE
-from typing import Any, IO
+from typing import AnyStr, IO, cast
 
 from . import cli
 from .db import ensemblgenomes, name
@@ -218,14 +218,15 @@ def clean(path: Path):
             file.unlink()
 
 
-def open_if_not_dry_run(file: Path, mode: str = "r") -> IO[Any]:
-    if str(file).endswith(".gz"):
-        fun = gzip.open
-    else:
-        fun = open
+def open_if_not_dry_run(file: Path, mode: str = "r") -> IO[AnyStr]:
+    suffix = file.suffix
     if cli.dry_run:
         file = Path("/dev/null")
-    return fun(file, mode)  # type: ignore
+    if suffix == ".gz":
+        f = cast(IO[AnyStr], gzip.open(file, mode))
+    else:
+        f = open(file, mode)
+    return f
 
 
 if __name__ == "__main__":
