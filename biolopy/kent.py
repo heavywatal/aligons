@@ -11,8 +11,8 @@ import gzip
 import logging
 import os
 import shutil
-import subprocess
 from pathlib import Path
+from subprocess import PIPE
 from typing import Any, IO
 
 from . import cli, fs
@@ -53,9 +53,7 @@ def wigToBigWig(
     infile: IO[Any] | fileinput.FileInput[Any], chrom_sizes: Path, outfile: Path
 ):
     args = ["wigToBigWig", "stdin", str(chrom_sizes), str(outfile)]
-    (args, cmd) = cli.prepare_args(args, not outfile.exists())
-    _log.info(cmd)
-    p = subprocess.Popen(args, stdin=subprocess.PIPE)
+    p = cli.popen_if(not outfile.exists(), args, stdin=PIPE)
     if not outfile.exists() and not cli.dry_run:
         assert p.stdin
         for line in infile:
@@ -65,7 +63,7 @@ def wigToBigWig(
 
 def bigWigInfo(path: Path):
     args = ["bigWigInfo", str(path)]
-    return subprocess.run(args, stdout=subprocess.PIPE, text=True)
+    return cli.run(args, stdout=PIPE, text=True)
 
 
 def faToTwoBit(fa_gz: Path):
@@ -73,7 +71,7 @@ def faToTwoBit(fa_gz: Path):
     if fs.is_outdated(outfile, fa_gz) and not cli.dry_run:
         with gzip.open(fa_gz, "rb") as fin:
             args = ["faToTwoBit", "stdin", str(outfile)]
-            p = popen(args, stdin=subprocess.PIPE)
+            p = cli.popen(args, stdin=PIPE)
             assert p.stdin
             shutil.copyfileobj(fin, p.stdin)
             p.stdin.close()
@@ -87,28 +85,8 @@ def faSize(genome_fa_gz: Path):
     outfile = genome_fa_gz.parent / "fasize.chrom.sizes"
     if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
         with open(outfile, "wb") as fout:
-            run(["faSize", "-detailed", str(genome_fa_gz)], stdout=fout)
+            cli.run(["faSize", "-detailed", str(genome_fa_gz)], stdout=fout)
     return outfile
-
-
-def popen(
-    args: list[str] | str,
-    stdin: IO[Any] | int | None = None,
-    stdout: IO[Any] | int | None = None,
-):  # kwargs hinders type inference to Popen[bytes]
-    (args, cmd) = cli.prepare_args(args)
-    _log.info(cmd)
-    return subprocess.Popen(args, stdin=stdin, stdout=stdout)
-
-
-def run(
-    args: list[str] | str,
-    stdin: IO[Any] | int | None = None,
-    stdout: IO[Any] | int | None = None,
-):
-    (args, cmd) = cli.prepare_args(args)
-    _log.info(cmd)
-    return subprocess.run(args, stdin=stdin, stdout=stdout)
 
 
 if __name__ == "__main__":

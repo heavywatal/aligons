@@ -2,10 +2,9 @@ import gzip
 import itertools
 import logging
 import re
-import subprocess
+from subprocess import PIPE
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, IO
 
 from . import cli, fs, kent
 
@@ -65,7 +64,7 @@ def create_genome_bgzip(path: Path, ext: str = "fa"):
 def bgzip(infiles: Iterable[Path], outfile: Path, format: str = "fasta"):
     if fs.is_outdated(outfile) and not cli.dry_run:
         with open(outfile, "wb") as fout:
-            bgzip = popen("bgzip -@2", stdin=subprocess.PIPE, stdout=fout)
+            bgzip = cli.popen("bgzip -@2", stdin=PIPE, stdout=fout)
             assert bgzip.stdin
             if "gff" in outfile.name:
                 infiles, it2 = itertools.tee(infiles)
@@ -101,7 +100,7 @@ def faidx(bgz: Path):
     """http://www.htslib.org/doc/samtools-faidx.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
     if fs.is_outdated(outfile, bgz):
-        run(["samtools", "faidx", str(bgz)])
+        cli.run(["samtools", "faidx", str(bgz)])
     return outfile
 
 
@@ -109,35 +108,15 @@ def tabix(bgz: Path):
     """http://www.htslib.org/doc/tabix.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".tbi")
     if fs.is_outdated(outfile, bgz):
-        run(["tabix", str(bgz)])
+        cli.run(["tabix", str(bgz)])
     return outfile
 
 
 def sort_clean_chromosome_gff3(infile: Path):
     # TODO: jbrowse2 still needs billzt/gff3sort precision?
-    p1 = popen(f"zgrep -v '^#' {str(infile)}", stdout=subprocess.PIPE)
-    p2 = popen("grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=subprocess.PIPE)
-    return popen("sort -k4,4n", stdin=p2.stdout, stdout=subprocess.PIPE)
-
-
-def popen(
-    args: list[str] | str,
-    stdin: IO[Any] | int | None = None,
-    stdout: IO[Any] | int | None = None,
-):  # kwargs hinders type inference to Popen[bytes]
-    (args, cmd) = cli.prepare_args(args)
-    _log.info(cmd)
-    return subprocess.Popen(args, stdin=stdin, stdout=stdout)
-
-
-def run(
-    args: list[str] | str,
-    stdin: IO[Any] | int | None = None,
-    stdout: IO[Any] | int | None = None,
-):
-    (args, cmd) = cli.prepare_args(args)
-    _log.info(cmd)
-    return subprocess.run(args, stdin=stdin, stdout=stdout)
+    p1 = cli.popen(f"zgrep -v '^#' {str(infile)}", stdout=PIPE)
+    p2 = cli.popen("grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=PIPE)
+    return cli.popen("sort -k4,4n", stdin=p2.stdout, stdout=PIPE)
 
 
 if __name__ == "__main__":

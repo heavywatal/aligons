@@ -1,8 +1,43 @@
 import argparse
 import logging
 import shlex
+import subprocess
+from typing import Any, IO
 
 dry_run = False
+
+_log = logging.getLogger(__name__)
+
+
+def popen(
+    args: list[str] | str,
+    stdin: IO[Any] | int | None = None,
+    stdout: IO[Any] | int | None = None,
+):
+    return popen_if(True, args, stdin=stdin, stdout=stdout)
+
+
+def run(args: list[str] | str, **kwargs: Any):
+    return run_if(True, args, **kwargs)
+
+
+def popen_if(
+    cond: bool,
+    args: list[str] | str,
+    stdin: IO[bytes] | int | None = None,
+    stdout: IO[bytes] | int | None = None,
+):  # kwargs hinders type inference to Popen[bytes]
+    (args, cmd) = prepare_args(args, cond)
+    _log.info(cmd)
+    return subprocess.Popen(args, stdin=stdin, stdout=stdout)
+
+
+def run_if(cond: bool, args: list[str] | str, **kwargs: Any):
+    (args, cmd) = prepare_args(args, cond)
+    _log.info(cmd)
+    if kwargs.get("shell"):
+        args = cmd
+    return subprocess.run(args, **kwargs)
 
 
 def prepare_args(args: list[str] | str, cond: bool = True):

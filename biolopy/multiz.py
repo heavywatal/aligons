@@ -10,10 +10,9 @@ import concurrent.futures as confu
 import os
 import logging
 import shutil
-import subprocess
+from subprocess import PIPE, STDOUT
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, IO
 
 from .db import ensemblgenomes, name, phylo
 from . import cli
@@ -48,11 +47,13 @@ def main(argv: list[str] = []):
 
 def multiz(path: Path):
     clade = path.parent.name
-    (roasted, outfile) = roast(path, clade)
+    outfile = path / "multiz.maf"
+    roasted = roast(path, clade, outfile)
     with open(roasted, "rt") as fin:
         script = fin.read()
     _log.debug(script)
-    p = shell("set -eu\n" + script, cwd=path)
+    script = "set -eu\n" + script
+    p = cli.run(script, shell=True, cwd=path, stdout=PIPE, stderr=STDOUT)
     if p.returncode > 0:
         for line in p.stdout.strip().splitlines():
             _log.error(f"{path.name}:{line}")
@@ -63,24 +64,23 @@ def multiz(path: Path):
     return outfile
 
 
-def roast(path: Path, clade: str):
+def roast(path: Path, clade: str, outfile: Path):
     """Generate shell script to execute multiz"""
     sing_mafs = list(path.glob("*.sing.maf"))
     tmpdir = ".tmp"
     min_width = 18
     ref_label = sing_mafs[0].name.split(".", 1)[0]
     tree = getattr(phylo, clade).replace(",", " ")
-    outfile = path / "multiz.maf"
     args = (
         f"roast - T={tmpdir} M={min_width} E={ref_label} '{tree}' "
         + " ".join([x.name for x in sing_mafs])
         + f" {outfile.name}"
     )
     roasted = path / "roasted.sh"
-    with open(roasted, "w") as fout:
-        run(args, stdout=fout, text=True)
+    with open(roasted, "wb") as fout:
+        cli.run(args, stdout=fout)
     (path / tmpdir).mkdir(0o755, exist_ok=True)
-    return (roasted, outfile)
+    return roasted
 
 
 def prepare(indir: Path, clade: str):
@@ -115,28 +115,6 @@ def symlink(indir: Path, outdir: Path, species: Iterable[str]):
             _log.info(f"{dst}@\n -> {relsrc}")
             if not dst.exists():
                 dst.symlink_to(relsrc)
-
-
-def run(
-    args: list[str] | str,
-    stdin: IO[Any] | int | None = None,
-    stdout: IO[Any] | int | None = None,
-    text: bool = False,
-):  # kwargs hinders type inference to Popen[bytes]
-    (args, cmd) = cli.prepare_args(args)
-    _log.info(cmd)
-    return subprocess.run(args, stdin=stdin, stdout=stdout, text=text)
-
-
-def shell(script: str, cwd: Path):
-    return subprocess.run(
-        script,
-        text=True,
-        shell=True,
-        cwd=cwd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
 
 
 def clean(path: Path):
