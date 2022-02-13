@@ -1,6 +1,8 @@
+import concurrent.futures as confu
 import gzip
 import itertools
 import logging
+import os
 import re
 from subprocess import PIPE
 from collections.abc import Iterable
@@ -16,23 +18,26 @@ def main(argv: list[str] | None = None):
 
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
+    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument(
         "-f", "--fasta", action="store_const", const="fasta", dest="format"
     )
     parser.add_argument(
         "-g", "--gff3", action="store_const", const="gff3", dest="format"
     )
-    parser.add_argument("path", type=Path)
+    parser.add_argument("path", nargs="+", type=Path)
     args = parser.parse_args(argv or None)
     cli.dry_run = args.dry_run
     cli.logging_config(args.loglevel)
-    if args.format == "fasta":
-        index_fasta(args.path)
-    elif args.format == "gff3":
-        index_gff3(args.path)
+    with confu.ThreadPoolExecutor(max_workers=args.jobs) as pool:
+        if args.format == "fasta":
+            pool.map(index_fasta, args.path)
+        elif args.format == "gff3":
+            pool.map(index_gff3, args.path)
 
 
 def index_fasta(path: Path):
+    """Create bgzipped and indexed genome.fa."""
     outfile = create_genome_bgzip(path)
     for chromosome in fs.sorted_naturally(path.glob(r"*.chromosome.*.fa.gz")):
         print(kent.faToTwoBit(chromosome))
@@ -44,6 +49,7 @@ def index_fasta(path: Path):
 
 
 def index_gff3(path: Path):
+    """Create bgzipped and indexed genome.gff3."""
     outfile = create_genome_bgzip(path, "gff3")
     print(outfile)
     print(tabix(outfile))
@@ -51,6 +57,7 @@ def index_gff3(path: Path):
 
 
 def create_genome_bgzip(path: Path, ext: str = "fa"):
+    """Combine chromosome files and bgzip it."""
     files = fs.sorted_naturally(path.glob(rf"*.chromosome.*.{ext}.gz"))
     assert files
     _log.debug(str(files))
