@@ -3,12 +3,13 @@
 src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 dst: ./pairwise/{target}/{query}/cram/genome.cram
 """
+import argparse
 import concurrent.futures as confu
 import logging
 import os
 import re
-from subprocess import PIPE
 from pathlib import Path
+from subprocess import PIPE
 
 from . import cli, fs
 from .db import ensemblgenomes
@@ -17,8 +18,6 @@ _log = logging.getLogger(__name__)
 
 
 def main():
-    import argparse
-
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-t", "--test", action="store_true")

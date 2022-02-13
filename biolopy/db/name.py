@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Iterable
 
 
@@ -14,8 +15,6 @@ def filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
 
 
 def main(argv: list[str] | None = None):
-    import sys
-
     if argv is None:
         argv = sys.argv[1:]
     for x in argv:

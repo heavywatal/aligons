@@ -1,5 +1,6 @@
 """https://plants.ensembl.org/
 """
+import argparse
 import functools
 import logging
 import os
@@ -7,8 +8,8 @@ import re
 from ftplib import FTP
 from pathlib import Path
 
-from . import name
 from .. import cli
+from . import name
 
 _log = logging.getLogger(__name__)
 LOCAL_DB_ROOT = Path("~/db/ensemblgenomes/plants").expanduser()
@@ -17,8 +18,6 @@ PREFIX = LOCAL_DB_ROOT / f"release-{VERSION}"
 
 
 def main(argv: list[str] | None = None):
-    import argparse
-
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-V", "--versions", action="store_true")

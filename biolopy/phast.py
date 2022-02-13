@@ -5,6 +5,7 @@ dst: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
 
 http://compgen.cshl.edu/phast/
 """
+import argparse
 import concurrent.futures as confu
 import csv
 import gzip
@@ -15,7 +16,7 @@ import re
 import sys
 from pathlib import Path
 from subprocess import PIPE
-from typing import AnyStr, IO, cast
+from typing import IO, AnyStr, cast
 
 from . import cli
 from .db import ensemblgenomes, name
@@ -24,8 +25,6 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    import argparse
-
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")

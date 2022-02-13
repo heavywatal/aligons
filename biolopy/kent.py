@@ -6,6 +6,7 @@ dst: ./multiple/{target}/{clade}/phastcons.bw
 
 https://github.com/ucscGenomeBrowser/kent
 """
+import argparse
 import fileinput
 import gzip
 import logging
@@ -22,8 +23,6 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    import argparse
-
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")

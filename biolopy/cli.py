@@ -2,7 +2,7 @@ import argparse
 import logging
 import shlex
 import subprocess
-from typing import Any, AnyStr, IO
+from typing import IO, Any, AnyStr
 
 dry_run = False
 

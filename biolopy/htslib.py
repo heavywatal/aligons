@@ -1,12 +1,13 @@
+import argparse
 import concurrent.futures as confu
 import gzip
 import itertools
 import logging
 import os
 import re
-from subprocess import PIPE
 from collections.abc import Iterable
 from pathlib import Path
+from subprocess import PIPE
 
 from . import cli, fs, kent
 
@@ -14,8 +15,6 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
-    import argparse
-
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())

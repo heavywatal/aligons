@@ -5,6 +5,7 @@ dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 
 https://lastz.github.io/lastz/
 """
+import argparse
 import concurrent.futures as confu
 import gzip
 import logging
@@ -14,15 +15,13 @@ from pathlib import Path
 from subprocess import PIPE
 from typing import Any
 
-from .db import ensemblgenomes, name
 from . import cli, fs
+from .db import ensemblgenomes, name
 
 _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    import argparse
-
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())

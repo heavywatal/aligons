@@ -6,23 +6,22 @@ dst: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
 
 https://github.com/multiz/multiz
 """
+import argparse
 import concurrent.futures as confu
-import os
 import logging
+import os
 import shutil
-from subprocess import PIPE, STDOUT
 from collections.abc import Iterable
 from pathlib import Path
+from subprocess import PIPE, STDOUT
 
-from .db import ensemblgenomes, name, phylo
 from . import cli
+from .db import ensemblgenomes, name, phylo
 
 _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    import argparse
-
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
