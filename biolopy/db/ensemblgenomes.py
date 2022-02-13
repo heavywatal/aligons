@@ -1,18 +1,14 @@
 """https://plants.ensembl.org/
 """
 import argparse
-import concurrent.futures as confu
 import functools
-import itertools
 import logging
 import os
 import re
-import subprocess
 from ftplib import FTP
 from pathlib import Path
-from typing import Iterable
 
-from .. import cli
+from .. import cli, fs
 from . import name
 
 _log = logging.getLogger(__name__)
@@ -43,7 +39,7 @@ def main(argv: list[str] | None = None):
         download(args.species)
         return
     if args.checksums:
-        checksum(PREFIX.rglob("CHECKSUMS"))
+        fs.checksums(PREFIX.rglob("CHECKSUMS"))
         return
     if args.versions:
         for x in sorted(list_versions()):
@@ -185,26 +181,6 @@ class FTPensemblgenomes(FTP):
         _log.debug("ftp.quit()")
         _log.info(ret := super().quit())
         return ret
-
-
-def checksum(files: Iterable[Path]):
-    with confu.ThreadPoolExecutor(max_workers=8) as pool:
-        for file in files:
-            _log.info(f"{file}")
-            with file.open("rt") as fin:
-                lines = fin.readlines()
-            pool.map(checkline, lines, itertools.repeat(file.parent))
-
-
-def checkline(line: str, directory: Path):
-    (e_sum, e_blocks, name) = line.split()
-    if (path := directory / name).exists():
-        p = cli.run(f"sum {path}", stdout=subprocess.PIPE, text=True, quiet=True)
-        (o_sum, o_blocks, _) = p.stdout.split()
-        if (e_sum.lstrip("0"), e_blocks) != (o_sum, o_blocks):
-            _log.error(f"{name}")
-            _log.error(f"expected: {e_sum}\t{e_blocks}")
-            _log.error(f"observed: {o_sum}\t{o_blocks}")
 
 
 def rsync(relpath: str, options: str = ""):
