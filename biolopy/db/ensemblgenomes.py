@@ -20,7 +20,6 @@ def main(argv: list[str] | None = None):
 
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
-    parser.add_argument("-r", "--version", default=VERSION)
     parser.add_argument("-V", "--versions", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
@@ -43,9 +42,9 @@ def main(argv: list[str] | None = None):
             print(x)
         return
     if args.all and not args.format:
-        species = list_all_species(args.version)
+        species = list_all_species()
     else:
-        species = list_species(args.version)
+        species = list_species()
     if args.species:
         species = name.filter_by_shortname(species, args.species)
     if not args.format:
@@ -53,15 +52,15 @@ def main(argv: list[str] | None = None):
             print(sp)
         return
     for sp in species:
-        for x in list_files(sp, args.format, args.version, all=args.all):
+        for x in list_files(sp, args.format, all=args.all):
             if args.name:
                 print(x.name)
             else:
                 print(x)
 
 
-def prefix(version: str = VERSION):
-    return LOCAL_DB_ROOT / f"release-{version}"
+def prefix():
+    return LOCAL_DB_ROOT / f"release-{VERSION}"
 
 
 def list_versions():
@@ -70,11 +69,11 @@ def list_versions():
 
 
 @functools.cache
-def list_all_species(version: str = VERSION):
-    cache = prefix(version) / "species.tsv"
+def list_all_species():
+    cache = prefix() / "species.tsv"
     if not cache.exists():
         assert cache.parent.exists(), f"{cache.parent} exists"
-        with FTPensemblgenomes(version) as ftp:
+        with FTPensemblgenomes() as ftp:
             species = ftp.list_species()
         with open(cache, "wt") as fout:
             fout.write("\n".join(species) + "\n")
@@ -84,34 +83,28 @@ def list_all_species(version: str = VERSION):
 
 
 @functools.cache
-def list_species(version: str = VERSION, format: str = "fasta"):
-    path = prefix(version) / format
+def list_species(format: str = "fasta"):
+    path = prefix() / format
     _log.debug(f"{path=}")
     return [x.name for x in path.iterdir()]
 
 
-def list_files(
-    species: str = "", format: str = "fasta", version: str = VERSION, all: bool = False
-):
+def list_files(species: str = "", format: str = "fasta", all: bool = False):
     patt = "*" if all else {"fasta": "*.fa.gz", "gff3": "*.gff3.gz"}[format]
-    for x in rglob(patt, species, format, version):
+    for x in rglob(patt, species, format):
         if x.is_file():
             yield x
 
 
-def get_file(
-    pattern: str, species: str = "", format: str = "fasta", version: str = VERSION
-):
-    found = list(rglob(pattern, species, format, version))
+def get_file(pattern: str, species: str = "", format: str = "fasta"):
+    found = list(rglob(pattern, species, format))
     _log.debug(f"{found=}")
     assert len(found) == 1
     return found[0]
 
 
-def rglob(
-    pattern: str, species: str = "", format: str = "fasta", version: str = VERSION
-):
-    path = prefix(version) / format / species
+def rglob(pattern: str, species: str = "", format: str = "fasta"):
+    path = prefix() / format / species
     _log.debug(f"({path}).rglob({pattern})")
     return path.rglob(pattern)
 
@@ -120,11 +113,11 @@ def expand_shortnames(shortnames: list[str]):
     return name.filter_by_shortname(list_species(), shortnames)
 
 
-def download(species: list[str], version: str = VERSION):
+def download(species: list[str]):
     assert species
-    assert not (diff := set(species) - set(list_all_species(version))), diff
-    os.chdir(prefix(version))
-    with FTPensemblgenomes(version) as ftp:
+    assert not (diff := set(species) - set(list_all_species())), diff
+    os.chdir(prefix())
+    with FTPensemblgenomes() as ftp:
         ftp.cwd_prefix()
         for sp in species:
             ftp.download_fasta(sp)
@@ -137,8 +130,7 @@ def download(species: list[str], version: str = VERSION):
 
 
 class FTPensemblgenomes(FTP):
-    def __init__(self, version: str = VERSION):
-        self.version = version
+    def __init__(self):
         host = "ftp.ensemblgenomes.org"
         _log.info(f"FTP({host})")
         super().__init__(host)
@@ -148,7 +140,7 @@ class FTPensemblgenomes(FTP):
         _log.info(self.getwelcome())
 
     def cwd_prefix(self, subdir: str = ""):
-        prefix = f"/pub/plants/release-{self.version}"
+        prefix = f"/pub/plants/release-{VERSION}"
         path = f"{prefix}/{subdir}".rstrip("/")
         _log.info(f"ftp.cwd({path})")
         _log.info(self.cwd(path))
