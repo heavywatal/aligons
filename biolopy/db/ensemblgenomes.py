@@ -13,6 +13,7 @@ from .. import cli
 _log = logging.getLogger(__name__)
 LOCAL_DB_ROOT = Path("~/db/ensemblgenomes/plants").expanduser()
 VERSION = os.environ["ENSEMBLGENOMES_VERSION"]
+PREFIX = LOCAL_DB_ROOT / f"release-{VERSION}"
 
 
 def main(argv: list[str] | None = None):
@@ -31,7 +32,7 @@ def main(argv: list[str] | None = None):
     )
     parser.add_argument("--name", action="store_true")
     parser.add_argument("species", nargs="*")
-    args = parser.parse_args()
+    args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
     if args.download:
@@ -59,10 +60,6 @@ def main(argv: list[str] | None = None):
                 print(x)
 
 
-def prefix():
-    return LOCAL_DB_ROOT / f"release-{VERSION}"
-
-
 def list_versions():
     _log.debug(f"{LOCAL_DB_ROOT=}")
     return LOCAL_DB_ROOT.glob("release-*")
@@ -70,7 +67,7 @@ def list_versions():
 
 @functools.cache
 def list_all_species():
-    cache = prefix() / "species.tsv"
+    cache = PREFIX / "species.tsv"
     if not cache.exists():
         assert cache.parent.exists(), f"{cache.parent} exists"
         with FTPensemblgenomes() as ftp:
@@ -84,7 +81,7 @@ def list_all_species():
 
 @functools.cache
 def list_species(format: str = "fasta"):
-    path = prefix() / format
+    path = PREFIX / format
     _log.debug(f"{path=}")
     return [x.name for x in path.iterdir()]
 
@@ -104,7 +101,7 @@ def get_file(pattern: str, species: str = "", format: str = "fasta"):
 
 
 def rglob(pattern: str, species: str = "", format: str = "fasta"):
-    path = prefix() / format / species
+    path = PREFIX / format / species
     _log.debug(f"({path}).rglob({pattern})")
     return path.rglob(pattern)
 
@@ -116,7 +113,7 @@ def expand_shortnames(shortnames: list[str]):
 def download(species: list[str]):
     assert species
     assert not (diff := set(species) - set(list_all_species())), diff
-    os.chdir(prefix())
+    os.chdir(PREFIX)
     with FTPensemblgenomes() as ftp:
         ftp.cwd_prefix()
         for sp in species:
@@ -187,7 +184,7 @@ def rsync(relpath: str, options: str = ""):
     server = "ftp.ensemblgenomes.org"
     remote_prefix = f"rsync://{server}/all/pub/plants/release-{VERSION}"
     src = f"{remote_prefix}/{relpath}/"
-    dst = prefix() / relpath
+    dst = PREFIX / relpath
     return cli.run(f"rsync -auv {options} {src} {dst}")
 
 
