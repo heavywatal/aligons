@@ -34,7 +34,10 @@ def popen_if(
 
 def run_if(cond: bool, args: list[str] | str, **kwargs: Any):
     (args, cmd) = prepare_args(args, cond)
-    _log.info(cmd)
+    if kwargs.pop("quiet", False):
+        _log.debug(cmd)
+    else:
+        _log.info(cmd)
     if kwargs.get("shell"):
         args = cmd
     return subprocess.run(args, **kwargs)
