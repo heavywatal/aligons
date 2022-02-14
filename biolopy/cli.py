@@ -2,7 +2,8 @@ import argparse
 import logging
 import shlex
 import subprocess
-from typing import IO, Any, AnyStr
+from pathlib import Path
+from typing import IO, AnyStr
 
 dry_run = False
 
@@ -17,8 +18,29 @@ def popen(
     return popen_if(True, args, stdin=stdin, stdout=stdout)
 
 
-def run(args: list[str] | str, **kwargs: Any):
-    return run_if(True, args, **kwargs)
+def run(
+    args: list[str] | str,
+    executable: str | None = None,
+    stdin: IO[AnyStr] | int | None = None,
+    stdout: IO[AnyStr] | int | None = None,
+    stderr: IO[AnyStr] | int | None = None,
+    shell: bool = False,
+    cwd: Path | None = None,
+    text: bool | None = None,
+    quiet: bool = False,
+):
+    return run_if(
+        True,
+        args,
+        executable=executable,
+        stdin=stdin,
+        stdout=stdout,
+        stderr=stderr,
+        shell=shell,
+        cwd=cwd,
+        text=text,
+        quiet=quiet,
+    )
 
 
 def popen_if(
@@ -26,21 +48,41 @@ def popen_if(
     args: list[str] | str,
     stdin: IO[AnyStr] | int | None = None,
     stdout: IO[AnyStr] | int | None = None,
-):  # kwargs hinders type inference to Popen[bytes]
+):  # kwargs hinders type inference of output type [str | bytes]
     (args, cmd) = prepare_args(args, cond)
     _log.info(cmd)
     return subprocess.Popen(args, stdin=stdin, stdout=stdout)
 
 
-def run_if(cond: bool, args: list[str] | str, **kwargs: Any):
+def run_if(
+    cond: bool,
+    args: list[str] | str,
+    executable: str | None = None,
+    stdin: IO[AnyStr] | int | None = None,
+    stdout: IO[AnyStr] | int | None = None,
+    stderr: IO[AnyStr] | int | None = None,
+    shell: bool = False,
+    cwd: Path | None = None,
+    text: bool | None = None,
+    quiet: bool = False,
+):  # kwargs hinders type inference of output type [str | bytes]
     (args, cmd) = prepare_args(args, cond)
-    if kwargs.pop("quiet", False):
+    if quiet:
         _log.debug(cmd)
     else:
         _log.info(cmd)
-    if kwargs.get("shell"):
+    if shell:
         args = cmd
-    return subprocess.run(args, **kwargs)
+    return subprocess.run(
+        args,
+        executable=executable,
+        stdin=stdin,
+        stdout=stdout,
+        stderr=stderr,
+        shell=shell,
+        cwd=cwd,
+        text=text,
+    )
 
 
 def prepare_args(args: list[str] | str, cond: bool = True):
