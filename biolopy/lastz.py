@@ -51,8 +51,8 @@ class PairwiseAlignment:
         if not cli.dry_run:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
         patt = "*.chromosome.*.2bit"
-        target_chromosomes = ensemblgenomes.rglob(patt, self._target)
-        query_chromosomes = list(ensemblgenomes.rglob(patt, self._query))
+        target_chromosomes = ensemblgenomes.rglob(patt, [self._target])
+        query_chromosomes = list(ensemblgenomes.rglob(patt, [self._query]))
         with confu.ThreadPoolExecutor(max_workers=self._jobs) as executor:
             nested: list[list[confu.Future[Path]]] = []
             for t in fs.sorted_naturally(target_chromosomes):

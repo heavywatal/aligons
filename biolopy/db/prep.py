@@ -19,6 +19,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("-c", "--checksums", action="store_true")
+    parser.add_argument("-i", "--index", action="store_true")
     parser.add_argument("clade")
     args = parser.parse_args(argv or None)
     cli.dry_run = args.dry_run
@@ -28,8 +29,12 @@ def main(argv: list[str] | None = None):
     if args.download:
         download(species)
     if args.checksums:
-        checksums(iter_checksums(species))
-    index(species, jobs=args.jobs)
+        checksums(ensemblgenomes.rglob("CHECKSUMS", species))
+    if args.index:
+        index(species, jobs=args.jobs)
+    if not any([args.download, args.checksums, args.index]):
+        for x in ensemblgenomes.rglob("CHECKSUMS", species):
+            print(x.parent)
 
 
 def download(species: list[str]):
@@ -44,15 +49,6 @@ def download(species: list[str]):
     #     ensemblgenomes.rsync(f"fasta/{sp}/dna", options)
     #     options = "--include *.chromosome.*.gff3.gz --exclude *.gz"
     #     ensemblgenomes.rsync(f"gff3/{sp}", options)
-
-
-def iter_checksums(species: list[str] = []):
-    for path in ensemblgenomes.species_dirs("fasta", species):
-        for x in path.rglob("CHECKSUMS"):
-            yield x
-    for path in ensemblgenomes.species_dirs("gff3", species):
-        for x in path.rglob("CHECKSUMS"):
-            yield x
 
 
 def checksums(files: Iterable[Path]):

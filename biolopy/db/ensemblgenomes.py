@@ -22,12 +22,8 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-V", "--versions", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
-    parser.add_argument(
-        "-f", "--fasta", action="store_const", const="fasta", dest="format"
-    )
-    parser.add_argument(
-        "-g", "--gff3", action="store_const", const="gff3", dest="format"
-    )
+    parser.add_argument("-f", "--files", action="store_true")
+    parser.add_argument("-g", "--glob", default="*")
     parser.add_argument("--name", action="store_true")
     parser.add_argument("species", nargs="*")
     args = parser.parse_args(argv or None)
@@ -37,22 +33,21 @@ def main(argv: list[str] | None = None):
         for x in sorted(list_versions()):
             print(x)
         return
-    if args.all and not args.format:
+    if args.all and not args.files:
         species = species_names_all()
     else:
         species = species_names()
     if args.species:
-        species = name.filter_by_shortname(species, args.species)
-    if not args.format:
+        species = list(name.filter_by_shortname(species, args.species))
+    if not args.files:
         for sp in species:
             print(sp)
         return
-    for sp in species:
-        for x in list_files(sp, args.format, all=args.all):
-            if args.name:
-                print(x.name)
-            else:
-                print(x)
+    for x in rglob(args.glob, species):
+        if args.name:
+            print(x.name)
+        else:
+            print(x)
 
 
 def list_versions():
@@ -91,24 +86,20 @@ def species_dirs(format: str = "fasta", species: list[str] = []):
     assert not requests, f"directory not found: {requests}"
 
 
-def list_files(species: str = "", format: str = "fasta", all: bool = False):
-    patt = "*" if all else {"fasta": "*.fa.gz", "gff3": "*.gff3.gz"}[format]
-    for x in rglob(patt, species, format):
-        if x.is_file():
-            yield x
-
-
-def get_file(pattern: str, species: str = "", format: str = "fasta"):
-    found = list(rglob(pattern, species, format))
+def get_file(pattern: str, species: str):
+    found = list(rglob(pattern, [species]))
     _log.debug(f"{found=}")
     assert len(found) == 1
     return found[0]
 
 
-def rglob(pattern: str, species: str = "", format: str = "fasta"):
-    path = PREFIX / format / species
-    _log.debug(f"({path}).rglob({pattern})")
-    return path.rglob(pattern)
+def rglob(pattern: str, species: list[str] = []):
+    for path in species_dirs("fasta", species):
+        for x in path.rglob(pattern):
+            yield x
+    for path in species_dirs("gff3", species):
+        for x in path.rglob(pattern):
+            yield x
 
 
 def expand_shortnames(shortnames: list[str]):
