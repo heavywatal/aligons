@@ -16,7 +16,7 @@ from pathlib import Path
 from subprocess import PIPE, STDOUT
 
 from . import cli
-from .db import ensemblgenomes, name, phylo
+from .db import name, phylo
 
 _log = logging.getLogger(__name__)
 
@@ -69,7 +69,8 @@ def roast(path: Path, clade: str, outfile: Path):
     tmpdir = ".tmp"
     min_width = 18
     ref_label = sing_mafs[0].name.split(".", 1)[0]
-    tree = getattr(phylo, clade).replace(",", " ")
+    tree = phylo.clades[clade]
+    tree = phylo.shorten(tree).replace(",", " ")
     args = (
         f"roast - T={tmpdir} M={min_width} E={ref_label} '{tree}' "
         + " ".join([x.name for x in sing_mafs])
@@ -84,14 +85,14 @@ def roast(path: Path, clade: str, outfile: Path):
 
 def prepare(indir: Path, clade: str):
     target = indir.name
-    tree = getattr(phylo, clade)
-    species = phylo.extract_species(tree)
-    species = ensemblgenomes.expand_shortnames(species)
+    tree = phylo.clades[clade]
+    species = phylo.extract_labels(tree)
+    short_tree = phylo.shorten(tree)
     assert target in species
     outdir = Path("multiple") / target / clade
     outdir.mkdir(0o755, parents=True, exist_ok=True)
     with open(outdir / "tree.nh", "w") as fout:
-        fout.write(tree + "\n")
+        fout.write(short_tree + "\n")
     symlink(indir, outdir, species)
     return outdir
 
