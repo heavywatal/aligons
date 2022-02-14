@@ -1,9 +1,6 @@
 import argparse
-import concurrent.futures as confu
-import itertools
 import logging
 import re
-import subprocess
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -48,26 +45,6 @@ def try_zeropad(s: str):
         return f"{int(s):03}"
     except (ValueError, TypeError):
         return s
-
-
-def checksums(files: Iterable[Path]):
-    with confu.ThreadPoolExecutor(max_workers=8) as pool:
-        for file in files:
-            _log.info(f"{file}")
-            with file.open("rt") as fin:
-                lines = fin.readlines()
-            pool.map(checkline, lines, itertools.repeat(file.parent))
-
-
-def checkline(line: str, directory: Path):
-    (e_sum, e_blocks, name) = line.split()
-    if (path := directory / name).exists():
-        p = cli.run(f"sum {path}", stdout=subprocess.PIPE, text=True, quiet=True)
-        (o_sum, o_blocks, _) = p.stdout.split()
-        if (e_sum.lstrip("0"), e_blocks) != (o_sum, o_blocks):
-            _log.error(f"{name}")
-            _log.error(f"expected: {e_sum}\t{e_blocks}")
-            _log.error(f"observed: {o_sum}\t{o_blocks}")
 
 
 if __name__ == "__main__":

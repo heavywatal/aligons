@@ -8,7 +8,7 @@ import re
 from ftplib import FTP
 from pathlib import Path
 
-from .. import cli, fs
+from .. import cli
 from . import name
 
 _log = logging.getLogger(__name__)
@@ -22,8 +22,6 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-V", "--versions", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
-    parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("-c", "--checksums", action="store_true")
     parser.add_argument(
         "-f", "--fasta", action="store_const", const="fasta", dest="format"
     )
@@ -35,20 +33,14 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    if args.download:
-        download(args.species)
-        return
-    if args.checksums:
-        fs.checksums(PREFIX.rglob("CHECKSUMS"))
-        return
     if args.versions:
         for x in sorted(list_versions()):
             print(x)
         return
     if args.all and not args.format:
-        species = list_all_species()
+        species = species_names_all()
     else:
-        species = list_species()
+        species = species_names()
     if args.species:
         species = name.filter_by_shortname(species, args.species)
     if not args.format:
@@ -69,12 +61,12 @@ def list_versions():
 
 
 @functools.cache
-def list_all_species():
+def species_names_all():
     cache = PREFIX / "species.tsv"
     if not cache.exists():
         assert cache.parent.exists(), f"{cache.parent} exists"
         with FTPensemblgenomes() as ftp:
-            species = ftp.list_species()
+            species = [Path(x).name for x in ftp.nlst("fasta")]
         with open(cache, "wt") as fout:
             fout.write("\n".join(species) + "\n")
     _log.debug(f"{cache=}")
@@ -83,10 +75,20 @@ def list_all_species():
 
 
 @functools.cache
-def list_species(format: str = "fasta"):
-    path = PREFIX / format
-    _log.debug(f"{path=}")
-    return [x.name for x in path.iterdir()]
+def species_names(format: str = "fasta"):
+    return [x.name for x in species_dirs(format)]
+
+
+def species_dirs(format: str = "fasta", species: list[str] = []):
+    assert (root := PREFIX / format).exists(), root
+    requests = set(species)
+    for path in root.iterdir():
+        if not path.is_dir():
+            continue
+        if not species or (path.name in requests):
+            requests.discard(path.name)  # TODO: search twice
+            yield path
+    assert not requests, f"directory not found: {requests}"
 
 
 def list_files(species: str = "", format: str = "fasta", all: bool = False):
@@ -110,23 +112,7 @@ def rglob(pattern: str, species: str = "", format: str = "fasta"):
 
 
 def expand_shortnames(shortnames: list[str]):
-    return name.filter_by_shortname(list_species(), shortnames)
-
-
-def download(species: list[str]):
-    assert species
-    assert not (diff := set(species) - set(list_all_species())), diff
-    os.chdir(PREFIX)
-    with FTPensemblgenomes() as ftp:
-        ftp.cwd_prefix()
-        for sp in species:
-            ftp.download_fasta(sp)
-            ftp.download_gff3(sp)
-    # for sp in species:
-    #     options = "--include *_sm.chromosome.*.fa.gz --exclude *.gz"
-    #     rsync(f"fasta/{sp}/dna", options)
-    #     options = "--include *.chromosome.*.gff3.gz --exclude *.gz"
-    #     rsync(f"gff3/{sp}", options)
+    return name.filter_by_shortname(species_names(), shortnames)
 
 
 class FTPensemblgenomes(FTP):
@@ -138,17 +124,12 @@ class FTPensemblgenomes(FTP):
         _log.info(self.login())
         _log.debug("ftp.getwelcome()")
         _log.info(self.getwelcome())
-
-    def cwd_prefix(self, subdir: str = ""):
-        prefix = f"/pub/plants/release-{VERSION}"
-        path = f"{prefix}/{subdir}".rstrip("/")
+        path = f"/pub/plants/release-{VERSION}"
         _log.info(f"ftp.cwd({path})")
         _log.info(self.cwd(path))
-
-    def list_species(self, format: str = "fasta"):
-        self.cwd_prefix(format)
-        _log.info("ftp.nlst()")
-        return self.nlst()
+        self.orig_wd = os.getcwd()
+        _log.info(f"os.chdir({PREFIX})")
+        os.chdir(PREFIX)
 
     def download_fasta(self, species: str):
         pattern = r"/CHECKSUMS|/README|_sm\.chromosome\..+fa\.gz$"
@@ -178,6 +159,8 @@ class FTPensemblgenomes(FTP):
         return outfile
 
     def quit(self):
+        _log.info(f"os.chdir({self.orig_wd})")
+        os.chdir(self.orig_wd)
         _log.debug("ftp.quit()")
         _log.info(ret := super().quit())
         return ret

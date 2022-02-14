@@ -31,8 +31,8 @@ def main(argv: list[str] = []):
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    assert args.target in ensemblgenomes.list_species()
-    assert args.query in ensemblgenomes.list_species()
+    assert args.target in ensemblgenomes.species_names()
+    assert args.query in ensemblgenomes.species_names()
     PairwiseAlignment(args.target, args.query, quick=args.quick, jobs=args.jobs)
 
 
