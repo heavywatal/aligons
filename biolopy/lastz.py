@@ -16,7 +16,7 @@ from subprocess import PIPE
 from typing import Any
 
 from . import cli, fs
-from .db import ensemblgenomes, name
+from .db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
 
@@ -176,8 +176,8 @@ class PairwiseAlignment:
             stdin=toaxt.stdout,
             stdout=PIPE,
         )
-        tprefix = name.shorten(self._target)
-        qprefix = name.shorten(self._query)
+        tprefix = phylo.shorten(self._target)
+        qprefix = phylo.shorten(self._query)
         args = (
             f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
             f" {self._target_sizes} {self._query_sizes} {sing_maf}"

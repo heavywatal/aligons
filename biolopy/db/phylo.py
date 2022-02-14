@@ -3,7 +3,6 @@ import logging
 import re
 
 from .. import cli
-from . import name
 
 _log = logging.getLogger(__name__)
 
@@ -41,16 +40,22 @@ def main(argv: list[str] = []):
     return
 
 
-def shorten(tree: str):
+def shorten_labels(tree: str):
     return re.sub(
         r"([^ (),:;]+)(:[\d.]+)?",
-        lambda m: name.shorten(m.group(1)) + (m.group(2) or ""),
+        lambda m: shorten(m.group(1)) + (m.group(2) or ""),
         tree,
     )
 
 
 def extract_labels(tree: str):
     return [x.split(":")[0] for x in re.findall(r"[^ (),;]+", tree)]
+
+
+def shorten(name: str):
+    """Oryza_sativa -> osat"""
+    split = name.lower().split("_")
+    return split[0][0] + split[1][:3]
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ from subprocess import PIPE
 from typing import IO, AnyStr, cast
 
 from . import cli
-from .db import ensemblgenomes, name
+from .db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
 
@@ -176,7 +176,7 @@ def prepare_labeled_gff3(species: str):
     src: {ensemblgenomes.prefix}/gff3/{species}/*.{chromosome}.gff3.gz
     dst: ./gff3/{species}/labeled-{chromosome}.gff3.gz
     """
-    shortname = name.shorten(species)
+    shortname = phylo.shorten(species)
     for infile in ensemblgenomes.rglob("*.chromosome*.gff3.gz", [species]):
         mobj = re.search(r"(chromosome.+)\.gff3\.gz$", infile.name)
         assert mobj

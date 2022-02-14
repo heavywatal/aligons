@@ -16,7 +16,7 @@ from pathlib import Path
 from subprocess import PIPE, STDOUT
 
 from . import cli
-from .db import name, phylo
+from .db import phylo
 
 _log = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ def roast(path: Path, clade: str, outfile: Path):
     min_width = 18
     ref_label = sing_mafs[0].name.split(".", 1)[0]
     tree = phylo.clades[clade]
-    tree = phylo.shorten(tree).replace(",", " ")
+    tree = phylo.shorten_labels(tree).replace(",", " ")
     args = (
         f"roast - T={tmpdir} M={min_width} E={ref_label} '{tree}' "
         + " ".join([x.name for x in sing_mafs])
@@ -87,7 +87,7 @@ def prepare(indir: Path, clade: str):
     target = indir.name
     tree = phylo.clades[clade]
     species = phylo.extract_labels(tree)
-    short_tree = phylo.shorten(tree)
+    short_tree = phylo.shorten_labels(tree)
     assert target in species
     outdir = Path("multiple") / target / clade
     outdir.mkdir(0o755, parents=True, exist_ok=True)
@@ -105,7 +105,7 @@ def symlink(indir: Path, outdir: Path, species: Iterable[str]):
         querypath = indir / query
         if not querypath.exists():
             _log.error(f"not found {querypath}")
-        dstname = f"{name.shorten(target)}.{name.shorten(query)}.sing.maf"
+        dstname = f"{phylo.shorten(target)}.{phylo.shorten(query)}.sing.maf"
         for chrdir in querypath.glob("chromosome.*"):
             src = chrdir / "sing.maf"
             dstdir = outdir / chrdir.name

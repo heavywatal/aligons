@@ -5,11 +5,12 @@ import functools
 import logging
 import os
 import re
+from collections.abc import Iterable
 from ftplib import FTP
 from pathlib import Path
 
 from .. import cli
-from . import name
+from . import phylo
 
 _log = logging.getLogger(__name__)
 LOCAL_DB_ROOT = Path("~/db/ensemblgenomes/plants").expanduser()
@@ -38,7 +39,7 @@ def main(argv: list[str] | None = None):
     else:
         species = species_names()
     if args.species:
-        species = list(name.filter_by_shortname(species, args.species))
+        species = list(filter_by_shortname(species, args.species))
     if not args.files:
         for sp in species:
             print(sp)
@@ -103,7 +104,11 @@ def rglob(pattern: str, species: list[str] = []):
 
 
 def expand_shortnames(shortnames: list[str]):
-    return name.filter_by_shortname(species_names(), shortnames)
+    return filter_by_shortname(species_names(), shortnames)
+
+
+def filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
+    return (x for x in species if phylo.shorten(x) in queries)
 
 
 class FTPensemblgenomes(FTP):
