@@ -14,8 +14,9 @@ def popen(
     args: list[str] | str,
     stdin: IO[AnyStr] | int | None = None,
     stdout: IO[AnyStr] | int | None = None,
+    quiet: bool = False,
 ):
-    return popen_if(True, args, stdin=stdin, stdout=stdout)
+    return popen_if(True, args, stdin=stdin, stdout=stdout, quiet=quiet)
 
 
 def run(
@@ -48,9 +49,13 @@ def popen_if(
     args: list[str] | str,
     stdin: IO[AnyStr] | int | None = None,
     stdout: IO[AnyStr] | int | None = None,
+    quiet: bool = False,
 ):  # kwargs hinders type inference of output type [str | bytes]
     (args, cmd) = prepare_args(args, cond)
-    _log.info(cmd)
+    if quiet:
+        _log.debug(cmd)
+    else:
+        _log.info(cmd)
     return subprocess.Popen(args, stdin=stdin, stdout=stdout)
 
 
@@ -82,6 +87,7 @@ def run_if(
         shell=shell,
         cwd=cwd,
         text=text,
+        check=True,
     )
 
 

@@ -123,12 +123,14 @@ class PairwiseAlignment:
             ["chainMergeSort"] + [str(x) for x in chains],
             stdout=PIPE,
         )
+        assert merge.stdout
         pre = cli.popen_if(
             not pre_chain.exists(),
             f"chainPreNet stdin {self._target_sizes} {self._query_sizes} stdout",
             stdin=merge.stdout,
             stdout=PIPE,
         )
+        merge.stdout.close()
         if not pre_chain.exists() and not cli.dry_run:
             assert pre.stdout
             with gzip.open(pre_chain, "wb") as fout:
@@ -143,16 +145,19 @@ class PairwiseAlignment:
             stdin=PIPE,
             stdout=PIPE,
         )
+        assert cn.stdin
+        assert cn.stdout
         if not syntenic_net.exists() and not cli.dry_run:
-            assert cn.stdin
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, cn.stdin)
                 cn.stdin.close()
-        cli.run_if(
+        sn = cli.popen_if(
             not syntenic_net.exists(),
             f"netSyntenic stdin {syntenic_net}",
             stdin=cn.stdout,
         )
+        cn.stdout.close()
+        sn.communicate()
         return syntenic_net
 
     def net_axt_maf(self, syntenic_net: Path, pre_chain: Path):
@@ -165,8 +170,9 @@ class PairwiseAlignment:
             stdin=PIPE,
             stdout=PIPE,
         )
+        assert toaxt.stdin
+        assert toaxt.stdout
         if not sing_maf.exists() and not cli.dry_run:
-            assert toaxt.stdin
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, toaxt.stdin)
                 toaxt.stdin.close()
@@ -176,13 +182,17 @@ class PairwiseAlignment:
             stdin=toaxt.stdout,
             stdout=PIPE,
         )
+        toaxt.stdout.close()
+        assert sort.stdout
         tprefix = phylo.shorten(self._target)
         qprefix = phylo.shorten(self._query)
         args = (
             f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
             f" {self._target_sizes} {self._query_sizes} {sing_maf}"
         )
-        cli.run_if(not sing_maf.exists(), args, stdin=sort.stdout)
+        atm = cli.popen_if(not sing_maf.exists(), args, stdin=sort.stdout)
+        sort.stdout.close()
+        atm.communicate()
         return sing_maf
 
 

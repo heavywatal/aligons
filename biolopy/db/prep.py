@@ -81,9 +81,9 @@ def index_fasta(path: Path):  # fasta/{species}
     """Create bgzipped and indexed genome.fa."""
     if path.name != "dna":
         path /= "dna"
-    genome = htslib.create_genome_bgzip(path)
     for chromosome in fs.sorted_naturally(path.glob(r"*.chromosome.*.fa.gz")):
         print(kent.faToTwoBit(chromosome))
+    genome = htslib.create_genome_bgzip(path)
     print(genome)
     print(htslib.faidx(genome))
     print(kent.faToTwoBit(genome))

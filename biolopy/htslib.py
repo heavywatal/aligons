@@ -34,15 +34,18 @@ def bgzip(infiles: Iterable[Path], outfile: Path):
                 infiles, it2 = itertools.tee(infiles)
                 header = collect_gff3_header(it2)
                 bgzip.stdin.write(header)
+                bgzip.stdin.flush()
                 _log.debug(header.decode())
             for file in infiles:
                 if ".gff" in outfile.name:
                     p = sort_clean_chromosome_gff3(file)
-                    assert p.stdout
-                    bgzip.stdin.write(p.stdout.read())
+                    (stdout, _stderr) = p.communicate()
+                    bgzip.stdin.write(stdout)
+                    bgzip.stdin.flush()
                 else:
                     with gzip.open(file, "rb") as fin:
                         bgzip.stdin.write(fin.read())
+                        bgzip.stdin.flush()
             bgzip.communicate()
     return outfile
 
@@ -78,6 +81,11 @@ def tabix(bgz: Path):
 
 def sort_clean_chromosome_gff3(infile: Path):
     # TODO: jbrowse2 still needs billzt/gff3sort precision?
-    p1 = cli.popen(f"zgrep -v '^#' {str(infile)}", stdout=PIPE)
-    p2 = cli.popen("grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=PIPE)
-    return cli.popen("sort -k4,4n", stdin=p2.stdout, stdout=PIPE)
+    p1 = cli.popen(f"zgrep -v '^#' {str(infile)}", stdout=PIPE, quiet=True)
+    p2 = cli.popen("grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=PIPE, quiet=True)
+    if p1.stdout:
+        p1.stdout.close()
+    p3 = cli.popen("sort -k4,4n", stdin=p2.stdout, stdout=PIPE, quiet=True)
+    if p2.stdout:
+        p2.stdout.close()
+    return p3
