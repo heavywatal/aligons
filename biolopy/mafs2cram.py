@@ -59,14 +59,14 @@ def mafs2cram(path: Path, jobs: int = 1):
     cmd = f"samtools merge --no-PG -O CRAM -@ 2 -f -o {str(outfile)} "
     outfile_is_outdated = fs.is_outdated(outfile, Path(crams[0]))
     cli.run_if(outfile_is_outdated, cmd + " ".join(crams))
-    cli.run_if(outfile_is_outdated, f"samtools index {str(outfile)}")
+    cli.run_if(outfile_is_outdated, ["samtools", "index", outfile])
     return outfile
 
 
 def maf2cram(infile: Path, outfile: Path, reference: Path):
     assert infile.exists() and outfile.parent.exists()
     cond = fs.is_outdated(outfile)
-    mafconv = cli.popen_if(cond, f"maf-convert sam {str(infile)}", stdout=PIPE)
+    mafconv = cli.popen_if(cond, ["maf-convert", "sam", infile], stdout=PIPE)
     (stdout, _stderr) = mafconv.communicate()
     content = sanitize_cram(cond, reference, stdout)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {str(outfile)}"

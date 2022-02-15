@@ -67,7 +67,7 @@ def faidx(bgz: Path):
     """http://www.htslib.org/doc/samtools-faidx.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
     if fs.is_outdated(outfile, bgz):
-        cli.run(["samtools", "faidx", str(bgz)])
+        cli.run(["samtools", "faidx", bgz])
     return outfile
 
 
@@ -75,7 +75,7 @@ def tabix(bgz: Path):
     """http://www.htslib.org/doc/tabix.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".tbi")
     if fs.is_outdated(outfile, bgz):
-        cli.run(["tabix", str(bgz)])
+        cli.run(["tabix", bgz])
     return outfile
 
 

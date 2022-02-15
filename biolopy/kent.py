@@ -49,7 +49,7 @@ def integrate_wigs(clade: Path):
 
 
 def wigToBigWig(infile: Iterable[bytes], chrom_sizes: Path, outfile: Path):
-    args = ["wigToBigWig", "stdin", str(chrom_sizes), str(outfile)]
+    args = ["wigToBigWig", "stdin", chrom_sizes, outfile]
     p = cli.popen_if(not outfile.exists(), args, stdin=PIPE)
     if not outfile.exists() and not cli.dry_run:
         assert p.stdin
@@ -59,7 +59,7 @@ def wigToBigWig(infile: Iterable[bytes], chrom_sizes: Path, outfile: Path):
 
 
 def bigWigInfo(path: Path):
-    args = ["bigWigInfo", str(path)]
+    args = ["bigWigInfo", path]
     return cli.run(args, stdout=PIPE, text=True)
 
 
@@ -67,7 +67,7 @@ def faToTwoBit(fa_gz: Path):
     outfile = fa_gz.with_suffix("").with_suffix(".2bit")
     if fs.is_outdated(outfile, fa_gz) and not cli.dry_run:
         with gzip.open(fa_gz, "rb") as fin:
-            args = ["faToTwoBit", "stdin", str(outfile)]
+            args = ["faToTwoBit", "stdin", outfile]
             p = cli.popen(args, stdin=PIPE)
             assert p.stdin
             shutil.copyfileobj(fin, p.stdin)
@@ -82,7 +82,7 @@ def faSize(genome_fa_gz: Path):
     outfile = genome_fa_gz.parent / "fasize.chrom.sizes"
     if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
         with open(outfile, "wb") as fout:
-            cli.run(["faSize", "-detailed", str(genome_fa_gz)], stdout=fout)
+            cli.run(["faSize", "-detailed", genome_fa_gz], stdout=fout)
     return outfile
 
 

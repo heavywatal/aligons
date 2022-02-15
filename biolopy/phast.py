@@ -125,7 +125,7 @@ def phyloFit(ss: Path, tree: str, conserved: bool):
         option = ""
     cmd = (
         f"phyloFit --tree {tree} --msa-format SS {option}"
-        f" --out-root {str(out_root)} {str(ss)}"
+        f" --out-root {out_root} {str(ss)}"
     )
     cli.run(cmd)
     return outfiles
@@ -215,7 +215,7 @@ def clean(path: Path):
 def open_if_not_dry_run(file: Path, mode: str = "r") -> IO[AnyStr]:
     suffix = file.suffix
     if cli.dry_run:
-        file = Path("/dev/null")
+        file = Path(os.devnull)
     if suffix == ".gz":
         f = cast(IO[AnyStr], gzip.open(file, mode))
     else:

@@ -2,8 +2,14 @@ import argparse
 import logging
 import shlex
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
-from typing import IO, AnyStr
+from typing import IO, Any, TypeAlias
+
+StrPath: TypeAlias = str | Path[str]
+Args: TypeAlias = list[StrPath]
+_CMD: TypeAlias = Sequence[StrPath] | str
+_FILE: TypeAlias = IO[Any] | int | None
 
 dry_run = False
 
@@ -11,20 +17,20 @@ _log = logging.getLogger(__name__)
 
 
 def popen(
-    args: list[str] | str,
-    stdin: IO[AnyStr] | int | None = None,
-    stdout: IO[AnyStr] | int | None = None,
+    args: _CMD,
+    stdin: _FILE = None,
+    stdout: _FILE = None,
     quiet: bool = False,
 ):
     return popen_if(True, args, stdin=stdin, stdout=stdout, quiet=quiet)
 
 
 def run(
-    args: list[str] | str,
-    executable: str | None = None,
-    stdin: IO[AnyStr] | int | None = None,
-    stdout: IO[AnyStr] | int | None = None,
-    stderr: IO[AnyStr] | int | None = None,
+    args: _CMD,
+    executable: StrPath | None = None,
+    stdin: _FILE = None,
+    stdout: _FILE = None,
+    stderr: _FILE = None,
     shell: bool = False,
     cwd: Path | None = None,
     text: bool | None = None,
@@ -46,9 +52,9 @@ def run(
 
 def popen_if(
     cond: bool,
-    args: list[str] | str,
-    stdin: IO[AnyStr] | int | None = None,
-    stdout: IO[AnyStr] | int | None = None,
+    args: _CMD,
+    stdin: _FILE = None,
+    stdout: _FILE = None,
     quiet: bool = False,
 ):  # kwargs hinders type inference of output type [str | bytes]
     (args, cmd) = prepare_args(args, cond)
@@ -61,11 +67,11 @@ def popen_if(
 
 def run_if(
     cond: bool,
-    args: list[str] | str,
-    executable: str | None = None,
-    stdin: IO[AnyStr] | int | None = None,
-    stdout: IO[AnyStr] | int | None = None,
-    stderr: IO[AnyStr] | int | None = None,
+    args: _CMD,
+    executable: StrPath | None = None,
+    stdin: _FILE = None,
+    stdout: _FILE = None,
+    stderr: _FILE = None,
     shell: bool = False,
     cwd: Path | None = None,
     text: bool | None = None,
@@ -91,12 +97,12 @@ def run_if(
     )
 
 
-def prepare_args(args: list[str] | str, cond: bool = True):
+def prepare_args(args: _CMD, cond: bool = True):
     if isinstance(args, str):
         cmd = args
         args = shlex.split(args)
     else:
-        cmd = " ".join(args)
+        cmd = " ".join(str(x) for x in args)
     if dry_run or not cond:
         cmd = "# " + cmd
         args = ["sleep", "0"]
