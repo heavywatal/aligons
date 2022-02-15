@@ -11,7 +11,6 @@ import concurrent.futures as confu
 import logging
 import os
 import shutil
-from collections.abc import Iterable
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
@@ -69,8 +68,8 @@ def roast(path: Path, clade: str, outfile: Path):
     tmpdir = ".tmp"
     min_width = 18
     ref_label = sing_mafs[0].name.split(".", 1)[0]
-    tree = phylo.clades[clade]
-    tree = phylo.shorten_labels(tree).replace(",", " ")
+    tree = phylo.trees[clade]
+    tree = phylo.shorten_labels(tree).replace(",", " ").rstrip(";")
     args = (
         f"roast - T={tmpdir} M={min_width} E={ref_label} '{tree}' "
         + " ".join([x.name for x in sing_mafs])
@@ -85,20 +84,11 @@ def roast(path: Path, clade: str, outfile: Path):
 
 def prepare(indir: Path, clade: str):
     target = indir.name
-    tree = phylo.clades[clade]
+    tree = phylo.trees[clade]
     species = phylo.extract_labels(tree)
-    short_tree = phylo.shorten_labels(tree)
     assert target in species
     outdir = Path("multiple") / target / clade
     outdir.mkdir(0o755, parents=True, exist_ok=True)
-    with open(outdir / "tree.nh", "w") as fout:
-        fout.write(short_tree + "\n")
-    symlink(indir, outdir, species)
-    return outdir
-
-
-def symlink(indir: Path, outdir: Path, species: Iterable[str]):
-    target = indir.name
     for query in species:
         if query == target:
             continue
@@ -115,6 +105,7 @@ def symlink(indir: Path, outdir: Path, species: Iterable[str]):
             _log.info(f"{dst}@\n -> {relsrc}")
             if not dst.exists():
                 dst.symlink_to(relsrc)
+    return outdir
 
 
 def clean(path: Path):

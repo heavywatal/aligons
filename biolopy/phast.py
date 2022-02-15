@@ -63,7 +63,7 @@ def prepare_mods(clade: Path, jobs: int):
     noncons_mod = clade / "noncons.mod"
     if cons_mod.exists() and noncons_mod.exists():
         return (cons_mod, noncons_mod)
-    treefile = clade / "tree.nh"
+    tree = phylo.shorten_labels(phylo.trees[clade.name])
     target = clade.parent.name
     prepare_labeled_gff3(target)
     cfutures: list[confu.Future[Path]] = []
@@ -72,23 +72,23 @@ def prepare_mods(clade: Path, jobs: int):
         for chromosome in clade.glob("chromosome*"):
             maf = chromosome / "multiz.maf"
             gff = labeled_gff3(target, chromosome.name)
-            cfutures.append(pool.submit(make_cons_mod, maf, gff, treefile))
-            nfutures.append(pool.submit(make_noncons_mod, maf, gff, treefile))
+            cfutures.append(pool.submit(make_cons_mod, maf, gff, tree))
+            nfutures.append(pool.submit(make_noncons_mod, maf, gff, tree))
     phyloBoot([str(f.result()) for f in cfutures], cons_mod)
     phyloBoot([str(f.result()) for f in nfutures], noncons_mod)
     return (cons_mod, noncons_mod)
 
 
-def make_cons_mod(maf: Path, gff: Path, treefile: Path):
+def make_cons_mod(maf: Path, gff: Path, tree: str):
     codons_ss = msa_view_features(maf, gff, True)
-    codons_mods = phyloFit(codons_ss, treefile, True)
+    codons_mods = phyloFit(codons_ss, tree, True)
     return most_conserved_mod(codons_mods)
 
 
-def make_noncons_mod(maf: Path, gff: Path, treefile: Path):
+def make_noncons_mod(maf: Path, gff: Path, tree: str):
     _4d_codons_ss = msa_view_features(maf, gff, False)
     _4d_sites_ss = msa_view_ss(_4d_codons_ss)
-    return phyloFit(_4d_sites_ss, treefile, False)[0]
+    return phyloFit(_4d_sites_ss, tree, False)[0]
 
 
 def msa_view_features(maf: Path, gff: Path, conserved: bool):
@@ -114,7 +114,7 @@ def msa_view_ss(codons_ss: Path):
     return outfile
 
 
-def phyloFit(ss: Path, treefile: Path, conserved: bool):
+def phyloFit(ss: Path, tree: str, conserved: bool):
     if conserved:
         out_root = str(ss.parent / "codons")
         outfiles = [Path(f"{out_root}.{i}.mod") for i in range(1, 4)]
@@ -124,7 +124,7 @@ def phyloFit(ss: Path, treefile: Path, conserved: bool):
         outfiles = [Path(f"{out_root}.mod")]
         option = ""
     cmd = (
-        f"phyloFit --tree {str(treefile)} --msa-format SS {option}"
+        f"phyloFit --tree {tree} --msa-format SS {option}"
         f" --out-root {str(out_root)} {str(ss)}"
     )
     cli.run(cmd)
@@ -145,26 +145,21 @@ def most_conserved_mod(mod_files: list[Path]):
     for f in mod_files:
         with open(f, "r") as fin:
             content = fin.read()
-            tree = extract_tree(content)
-            assert tree
-            lengths = branch_lengths(tree)
-            assert lengths
+            lengths = phylo.extract_lengths(extract_tree(content))
             total = sum(lengths)
+            _log.debug(f"{f}: {total}")
             if total < shortest_length:
                 shortest_length = total
                 conserved = content
+    _log.debug(f"{shortest_length=}")
     with open(outfile, "w") as fout:
         fout.write(conserved)
     return outfile
 
 
-def extract_tree(content: str):
-    if m := re.search(r"TREE: (.+);", content):
-        return m.group(1)
-
-
-def branch_lengths(newick: str):
-    return [float(m.group(0)) for m in re.finditer(r"[\d.]+", newick)]
+def extract_tree(mod: str):
+    assert (m := re.search(r"TREE: (.+;)", mod)), mod
+    return m.group(1)
 
 
 def labeled_gff3(species: str, chromosome: str):

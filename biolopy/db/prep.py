@@ -24,7 +24,7 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     cli.dry_run = args.dry_run
     cli.logging_config(args.loglevel)
-    tree = phylo.clades[args.clade]
+    tree = phylo.trees[args.clade]
     species = phylo.extract_labels(tree)
     if args.download:
         download(species)
