@@ -12,9 +12,9 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from subprocess import PIPE, STDOUT
+from subprocess import PIPE, STDOUT, CalledProcessError
 
-from . import cli
+from . import cli, fs
 from .db import phylo
 
 _log = logging.getLogger(__name__)
@@ -44,28 +44,39 @@ def main(argv: list[str] = []):
 
 
 def multiz(path: Path):
+    sing_mafs = list(path.glob("*.sing.maf"))
     clade = path.parent.name
+    tmpdir = path / "_tmp"
     outfile = path / "multiz.maf"
-    roasted = roast(path, clade, outfile)
-    with open(roasted, "rt") as fin:
-        script = fin.read()
-    _log.debug(script)
-    script = "set -eu\n" + script
-    p = cli.run(script, shell=True, cwd=path, stdout=PIPE, stderr=STDOUT)
-    if p.returncode > 0:
-        for line in p.stdout.strip().splitlines():
+    roasted = roast(sing_mafs, clade, tmpdir.name, outfile.name)
+    script = "set -eu\n" + roasted.stdout
+    is_to_run = fs.is_outdated(outfile, sing_mafs)
+    if is_to_run and not cli.dry_run:
+        tmpdir.mkdir(0o755, exist_ok=True)
+        with open(path / "roasted.sh", "wt") as fout:
+            fout.write(script)
+    try:
+        comp = cli.run_if(
+            is_to_run, script, shell=True, cwd=path, stdout=PIPE, stderr=STDOUT
+        )
+    except CalledProcessError as perr:
+        for line in perr.stdout.strip().splitlines():
             _log.error(f"{path.name}:{line}")
         _log.error(outfile)
-        return None
-    if out := p.stdout.strip():
+        raise perr
+    if is_to_run and not cli.dry_run:
+        (tmpdir / outfile.name).replace(outfile)
+        try:
+            tmpdir.rmdir()
+        except OSError as err:
+            _log.warning(str(err))
+    if out := comp.stdout.strip():
         _log.info(out)
     return outfile
 
 
-def roast(path: Path, clade: str, outfile: Path):
+def roast(sing_mafs: list[Path], clade: str, tmpdir: str, outfile: str):
     """Generate shell script to execute multiz"""
-    sing_mafs = list(path.glob("*.sing.maf"))
-    tmpdir = ".tmp"
     min_width = 18
     ref_label = sing_mafs[0].name.split(".", 1)[0]
     tree = phylo.trees[clade]
@@ -73,13 +84,9 @@ def roast(path: Path, clade: str, outfile: Path):
     args = (
         f"roast - T={tmpdir} M={min_width} E={ref_label} '{tree}' "
         + " ".join([x.name for x in sing_mafs])
-        + f" {outfile.name}"
+        + f" {tmpdir}/{outfile}"
     )
-    roasted = path / "roasted.sh"
-    with open(roasted, "wb") as fout:
-        cli.run(args, stdout=fout)
-    (path / tmpdir).mkdir(0o755, exist_ok=True)
-    return roasted
+    return cli.run(args, stdout=PIPE, text=True)
 
 
 def prepare(indir: Path, clade: str):
@@ -110,7 +117,7 @@ def prepare(indir: Path, clade: str):
 
 def clean(path: Path):
     for entry in path.iterdir():
-        if entry.name in ("multiz.maf", "roasted.sh", ".tmp"):
+        if entry.name in ("multiz.maf", "roasted.sh", "_tmp"):
             print(entry)
             if not cli.dry_run:
                 rm_rf(entry)

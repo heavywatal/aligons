@@ -1,5 +1,4 @@
 import gzip
-import itertools
 import logging
 import re
 from collections.abc import Iterable
@@ -25,14 +24,13 @@ def create_genome_bgzip(path: Path):
     return bgzip(files, outfile)
 
 
-def bgzip(infiles: Iterable[Path], outfile: Path):
-    if fs.is_outdated(outfile) and not cli.dry_run:
+def bgzip(infiles: list[Path], outfile: Path):
+    if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         with open(outfile, "wb") as fout:
             bgzip = cli.popen("bgzip -@2", stdin=PIPE, stdout=fout)
             assert bgzip.stdin
             if ".gff" in outfile.name:
-                infiles, it2 = itertools.tee(infiles)
-                header = collect_gff3_header(it2)
+                header = collect_gff3_header(infiles)
                 bgzip.stdin.write(header)
                 bgzip.stdin.flush()
                 _log.debug(header.decode())

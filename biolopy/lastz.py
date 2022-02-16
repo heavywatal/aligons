@@ -93,19 +93,20 @@ class PairwiseAlignment:
         args = f"lastz {target_2bit} {query_2bit} --format=axt --inner=2000 --step=7"
         if self._quick:
             args += " --notransition --nogapped"
-        lastz = cli.popen_if(not axtgz.exists(), args, stdout=PIPE)
-        if not axtgz.exists() and not cli.dry_run:
-            assert lastz.stdout
+        is_to_run = fs.is_outdated(axtgz, [target_2bit, query_2bit])
+        lastz = cli.run_if(is_to_run, args, stdout=PIPE)
+        if is_to_run and not cli.dry_run:
             with gzip.open(axtgz, "wb") as fout:
-                shutil.copyfileobj(lastz.stdout, fout)
+                fout.write(lastz.stdout)
         return axtgz
 
     def axt_chain(self, target_2bit: Path, query_2bit: Path, axtgz: Path):
         chain = axtgz.with_suffix("").with_suffix(".chain")
         cmd = "axtChain -minScore=5000 -linearGap=medium stdin"
         cmd += f" {target_2bit} {query_2bit} {chain}"
-        p = cli.popen_if(not chain.exists(), cmd, stdin=PIPE)
-        if not chain.exists() and not cli.dry_run:
+        is_to_run = fs.is_outdated(chain, axtgz)
+        p = cli.popen_if(is_to_run, cmd, stdin=PIPE)
+        if is_to_run and not cli.dry_run:
             assert p.stdin
             with gzip.open(axtgz, "rb") as fin:
                 shutil.copyfileobj(fin, p.stdin)
@@ -118,43 +119,34 @@ class PairwiseAlignment:
         subdir = parent.pop()
         assert not parent, "chains are in the same directory"
         pre_chain = subdir / "pre.chain.gz"
-        merge = cli.popen_if(
-            not pre_chain.exists(),
-            ["chainMergeSort"] + [str(x) for x in chains],
-            stdout=PIPE,
-        )
+        is_to_run = fs.is_outdated(pre_chain, chains)
+        merge_cmd = ["chainMergeSort"] + [str(x) for x in chains]
+        merge = cli.popen_if(is_to_run, merge_cmd, stdout=PIPE)
         assert merge.stdout
-        pre = cli.popen_if(
-            not pre_chain.exists(),
-            f"chainPreNet stdin {self._target_sizes} {self._query_sizes} stdout",
-            stdin=merge.stdout,
-            stdout=PIPE,
-        )
+        pre_cmd = f"chainPreNet stdin {self._target_sizes} {self._query_sizes} stdout"
+        pre = cli.popen_if(is_to_run, pre_cmd, stdin=merge.stdout, stdout=PIPE)
         merge.stdout.close()
-        if not pre_chain.exists() and not cli.dry_run:
-            assert pre.stdout
+        if is_to_run and not cli.dry_run:
+            (stdout, _stderr) = pre.communicate()
             with gzip.open(pre_chain, "wb") as fout:
-                shutil.copyfileobj(pre.stdout, fout)
+                fout.write(stdout)
         return pre_chain
 
     def chain_net_syntenic(self, pre_chain: Path):
         syntenic_net = pre_chain.parent / "syntenic.net"
-        cn = cli.popen_if(
-            not syntenic_net.exists(),
-            f"chainNet stdin {self._target_sizes} {self._query_sizes} stdout /dev/null",
-            stdin=PIPE,
-            stdout=PIPE,
+        is_to_run = fs.is_outdated(syntenic_net, pre_chain)
+        cn_cmd = (
+            f"chainNet stdin {self._target_sizes} {self._query_sizes} stdout /dev/null"
         )
+        cn = cli.popen_if(is_to_run, cn_cmd, stdin=PIPE, stdout=PIPE)
         assert cn.stdin
         assert cn.stdout
-        if not syntenic_net.exists() and not cli.dry_run:
+        if is_to_run and not cli.dry_run:
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, cn.stdin)
                 cn.stdin.close()
         sn = cli.popen_if(
-            not syntenic_net.exists(),
-            f"netSyntenic stdin {syntenic_net}",
-            stdin=cn.stdout,
+            is_to_run, f"netSyntenic stdin {syntenic_net}", stdin=cn.stdout
         )
         cn.stdout.close()
         sn.communicate()
@@ -164,33 +156,27 @@ class PairwiseAlignment:
         sing_maf = syntenic_net.parent / "sing.maf"
         target_2bit = ensemblgenomes.get_file("*.genome.2bit", self._target)
         query_2bit = ensemblgenomes.get_file("*.genome.2bit", self._query)
-        toaxt = cli.popen_if(
-            not sing_maf.exists(),
-            f"netToAxt {syntenic_net} stdin {target_2bit} {query_2bit} stdout",
-            stdin=PIPE,
-            stdout=PIPE,
-        )
+        is_to_run = fs.is_outdated(sing_maf, [syntenic_net, pre_chain])
+        toaxt_cmd = f"netToAxt {syntenic_net} stdin {target_2bit} {query_2bit} stdout"
+        toaxt = cli.popen_if(is_to_run, toaxt_cmd, stdin=PIPE, stdout=PIPE)
         assert toaxt.stdin
         assert toaxt.stdout
-        if not sing_maf.exists() and not cli.dry_run:
+        if is_to_run and not cli.dry_run:
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, toaxt.stdin)
                 toaxt.stdin.close()
         sort = cli.popen_if(
-            not sing_maf.exists(),
-            "axtSort stdin stdout",
-            stdin=toaxt.stdout,
-            stdout=PIPE,
+            is_to_run, "axtSort stdin stdout", stdin=toaxt.stdout, stdout=PIPE
         )
         toaxt.stdout.close()
         assert sort.stdout
         tprefix = phylo.shorten(self._target)
         qprefix = phylo.shorten(self._query)
-        args = (
+        axttomaf_cmd = (
             f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
             f" {self._target_sizes} {self._query_sizes} {sing_maf}"
         )
-        atm = cli.popen_if(not sing_maf.exists(), args, stdin=sort.stdout)
+        atm = cli.popen_if(is_to_run, axttomaf_cmd, stdin=sort.stdout)
         sort.stdout.close()
         atm.communicate()
         return sing_maf

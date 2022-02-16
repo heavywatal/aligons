@@ -18,14 +18,26 @@ def main(argv: list[str] | None = None):
         print(x)
 
 
-def is_outdated(destination: Path, source: Path | None = None):
+def is_outdated(destination: Path, source: list[Path] | Path | None = None):
     if not destination.exists():
         return True
     if destination.stat().st_size == 0:
         return True
+    if isinstance(source, list):
+        source = newest(source)
     if source and destination.stat().st_ctime < source.stat().st_ctime:
         return True
     return False
+
+
+def newest(files: list[Path]):
+    champion = files[0]
+    champion_ctime = 0
+    for file in files:
+        if (ctime := file.stat().st_ctime) > champion_ctime:
+            champion = file
+            champion_ctime = ctime
+    return champion
 
 
 def sorted_naturally(iterable: Iterable[Path]):

@@ -45,7 +45,7 @@ def mafs2cram(path: Path, jobs: int = 1):
     outdir = path / "cram"
     outdir.mkdir(0o755, exist_ok=True)
     outfile = outdir / "genome.cram"
-    crams: list[str] = []
+    crams: list[Path] = []
     with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
         futures: list[confu.Future[Path]] = []
         for dir in list(path.glob("chromosome.*")):
@@ -53,24 +53,24 @@ def mafs2cram(path: Path, jobs: int = 1):
             cram = outdir / (dir.name + ".cram")
             futures.append(executor.submit(maf2cram, maf, cram, reference))
         for future in futures:
-            cram = str(future.result())
+            cram = future.result()
             _log.info(cram)
             crams.append(cram)
     cmd = f"samtools merge --no-PG -O CRAM -@ 2 -f -o {str(outfile)} "
-    outfile_is_outdated = fs.is_outdated(outfile, Path(crams[0]))
-    cli.run_if(outfile_is_outdated, cmd + " ".join(crams))
-    cli.run_if(outfile_is_outdated, ["samtools", "index", outfile])
+    is_to_run = fs.is_outdated(outfile, crams)
+    cli.run_if(is_to_run, cmd + " ".join([str(x) for x in crams]))
+    cli.run_if(is_to_run, ["samtools", "index", outfile])
     return outfile
 
 
 def maf2cram(infile: Path, outfile: Path, reference: Path):
     assert infile.exists() and outfile.parent.exists()
-    cond = fs.is_outdated(outfile)
-    mafconv = cli.popen_if(cond, ["maf-convert", "sam", infile], stdout=PIPE)
+    is_to_run = fs.is_outdated(outfile, infile)
+    mafconv = cli.popen_if(is_to_run, ["maf-convert", "sam", infile], stdout=PIPE)
     (stdout, _stderr) = mafconv.communicate()
-    content = sanitize_cram(cond, reference, stdout)
+    content = sanitize_cram(is_to_run, reference, stdout)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {str(outfile)}"
-    cli.popen_if(cond, cmd, stdin=PIPE).communicate(content)
+    cli.popen_if(is_to_run, cmd, stdin=PIPE).communicate(content)
     return outfile
 
 

@@ -1,5 +1,6 @@
 import argparse
 import logging
+import re
 import shlex
 import subprocess
 from collections.abc import Sequence
@@ -99,12 +100,12 @@ def run_if(
 
 def prepare_args(args: _CMD, cond: bool = True):
     if isinstance(args, str):
-        cmd = args
+        cmd = args.rstrip()
         args = shlex.split(args)
     else:
         cmd = " ".join(str(x) for x in args)
     if dry_run or not cond:
-        cmd = "# " + cmd
+        cmd = re.sub("^", "# ", cmd, flags=re.MULTILINE)
         args = ["sleep", "0"]
     return (args, cmd)
 

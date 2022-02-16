@@ -18,7 +18,7 @@ from pathlib import Path
 from subprocess import PIPE
 from typing import IO, AnyStr, cast
 
-from . import cli
+from . import cli, fs
 from .db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
@@ -52,30 +52,29 @@ def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
         f" --seqname {seqname} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
     )
     wig = path / "phastcons.wig.gz"
-    p = cli.run(cmd, stdout=PIPE)
-    with open_if_not_dry_run(wig, "wb") as fout:
+    is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
+    p = cli.run_if(is_to_run, cmd, stdout=PIPE)
+    with open_if(is_to_run, wig, "wb") as fout:
         fout.write(p.stdout)
     return wig
 
 
 def prepare_mods(clade: Path, jobs: int):
-    cons_mod = clade / "cons.mod"
-    noncons_mod = clade / "noncons.mod"
-    if cons_mod.exists() and noncons_mod.exists():
-        return (cons_mod, noncons_mod)
-    tree = phylo.shorten_labels(phylo.trees[clade.name])
     target = clade.parent.name
     prepare_labeled_gff3(target)
+    cons_mod = clade / "cons.mod"
+    noncons_mod = clade / "noncons.mod"
+    tree = phylo.shorten_labels(phylo.trees[clade.name])
     cfutures: list[confu.Future[Path]] = []
     nfutures: list[confu.Future[Path]] = []
     with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
         for chromosome in clade.glob("chromosome*"):
             maf = chromosome / "multiz.maf"
-            gff = labeled_gff3(target, chromosome.name)
+            gff = path_labeled_gff3(target, chromosome.name)
             cfutures.append(pool.submit(make_cons_mod, maf, gff, tree))
             nfutures.append(pool.submit(make_noncons_mod, maf, gff, tree))
-    phyloBoot([str(f.result()) for f in cfutures], cons_mod)
-    phyloBoot([str(f.result()) for f in nfutures], noncons_mod)
+    phyloBoot([f.result() for f in cfutures], cons_mod)
+    phyloBoot([f.result() for f in nfutures], noncons_mod)
     return (cons_mod, noncons_mod)
 
 
@@ -100,16 +99,19 @@ def msa_view_features(maf: Path, gff: Path, conserved: bool):
     else:
         outfile = maf.parent / "4d-codons.ss"
         cmd += " --4d"
-    with open_if_not_dry_run(outfile, "w") as fout:
-        cli.run(cmd, stdout=fout, shell=True, executable="/bin/bash")
+    is_to_run = fs.is_outdated(outfile, maf)
+    p = cli.run_if(is_to_run, cmd, stdout=PIPE, shell=True, executable="/bin/bash")
+    with open_if(is_to_run, outfile, "wb") as fout:
+        fout.write(p.stdout)
     return outfile
 
 
 def msa_view_ss(codons_ss: Path):
     outfile = codons_ss.parent / "4d-sites.ss"
     s = f"msa_view {str(codons_ss)} --in-format SS --out-format SS --tuple-size 1"
-    p = cli.run(s, stdout=PIPE)
-    with open_if_not_dry_run(outfile, "wb") as fout:
+    is_to_run = fs.is_outdated(outfile, codons_ss)
+    p = cli.run_if(is_to_run, s, stdout=PIPE)
+    with open_if(is_to_run, outfile, "wb") as fout:
         fout.write(p.stdout)
     return outfile
 
@@ -127,27 +129,30 @@ def phyloFit(ss: Path, tree: str, conserved: bool):
         f"phyloFit --tree {tree} --msa-format SS {option}"
         f" --out-root {out_root} {str(ss)}"
     )
-    cli.run(cmd)
+    cli.run_if(fs.is_outdated(outfiles[0], ss), cmd)
     return outfiles
 
 
-def phyloBoot(mods: list[str], outfile: Path):
-    read_mods = ",".join(mods)
-    cli.run(f"phyloBoot --read-mods {read_mods} --output-average {outfile}")
+def phyloBoot(mods: list[Path], outfile: Path):
+    read_mods = ",".join(str(x) for x in mods)
+    cli.run_if(
+        fs.is_outdated(outfile, mods),
+        f"phyloBoot --read-mods {read_mods} --output-average {outfile}",
+    )
 
 
-def most_conserved_mod(mod_files: list[Path]):
-    outfile = mod_files[0].parent / "cons.mod"
-    if cli.dry_run:
+def most_conserved_mod(mods: list[Path]):
+    outfile = mods[0].parent / "cons.mod"
+    if not fs.is_outdated(outfile, mods) or cli.dry_run:
         return outfile
     shortest_length = sys.float_info.max
     conserved = ""
-    for f in mod_files:
-        with open(f, "r") as fin:
+    for mod in mods:
+        with open(mod, "r") as fin:
             content = fin.read()
             lengths = phylo.extract_lengths(extract_tree(content))
             total = sum(lengths)
-            _log.debug(f"{f}: {total}")
+            _log.debug(f"{mod}: {total}")
             if total < shortest_length:
                 shortest_length = total
                 conserved = content
@@ -162,7 +167,7 @@ def extract_tree(mod: str):
     return m.group(1)
 
 
-def labeled_gff3(species: str, chromosome: str):
+def path_labeled_gff3(species: str, chromosome: str):
     return Path("gff3") / species / f"labeled-{chromosome}.gff3.gz"
 
 
@@ -175,8 +180,8 @@ def prepare_labeled_gff3(species: str):
     for infile in ensemblgenomes.rglob("*.chromosome*.gff3.gz", [species]):
         mobj = re.search(r"(chromosome.+)\.gff3\.gz$", infile.name)
         assert mobj
-        outfile = labeled_gff3(species, mobj.group(1))
-        if not outfile.exists() and not cli.dry_run:
+        outfile = path_labeled_gff3(species, mobj.group(1))
+        if fs.is_outdated(outfile, infile) and not cli.dry_run:
             _log.info(f"{outfile}")
             add_label_to_chr(infile, outfile, shortname + ".")
 
@@ -187,15 +192,22 @@ def add_label_to_chr(infile: Path, outfile: Path, label: str):
     - Add species name to chromosome name, e.g., osat.1, zmay.2
     - Extract CDS
     """
-    if not cli.dry_run:
-        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
+    outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
     with gzip.open(infile, "rt") as fin, gzip.open(outfile, "wt") as fout:
+        for line in fin:
+            if not line.startswith("##"):
+                break
+            fout.write(line)
         reader = csv.reader(fin, delimiter="\t")
+        writer = csv.writer(
+            fout, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE
+        )
         for row in reader:
             if len(row) < 8 or row[0].startswith("#"):
                 continue
             if row[2] == "CDS":
-                fout.write(label + "\t".join(row) + "\n")
+                row[0] = label + row[0]
+                writer.writerow(row)
 
 
 def clean(path: Path):
@@ -212,9 +224,9 @@ def clean(path: Path):
             file.unlink()
 
 
-def open_if_not_dry_run(file: Path, mode: str = "r") -> IO[AnyStr]:
+def open_if(cond: bool, file: Path, mode: str = "r") -> IO[AnyStr]:
     suffix = file.suffix
-    if cli.dry_run:
+    if cli.dry_run or not cond:
         file = Path(os.devnull)
     if suffix == ".gz":
         f = cast(IO[AnyStr], gzip.open(file, mode))
