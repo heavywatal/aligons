@@ -29,19 +29,24 @@ def main(argv: list[str] = []):
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
-    parser.add_argument("clade", type=Path)
+    parser.add_argument("clade", type=Path)  # multiple/{target}/{clade}
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
     if args.clean:
         clean(args.clade)
         return
-    (cons_mod, noncons_mod) = prepare_mods(args.clade, args.jobs)
-    with confu.ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        chrs = args.clade.glob("chromosome*")
+    run(args.clade, args.jobs)
+
+
+def run(path_clade: Path, jobs: int):
+    (cons_mod, noncons_mod) = prepare_mods(path_clade, jobs)
+    with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
+        chrs = path_clade.glob("chromosome*")
         futures = [pool.submit(phastCons, d, cons_mod, noncons_mod) for d in chrs]
         for future in confu.as_completed(futures):
-            print(future.result())
+            if (wig := future.result()).exists():
+                print(wig)
 
 
 def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):

@@ -8,6 +8,7 @@ https://github.com/multiz/multiz
 """
 import argparse
 import concurrent.futures as confu
+import itertools
 import logging
 import os
 import shutil
@@ -26,21 +27,27 @@ def main(argv: list[str] = []):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
-    parser.add_argument("clade")  # monocot, poaceae, bep, pacmad
+    parser.add_argument("clade", choices=phylo.trees.keys())
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    outdir = prepare(args.indir, args.clade)
-    chromodirs = outdir.glob("chromosome.*")
     if args.clean:
-        for d in chromodirs:
-            clean(d)
+        clean(Path("multiple") / args.indir.name)
         return
-    with confu.ThreadPoolExecutor(max_workers=args.jobs) as executor:
+    run(args.indir, args.clade, args.jobs)
+
+
+def run(indir: Path, clade: str, jobs: int):
+    target = indir.name
+    outdir = Path("multiple") / target / clade
+    prepare(indir, outdir)
+    chromodirs = outdir.glob("chromosome.*")
+    with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
         futures = [executor.submit(multiz, p) for p in chromodirs]
     for future in confu.as_completed(futures):
-        if maf := future.result():
-            print(maf)
+        if (multiz_maf := future.result()).exists():
+            print(multiz_maf)
+    return outdir
 
 
 def multiz(path: Path):
@@ -89,12 +96,12 @@ def roast(sing_mafs: list[Path], clade: str, tmpdir: str, outfile: str):
     return cli.run(args, stdout=PIPE, text=True)
 
 
-def prepare(indir: Path, clade: str):
+def prepare(indir: Path, outdir: Path):
     target = indir.name
+    clade = outdir.name
     tree = phylo.trees[clade]
     species = phylo.extract_labels(tree)
     assert target in species
-    outdir = Path("multiple") / target / clade
     outdir.mkdir(0o755, parents=True, exist_ok=True)
     for query in species:
         if query == target:
@@ -110,17 +117,21 @@ def prepare(indir: Path, clade: str):
             dst = dstdir / dstname
             relsrc = os.path.relpath(src, dstdir)
             _log.info(f"{dst}@\n -> {relsrc}")
-            if not dst.exists():
+            if not dst.exists() and not cli.dry_run:
                 dst.symlink_to(relsrc)
     return outdir
 
 
 def clean(path: Path):
-    for entry in path.iterdir():
-        if entry.name in ("multiz.maf", "roasted.sh", "_tmp"):
-            print(entry)
-            if not cli.dry_run:
-                rm_rf(entry)
+    it = itertools.chain(
+        path.rglob("multiz.maf"),
+        path.rglob("roasted.sh"),
+        path.rglob("_tmp"),
+    )
+    for entry in it:
+        print(entry)
+        if not cli.dry_run:
+            rm_rf(entry)
 
 
 def rm_rf(path: Path):

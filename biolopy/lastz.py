@@ -22,34 +22,35 @@ _executor = confu.ThreadPoolExecutor()
 
 
 def main(argv: list[str] = []):
-    available_species = ensemblgenomes.species_names()
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("--quick", action="store_true")
     parser.add_argument("-c", "--clade", choices=phylo.trees.keys())
-    parser.add_argument("target", choices=available_species)
+    parser.add_argument("target", choices=ensemblgenomes.species_names())
     parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    _executor._max_workers = args.jobs
     if args.clade:
         assert not args.query
-        args.query = phylo.extract_labels(phylo.trees[args.clade])
+        run(args.target, args.clade, args.jobs, args.quick)
     else:
-        args.query = list(dict.fromkeys(args.query))
-    try:
-        args.query.remove(args.target)
-    except ValueError:
-        pass
-    assert args.query
-    assert set(args.query) <= set(available_species)
-    _log.info(f"{args.clade=}")
-    _log.info(f"{args.query=}")
+        _run(args.target, args.query, args.jobs, args.quick)
+
+
+def run(target: str, clade: str, jobs: int, quick: bool = False):
+    tree = phylo.trees[clade]
+    _run(target, phylo.extract_labels(tree), jobs, quick)
+    return Path("pairwise") / target
+
+
+def _run(target: str, queries: list[str], jobs: int, quick: bool):
+    queries = ensemblgenomes.sanitize_queries(target, queries)
+    _executor._max_workers = jobs
     futures: list[confu.Future[Path]] = []
-    for query in args.query:
-        pa = PairwiseAlignment(args.target, query, quick=args.quick, jobs=args.jobs)
+    for query in queries:
+        pa = PairwiseAlignment(target, query, quick=quick)
         futures.extend(pa.run())
     for future in confu.as_completed(futures):
         if (sing_maf := future.result()).exists():
@@ -57,14 +58,13 @@ def main(argv: list[str] = []):
 
 
 class PairwiseAlignment:
-    def __init__(self, target: str, query: str, quick: str, jobs: int):
+    def __init__(self, target: str, query: str, quick: bool):
         self._target = target
         self._query = query
         self._quick = quick
-        self._jobs = jobs
         self._target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
         self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
-        self._outdir = Path(f"pairwise/{self._target}/{self._query}")
+        self._outdir = Path("pairwise") / target / query
 
     def run(self):
         if not cli.dry_run:
@@ -78,7 +78,7 @@ class PairwiseAlignment:
         waiters: list[confu.Future[list[Path]]] = []
         for t in target_chromosomes:
             futures = [
-                _executor.submit(self.align_chr_pair, t, q) for q in query_chromosomes
+                _executor.submit(self.align_chr, t, q) for q in query_chromosomes
             ]
             waiters.append(subexe.submit(wait_results, futures))
         return [
@@ -86,7 +86,7 @@ class PairwiseAlignment:
             for future in confu.as_completed(waiters)
         ]
 
-    def align_chr_pair(self, target_2bit: Path, query_2bit: Path):
+    def align_chr(self, target_2bit: Path, query_2bit: Path):
         axtgz = self.lastz(target_2bit, query_2bit)
         chain = self.axt_chain(target_2bit, query_2bit, axtgz)
         return chain

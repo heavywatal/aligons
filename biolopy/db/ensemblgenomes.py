@@ -111,6 +111,18 @@ def filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
     return (x for x in species if phylo.shorten(x) in queries)
 
 
+def sanitize_queries(target: str, queries: list[str]):
+    queries = list(dict.fromkeys(queries))
+    try:
+        queries.remove(target)
+    except ValueError:
+        pass
+    assert queries
+    _log.debug(f"{queries=}")
+    assert set(queries) <= set(species_names())
+    return queries
+
+
 class FTPensemblgenomes(FTP):
     def __init__(self):
         host = "ftp.ensemblgenomes.org"
