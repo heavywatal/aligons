@@ -13,27 +13,47 @@ import os
 import shutil
 from pathlib import Path
 from subprocess import PIPE
-from typing import Any
 
 from . import cli, fs
 from .db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
+_executor = confu.ThreadPoolExecutor()
 
 
 def main(argv: list[str] = []):
+    available_species = ensemblgenomes.species_names()
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("--quick", action="store_true")
-    parser.add_argument("target")
-    parser.add_argument("query")
+    parser.add_argument("-c", "--clade", choices=phylo.trees.keys())
+    parser.add_argument("target", choices=available_species)
+    parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    assert args.target in ensemblgenomes.species_names()
-    assert args.query in ensemblgenomes.species_names()
-    PairwiseAlignment(args.target, args.query, quick=args.quick, jobs=args.jobs)
+    _executor._max_workers = args.jobs
+    if args.clade:
+        assert not args.query
+        args.query = phylo.extract_labels(phylo.trees[args.clade])
+    else:
+        args.query = list(dict.fromkeys(args.query))
+    try:
+        args.query.remove(args.target)
+    except ValueError:
+        pass
+    assert args.query
+    assert set(args.query) <= set(available_species)
+    _log.info(f"{args.clade=}")
+    _log.info(f"{args.query=}")
+    futures: list[confu.Future[Path]] = []
+    for query in args.query:
+        pa = PairwiseAlignment(args.target, query, quick=args.quick, jobs=args.jobs)
+        futures.extend(pa.run())
+    for future in confu.as_completed(futures):
+        if (sing_maf := future.result()).exists():
+            print(sing_maf)
 
 
 class PairwiseAlignment:
@@ -45,32 +65,26 @@ class PairwiseAlignment:
         self._target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
         self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
         self._outdir = Path(f"pairwise/{self._target}/{self._query}")
-        self.run()
 
     def run(self):
         if not cli.dry_run:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
         patt = "*.chromosome.*.2bit"
-        target_chromosomes = ensemblgenomes.rglob(patt, [self._target])
-        query_chromosomes = list(ensemblgenomes.rglob(patt, [self._query]))
-        with confu.ThreadPoolExecutor(max_workers=self._jobs) as executor:
-            nested: list[list[confu.Future[Path]]] = []
-            for t in fs.sorted_naturally(target_chromosomes):
-                futures = [
-                    executor.submit(self.align_chr_pair, t, q)
-                    for q in fs.sorted_naturally(query_chromosomes)
-                ]
-                nested.append(futures)
-            subexe = confu.ThreadPoolExecutor(max_workers=None)
-            waiters = [subexe.submit(wait_results, fts) for fts in nested]
+        it = ensemblgenomes.rglob(patt, [self._target])
+        target_chromosomes = fs.sorted_naturally(it)
+        it = ensemblgenomes.rglob(patt, [self._query])
+        query_chromosomes = fs.sorted_naturally(it)
+        subexe = confu.ThreadPoolExecutor(max_workers=len(target_chromosomes))
+        waiters: list[confu.Future[list[Path]]] = []
+        for t in target_chromosomes:
             futures = [
-                executor.submit(self.integrate, future.result())
-                for future in confu.as_completed(waiters)
+                _executor.submit(self.align_chr_pair, t, q) for q in query_chromosomes
             ]
-            for future in confu.as_completed(futures):
-                product = future.result()
-                if product.exists():
-                    print(product)
+            waiters.append(subexe.submit(wait_results, futures))
+        return [
+            _executor.submit(self.integrate, future.result())
+            for future in confu.as_completed(waiters)
+        ]
 
     def align_chr_pair(self, target_2bit: Path, query_2bit: Path):
         axtgz = self.lastz(target_2bit, query_2bit)
@@ -182,7 +196,7 @@ class PairwiseAlignment:
         return sing_maf
 
 
-def wait_results(futures: list[confu.Future[Any]]):
+def wait_results(futures: list[confu.Future[Path]]):
     return [f.result() for f in futures]
 
 
