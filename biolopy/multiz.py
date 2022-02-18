@@ -102,7 +102,8 @@ def prepare(indir: Path, outdir: Path):
     tree = phylo.trees[clade]
     species = phylo.extract_labels(tree)
     assert target in species
-    outdir.mkdir(0o755, parents=True, exist_ok=True)
+    if not cli.dry_run:
+        outdir.mkdir(0o755, parents=True, exist_ok=True)
     for query in species:
         if query == target:
             continue
@@ -113,7 +114,8 @@ def prepare(indir: Path, outdir: Path):
         for chrdir in querypath.glob("chromosome.*"):
             src = chrdir / "sing.maf"
             dstdir = outdir / chrdir.name
-            dstdir.mkdir(0o755, exist_ok=True)
+            if not cli.dry_run:
+                dstdir.mkdir(0o755, exist_ok=True)
             dst = dstdir / dstname
             relsrc = os.path.relpath(src, dstdir)
             _log.info(f"{dst}@\n -> {relsrc}")

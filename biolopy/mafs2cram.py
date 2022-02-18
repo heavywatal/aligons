@@ -48,7 +48,8 @@ def mafs2cram(path: Path, jobs: int = 1):
     target_species = path.parent.name
     reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species)
     outdir = path / "cram"
-    outdir.mkdir(0o755, exist_ok=True)
+    if not cli.dry_run:
+        outdir.mkdir(0o755, exist_ok=True)
     outfile = outdir / "genome.cram"
     crams: list[Path] = []
     with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
