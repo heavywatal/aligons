@@ -28,7 +28,7 @@ def phastcons(target: str, clade: str, jobs: int):
     pairwise = lastz.run(target, clade, jobs)
     multiple = multiz.run(pairwise, clade, jobs)
     phast.run(multiple, jobs)
-    kent.integrate_wigs(multiple)
+    kent.run(multiple)
     mafs2cram.run(pairwise, clade, jobs)
 
 

@@ -7,14 +7,12 @@ dst: ./multiple/{target}/{clade}/phastcons.bw
 https://github.com/ucscGenomeBrowser/kent
 """
 import argparse
-import fileinput
 import gzip
 import logging
 import os
 import shutil
 from pathlib import Path
 from subprocess import PIPE
-from typing import Iterable
 
 from . import cli, fs
 from .db import ensemblgenomes
@@ -24,16 +22,19 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] = []):
     parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
-    parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("clade", type=Path)
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    outfile = integrate_wigs(args.clade)
-    print(outfile)
-    _log.info(bigWigInfo(outfile).stdout)
+    run(args.clade)
+
+
+def run(clade: Path):
+    if (bigwig := integrate_wigs(clade)).exists():
+        print(bigwig)
+        _log.info(bigWigInfo(bigwig).rstrip())
 
 
 def integrate_wigs(clade: Path):
@@ -41,26 +42,24 @@ def integrate_wigs(clade: Path):
     chrom_sizes = ensemblgenomes.get_file("*chrom.sizes", species)
     name = "phastcons.wig.gz"
     wigs = [p / name for p in fs.sorted_naturally(clade.glob("chromosome.*"))]
-    _log.info(f"{[str(x) for x in wigs]}")
+    _log.debug(f"{[str(x) for x in wigs]}")
     outfile = clade / "phastcons.bw"
-    with fileinput.input(wigs, mode="rb", openhook=fileinput.hook_compressed) as reader:
-        wigToBigWig(reader, chrom_sizes, outfile)
-    return outfile
-
-
-def wigToBigWig(infile: Iterable[bytes], chrom_sizes: Path, outfile: Path):
+    is_to_run = not cli.dry_run and fs.is_outdated(outfile, wigs)
     args = ["wigToBigWig", "stdin", chrom_sizes, outfile]
-    p = cli.popen_if(not outfile.exists(), args, stdin=PIPE)
-    if not outfile.exists() and not cli.dry_run:
+    p = cli.popen_if(is_to_run, args, stdin=PIPE)
+    if is_to_run:
         assert p.stdin
-        for line in infile:
-            p.stdin.write(line)
-    return p.communicate()
+        for wig in wigs:
+            with gzip.open(wig, "rb") as fin:
+                p.stdin.write(fin.read())
+                p.stdin.flush()
+    p.communicate()
+    return outfile
 
 
 def bigWigInfo(path: Path):
     args = ["bigWigInfo", path]
-    return cli.run(args, stdout=PIPE, text=True)
+    return cli.run(args, stdout=PIPE, text=True).stdout
 
 
 def faToTwoBit(fa_gz: Path):
