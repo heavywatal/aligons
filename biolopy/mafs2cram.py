@@ -28,9 +28,10 @@ def main(argv: list[str] = []):
     cli.dry_run = args.dry_run
     if args.test:
         for path in args.query:
-            target_species = "oryza_sativa"
-            reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species)
-            maf2cram(path, Path(path.parent.name + ".cram"), reference)
+            target = path.parent.parent.parent.name
+            reference = ensemblgenomes.get_file("*.genome.fa.gz", target)
+            stem = str(path.parent).replace("/", "_")
+            maf2cram(path, Path(stem + ".cram"), reference)
         return
     for path in args.query:
         if (cram := mafs2cram(path, args.jobs)).exists():
@@ -85,10 +86,13 @@ def maf2cram(infile: Path, outfile: Path, reference: Path):
 
 def sanitize_cram(cond: bool, reference: Path, sam: bytes):
     def repl(mobj: re.Match[bytes]):
+        qstart = 0
         if int(mobj["flag"]) & 16:  # reverse strand
-            qstart = int(mobj["tail_cigar"]) + 1
+            if tail := mobj["tail_cigar"]:
+                qstart = int(tail.rstrip(b"H")) + 1
         else:
-            qstart = int(mobj["head_cigar"]) + 1
+            if head := mobj["head_cigar"]:
+                qstart = int(head.rstrip(b"H")) + 1
         qend = qstart + len(mobj["seq"]) - 1
         cells = [
             mobj["qname"] + f":{qstart}-{qend}".encode(),
@@ -108,7 +112,7 @@ def sanitize_cram(cond: bool, reference: Path, sam: bytes):
     patt = re.compile(
         rb"^(?P<qname>\S+)\t(?P<flag>\d+)\t"
         rb"\w+\.(?P<rname>\S+)\t(?P<pos>\d+)\t(?P<mapq>\d+)\t"
-        rb"(?P<head_cigar>\d+)H(?P<cigar>\S+?)(?P<tail_cigar>\d+)H\t"
+        rb"(?P<head_cigar>\d+H)?(?P<cigar>\S+?)(?P<tail_cigar>\d+H)?\t"
         rb"(?P<rnext>\S+)\t(?P<pnext>\w+)\t(?P<tlen>\d+)\t"
         rb"(?P<seq>\w+)\t(?P<misc>.+$)"
     )
