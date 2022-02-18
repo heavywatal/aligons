@@ -109,7 +109,7 @@ def prepare(indir: Path, outdir: Path):
             continue
         querypath = indir / query
         if not querypath.exists():
-            _log.error(f"not found {querypath}")
+            _log.warning(f"not found {querypath}")
         dstname = f"{phylo.shorten(target)}.{phylo.shorten(query)}.sing.maf"
         for chrdir in querypath.glob("chromosome.*"):
             src = chrdir / "sing.maf"
