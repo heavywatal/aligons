@@ -10,6 +10,7 @@ import os
 import re
 from pathlib import Path
 from subprocess import PIPE
+from typing import Iterable
 
 from . import cli, fs
 from .db import ensemblgenomes, phylo
@@ -33,16 +34,20 @@ def main(argv: list[str] = []):
             stem = str(path.parent).replace("/", "_")
             maf2cram(path, Path(stem + ".cram"), reference)
         return
-    for path in args.query:
-        if (cram := mafs2cram(path, args.jobs)).exists():
-            print(cram)
+    _run(args.query, args.jobs)
 
 
 def run(target: Path, clade: str, jobs: int):
     tree = phylo.trees[clade]
-    queries = phylo.extract_labels(tree)
-    for query in ensemblgenomes.sanitize_queries(target.name, queries):
-        mafs2cram(target / query, jobs)
+    tips = phylo.extract_labels(tree)
+    query_names = ensemblgenomes.sanitize_queries(target.name, tips)
+    _run([target / q for q in query_names], jobs)
+
+
+def _run(queries: Iterable[Path], jobs: int):
+    for path in queries:
+        if (cram := mafs2cram(path, jobs)).exists():
+            print(cram)
 
 
 def mafs2cram(path: Path, jobs: int = 1):
