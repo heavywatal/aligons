@@ -27,7 +27,7 @@ def main(argv: list[str] = []):
         if args.name:
             print(" ".join(extract_labels(tree)))
         elif args.graph:
-            newick = trees[args.clade]
+            newick = full_trees[args.clade]
             root = parse_newick(newick)
             if args.graph > 1:
                 gen = render_nodes(root)
@@ -66,20 +66,25 @@ def shorten(name: str):
     return split[0][0] + split[1][:3]
 
 
+def remove_inner(newick: str):
+    return re.sub(r"\)[^(),;]+", ")", newick)
+
+
 def make_trees():
-    ehrhartoideae = "(oryza_sativa,leersia_perrieri)"
-    pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))"
-    andropogoneae = "(sorghum_bicolor,zea_mays)"
-    paniceae = "(setaria_italica,panicum_hallii_fil2)"
-    bep = f"({ehrhartoideae},{pooideae})"
-    pacmad = f"({andropogoneae},{paniceae})"
-    poaceae = f"({bep},{pacmad})"
-    monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)"  # noqa: F841
+    ehrhartoideae = "(oryza_sativa,leersia_perrieri)ehrhartoideae"
+    pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae"
+    andropogoneae = "(sorghum_bicolor,zea_mays)andropogoneae"
+    paniceae = "(setaria_italica,panicum_hallii_fil2)paniceae"
+    bep = f"({ehrhartoideae},{pooideae})bep"
+    pacmad = f"({andropogoneae},{paniceae})pacmad"
+    poaceae = f"({bep},{pacmad})poaceae"
+    monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"  # noqa: F841
     # pyright: reportUnusedVariable=false
     return {k: v + ";" for k, v in locals().items()}
 
 
-trees = make_trees()
+full_trees = make_trees()
+trees = {k: remove_inner(v) for k, v in full_trees.items()}
 
 
 class Node(NamedTuple):
@@ -145,29 +150,30 @@ def parse_newick(newick: str):
     newick_old = ""
     while newick != newick_old:
         newick_old = newick
-        newick, nodes = _extract_tip_trios(newick, nodes)
+        newick, nodes = _extract_tip_clade(newick, nodes)
     root = nodes.popitem()[1]
     assert not nodes
     return root
 
 
-def _extract_tip_trios(tree: str, nodes: dict[str, Node]):
-    for mobj in re.finditer(r"\(([^(]+?),([^(]+?)\)([^(),;]+)?", tree):
-        name1 = mobj.group(1)
-        name2 = mobj.group(2)
-        node1 = nodes.pop(name1, _make_node(name1))
-        node2 = nodes.pop(name2, _make_node(name2))
-        name3 = f"{node1.name}+{node2.name}" + (mobj.group(3) or "")
-        nodes[name3] = _make_node(name3, [node1, node2])
-        tree = tree.replace(mobj.group(0), name3)
+def _extract_tip_clade(tree: str, nodes: dict[str, Node]):
+    for mobj in re.finditer(r"\(([^(]+?)\)([^(),;]+)?", tree):
+        children: list[Node] = []
+        for label in mobj.group(1).split(","):
+            name, distance = _parse_node_label(label)
+            children.append(nodes.pop(name, Node(name, [], distance)))
+        name, distance = _parse_node_label(mobj.group(2) or "")
+        name = name or "+".join([x.name for x in children])
+        nodes[name] = Node(name, children, distance)
+        tree = tree.replace(mobj.group(0), name)
     return tree, nodes
 
 
-def _make_node(label: str, children: list[Node] = []) -> Node:
+def _parse_node_label(label: str):
     if ":" in label:
-        (name, dist) = label.split(":")
-        return Node(name.strip(), children, float(dist.strip()))
-    return Node(label.strip(), children)
+        name, distance = label.split(":")
+        return name.strip(), float(distance.strip())
+    return label.strip(), None
 
 
 def rectangulate(renderer: Iterable[tuple[str, str]]):
