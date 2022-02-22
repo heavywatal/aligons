@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import logging
 import re
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from typing import NamedTuple, TypeAlias
 
 from .. import cli
@@ -93,29 +93,30 @@ class Node(NamedTuple):
     distance: float | None = None
 
 
-class Branches(NamedTuple):
-    fork: str = "├─"
+class Bricks(NamedTuple):
+    first_branch: str = "├─"
+    middle_branch: str = "├─"
+    last_branch: str = "└─"
     straight: str = "│ "
-    corner: str = "└─"
     blank: str = "  "
 
 
-StrGen: TypeAlias = Generator[str, None, None]
-GraphGen: TypeAlias = Generator[tuple[str, str], None, None]
-BRANCHES = Branches()
-COMPACT_BRANCHES = Branches("┬─")
+StrGen: TypeAlias = Iterator[str]
+GraphGen: TypeAlias = Iterable[tuple[str, str]]
+NORMAL_BRICKS = Bricks()
+COMPACT_BRICKS = Bricks("┬─")
 
 
 def render_nodes(node: Node, columns: list[StrGen] = []) -> GraphGen:
     for line in node.name.splitlines():
         prefix = "".join([next(gen) for gen in columns])
         yield (prefix, line)
-    for x in _iter_children(node, columns, render_nodes, BRANCHES):
+    for x in _iter_children(node, columns, render_nodes, NORMAL_BRICKS):
         yield x
 
 
 def render_tips(node: Node, columns: list[StrGen] = []) -> GraphGen:
-    for x in _iter_children(node, columns, render_tips, COMPACT_BRANCHES):
+    for x in _iter_children(node, columns, render_tips, COMPACT_BRICKS):
         yield x
     if not node.children:
         prefix = "".join([next(gen) for gen in columns])
@@ -126,23 +127,25 @@ def _iter_children(
     node: Node,
     columns: list[StrGen],
     render_fun: Callable[[Node, list[StrGen]], GraphGen],
-    branches: Branches,
+    bricks: Bricks,
 ):
     for child in (children := node.children):
-        if child != children[-1]:
-            gen = _column_generator(branches.fork, branches.straight)
+        if child.name == children[-1].name:
+            gen = _column_generator(bricks.last_branch, bricks.blank)
+        elif child.name == children[0].name:
+            gen = _column_generator(bricks.first_branch, bricks.straight)
         else:
-            gen = _column_generator(branches.corner, branches.blank)
+            gen = _column_generator(bricks.middle_branch, bricks.straight)
         columns.append(gen)
         for x in render_fun(child, columns):
             yield x
         columns.pop()
 
 
-def _column_generator(first: str, rest: str) -> StrGen:
-    yield first
+def _column_generator(top: str, bottom: str) -> StrGen:
+    yield top
     while True:
-        yield rest
+        yield bottom
 
 
 def parse_newick(newick: str):
@@ -176,7 +179,7 @@ def _parse_node_label(label: str):
     return label.strip(), None
 
 
-def rectangulate(renderer: Iterable[tuple[str, str]]):
+def rectangulate(renderer: GraphGen):
     lines = list(renderer)
     widest = max(lines, key=lambda p: len(p[0]) + len(p[1]))
     max_width = len(widest[0]) + len(widest[1])
@@ -184,7 +187,7 @@ def rectangulate(renderer: Iterable[tuple[str, str]]):
         yield (prefix.ljust(max_width - len(label), "─"), label)
 
 
-def elongate(renderer: Iterable[tuple[str, str]]):
+def elongate(renderer: GraphGen):
     lines = list(renderer)
     deepest = max(lines, key=lambda p: len(p[0]))
     max_depth = len(deepest[0])
