@@ -13,8 +13,8 @@ import os
 import shutil
 from pathlib import Path
 
-from . import cli, fs
-from .db import ensemblgenomes
+from .. import cli, fs
+from ..db import ensemblgenomes
 
 _log = logging.getLogger(__name__)
 

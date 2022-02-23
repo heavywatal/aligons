@@ -14,8 +14,8 @@ import os
 import shutil
 from pathlib import Path
 
-from . import cli, fs
-from .db import phylo
+from .. import cli, fs
+from ..db import phylo
 
 _log = logging.getLogger(__name__)
 

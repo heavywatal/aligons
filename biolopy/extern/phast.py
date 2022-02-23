@@ -17,8 +17,8 @@ import sys
 from pathlib import Path
 from typing import IO, AnyStr, cast
 
-from . import cli, fs
-from .db import ensemblgenomes, phylo
+from .. import cli, fs
+from ..db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from . import cli, fs
+from .. import cli, fs
 
 _log = logging.getLogger(__name__)
 

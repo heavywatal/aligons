@@ -11,8 +11,8 @@ import re
 from pathlib import Path
 from typing import Iterable
 
-from . import cli, fs
-from .db import ensemblgenomes, phylo
+from .. import cli, fs
+from ..db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
 

@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 from typing import Iterable
 
-from .. import cli, fs, htslib, kent
+from .. import cli, fs
+from ..extern import htslib, kent
 from . import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)

@@ -2,7 +2,8 @@ import argparse
 import logging
 import os
 
-from . import cli, lastz, multiz, phast, mafs2cram, kent
+from . import cli
+from .extern import lastz, multiz, phast, mafs2cram, kent
 from .db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)

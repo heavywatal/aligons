@@ -13,8 +13,8 @@ import os
 import shutil
 from pathlib import Path
 
-from . import cli, fs
-from .db import ensemblgenomes, phylo
+from .. import cli, fs
+from ..db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
 _executor = confu.ThreadPoolExecutor()
