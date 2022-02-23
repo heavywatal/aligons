@@ -13,7 +13,6 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from subprocess import PIPE, STDOUT, CalledProcessError
 
 from . import cli, fs
 from .db import phylo
@@ -64,9 +63,9 @@ def multiz(path: Path):
             fout.write(script)
     try:
         comp = cli.run_if(
-            is_to_run, script, shell=True, cwd=path, stdout=PIPE, stderr=STDOUT
+            is_to_run, script, shell=True, cwd=path, stdout=cli.PIPE, stderr=cli.STDOUT
         )
-    except CalledProcessError as perr:
+    except cli.CalledProcessError as perr:
         for line in perr.stdout.strip().splitlines():
             _log.error(f"{path.name}:{line}")
         _log.error(outfile)
@@ -93,7 +92,7 @@ def roast(sing_mafs: list[Path], clade: str, tmpdir: str, outfile: str):
         + " ".join([x.name for x in sing_mafs])
         + f" {tmpdir}/{outfile}"
     )
-    return cli.run(args, stdout=PIPE, text=True)
+    return cli.run(args, stdout=cli.PIPE, text=True)
 
 
 def prepare(indir: Path, outdir: Path):

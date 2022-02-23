@@ -9,7 +9,6 @@ import logging
 import os
 import re
 from pathlib import Path
-from subprocess import PIPE
 from typing import Iterable
 
 from . import cli, fs
@@ -81,11 +80,11 @@ def mafs2cram(path: Path, jobs: int = 1):
 
 def maf2cram(infile: Path, outfile: Path, reference: Path):
     is_to_run = fs.is_outdated(outfile, infile)
-    mafconv = cli.popen_if(is_to_run, ["maf-convert", "sam", infile], stdout=PIPE)
+    mafconv = cli.popen_if(is_to_run, ["maf-convert", "sam", infile], stdout=cli.PIPE)
     (stdout, _stderr) = mafconv.communicate()
     content = sanitize_cram(is_to_run, reference, stdout)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {str(outfile)}"
-    cli.popen_if(is_to_run, cmd, stdin=PIPE).communicate(content)
+    cli.popen_if(is_to_run, cmd, stdin=cli.PIPE).communicate(content)
     return outfile
 
 
@@ -123,7 +122,7 @@ def sanitize_cram(cond: bool, reference: Path, sam: bytes):
     )
     lines = [patt.sub(repl, line) for line in sam.splitlines(keepends=True)]
     cmd = f"samtools view --no-PG -h -C -@ 2 -T {str(reference)}"
-    samview = cli.popen_if(cond, cmd, stdin=PIPE, stdout=PIPE)
+    samview = cli.popen_if(cond, cmd, stdin=cli.PIPE, stdout=cli.PIPE)
     (stdout, _stderr) = samview.communicate(b"".join(lines))
     return stdout
 

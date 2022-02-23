@@ -15,7 +15,6 @@ import os
 import re
 import sys
 from pathlib import Path
-from subprocess import PIPE
 from typing import IO, AnyStr, cast
 
 from . import cli, fs
@@ -58,7 +57,7 @@ def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
     )
     wig = path / "phastcons.wig.gz"
     is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
-    p = cli.run_if(is_to_run, cmd, stdout=PIPE)
+    p = cli.run_if(is_to_run, cmd, stdout=cli.PIPE)
     with open_if(is_to_run, wig, "wb") as fout:
         fout.write(p.stdout)
     return wig
@@ -105,7 +104,7 @@ def msa_view_features(maf: Path, gff: Path, conserved: bool):
         outfile = maf.parent / "4d-codons.ss"
         cmd += " --4d"
     is_to_run = fs.is_outdated(outfile, maf)
-    p = cli.run_if(is_to_run, cmd, stdout=PIPE, shell=True, executable="/bin/bash")
+    p = cli.run_if(is_to_run, cmd, stdout=cli.PIPE, shell=True, executable="/bin/bash")
     with open_if(is_to_run, outfile, "wb") as fout:
         fout.write(p.stdout)
     return outfile
@@ -115,7 +114,7 @@ def msa_view_ss(codons_ss: Path):
     outfile = codons_ss.parent / "4d-sites.ss"
     s = f"msa_view {str(codons_ss)} --in-format SS --out-format SS --tuple-size 1"
     is_to_run = fs.is_outdated(outfile, codons_ss)
-    p = cli.run_if(is_to_run, s, stdout=PIPE)
+    p = cli.run_if(is_to_run, s, stdout=cli.PIPE)
     with open_if(is_to_run, outfile, "wb") as fout:
         fout.write(p.stdout)
     return outfile

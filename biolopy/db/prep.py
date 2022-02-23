@@ -3,7 +3,6 @@ import concurrent.futures as confu
 import itertools
 import logging
 import os
-import subprocess
 from pathlib import Path
 from typing import Iterable
 
@@ -63,7 +62,7 @@ def checksums(files: Iterable[Path]):
 def checkline(line: str, directory: Path):
     (e_sum, e_blocks, name) = line.split()
     if (path := directory / name).exists():
-        p = cli.run(f"sum {path}", stdout=subprocess.PIPE, text=True, quiet=True)
+        p = cli.run(f"sum {path}", stdout=cli.PIPE, text=True, quiet=True)
         (o_sum, o_blocks, _) = p.stdout.split()
         if (e_sum.lstrip("0"), e_blocks) != (o_sum, o_blocks):
             _log.error(f"{name}")

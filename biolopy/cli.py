@@ -5,13 +5,16 @@ import shlex
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
-from typing import IO, Any, TypeAlias
+from typing import IO, Any, Final, TypeAlias
 
 StrPath: TypeAlias = str | Path[str]
 Args: TypeAlias = list[StrPath]
 _CMD: TypeAlias = Sequence[StrPath] | str
 _FILE: TypeAlias = IO[Any] | int | None
 
+CalledProcessError = subprocess.CalledProcessError
+PIPE: Final = subprocess.PIPE
+STDOUT: Final = subprocess.STDOUT
 dry_run = False
 
 _log = logging.getLogger(__name__)

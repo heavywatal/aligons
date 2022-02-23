@@ -12,7 +12,6 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from subprocess import PIPE
 
 from . import cli, fs
 from .db import ensemblgenomes
@@ -46,7 +45,7 @@ def integrate_wigs(clade: Path):
     outfile = clade / "phastcons.bw"
     is_to_run = not cli.dry_run and fs.is_outdated(outfile, wigs)
     args = ["wigToBigWig", "stdin", chrom_sizes, outfile]
-    p = cli.popen_if(is_to_run, args, stdin=PIPE)
+    p = cli.popen_if(is_to_run, args, stdin=cli.PIPE)
     if is_to_run:
         assert p.stdin
         for wig in wigs:
@@ -59,7 +58,7 @@ def integrate_wigs(clade: Path):
 
 def bigWigInfo(path: Path):
     args = ["bigWigInfo", path]
-    return cli.run(args, stdout=PIPE, text=True).stdout
+    return cli.run(args, stdout=cli.PIPE, text=True).stdout
 
 
 def faToTwoBit(fa_gz: Path):
@@ -67,7 +66,7 @@ def faToTwoBit(fa_gz: Path):
     if fs.is_outdated(outfile, fa_gz) and not cli.dry_run:
         with gzip.open(fa_gz, "rb") as fin:
             args = ["faToTwoBit", "stdin", outfile]
-            p = cli.popen(args, stdin=PIPE)
+            p = cli.popen(args, stdin=cli.PIPE)
             assert p.stdin
             shutil.copyfileobj(fin, p.stdin)
             p.stdin.close()

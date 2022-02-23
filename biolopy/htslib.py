@@ -3,7 +3,6 @@ import logging
 import re
 from collections.abc import Iterable
 from pathlib import Path
-from subprocess import PIPE
 
 from . import cli, fs
 
@@ -27,7 +26,7 @@ def create_genome_bgzip(path: Path):
 def bgzip(infiles: list[Path], outfile: Path):
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         with open(outfile, "wb") as fout:
-            bgzip = cli.popen("bgzip -@2", stdin=PIPE, stdout=fout)
+            bgzip = cli.popen("bgzip -@2", stdin=cli.PIPE, stdout=fout)
             assert bgzip.stdin
             if ".gff" in outfile.name:
                 header = collect_gff3_header(infiles)
@@ -79,11 +78,13 @@ def tabix(bgz: Path):
 
 def sort_clean_chromosome_gff3(infile: Path):
     # TODO: jbrowse2 still needs billzt/gff3sort precision?
-    p1 = cli.popen(f"zgrep -v '^#' {str(infile)}", stdout=PIPE, quiet=True)
-    p2 = cli.popen("grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=PIPE, quiet=True)
+    p1 = cli.popen(f"zgrep -v '^#' {str(infile)}", stdout=cli.PIPE, quiet=True)
+    p2 = cli.popen(
+        "grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=cli.PIPE, quiet=True
+    )
     if p1.stdout:
         p1.stdout.close()
-    p3 = cli.popen("sort -k4,4n", stdin=p2.stdout, stdout=PIPE, quiet=True)
+    p3 = cli.popen("sort -k4,4n", stdin=p2.stdout, stdout=cli.PIPE, quiet=True)
     if p2.stdout:
         p2.stdout.close()
     return p3
