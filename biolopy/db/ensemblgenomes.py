@@ -9,7 +9,7 @@ from collections.abc import Iterable
 from ftplib import FTP
 from pathlib import Path
 
-from .. import cli
+from .. import cli, subp
 from . import phylo
 
 _log = logging.getLogger(__name__)
@@ -179,7 +179,7 @@ def rsync(relpath: str, options: str = ""):
     remote_prefix = f"rsync://{server}/all/pub/plants/release-{VERSION}"
     src = f"{remote_prefix}/{relpath}/"
     dst = PREFIX / relpath
-    return cli.run(f"rsync -auv {options} {src} {dst}")
+    return subp.run(f"rsync -auv {options} {src} {dst}")
 
 
 if __name__ == "__main__":

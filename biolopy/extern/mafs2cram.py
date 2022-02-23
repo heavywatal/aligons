@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Iterable
 
-from .. import cli, fs
+from .. import cli, fs, subp
 from ..db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
@@ -73,18 +73,18 @@ def mafs2cram(path: Path, jobs: int = 1):
     is_to_run = bool(crams) and fs.is_outdated(outfile, crams)
     cmd = f"samtools merge --no-PG -O CRAM -@ 2 -f -o {str(outfile)} "
     cmd += " ".join([str(x) for x in crams])
-    cli.run_if(is_to_run, cmd)
-    cli.run_if(is_to_run, ["samtools", "index", outfile])
+    subp.run_if(is_to_run, cmd)
+    subp.run_if(is_to_run, ["samtools", "index", outfile])
     return outfile
 
 
 def maf2cram(infile: Path, outfile: Path, reference: Path):
     is_to_run = fs.is_outdated(outfile, infile)
-    mafconv = cli.popen_if(is_to_run, ["maf-convert", "sam", infile], stdout=cli.PIPE)
+    mafconv = subp.popen_if(is_to_run, ["maf-convert", "sam", infile], stdout=subp.PIPE)
     (stdout, _stderr) = mafconv.communicate()
     content = sanitize_cram(is_to_run, reference, stdout)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {str(outfile)}"
-    cli.popen_if(is_to_run, cmd, stdin=cli.PIPE).communicate(content)
+    subp.popen_if(is_to_run, cmd, stdin=subp.PIPE).communicate(content)
     return outfile
 
 
@@ -122,7 +122,7 @@ def sanitize_cram(cond: bool, reference: Path, sam: bytes):
     )
     lines = [patt.sub(repl, line) for line in sam.splitlines(keepends=True)]
     cmd = f"samtools view --no-PG -h -C -@ 2 -T {str(reference)}"
-    samview = cli.popen_if(cond, cmd, stdin=cli.PIPE, stdout=cli.PIPE)
+    samview = subp.popen_if(cond, cmd, stdin=subp.PIPE, stdout=subp.PIPE)
     (stdout, _stderr) = samview.communicate(b"".join(lines))
     return stdout
 

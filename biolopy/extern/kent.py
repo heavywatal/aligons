@@ -13,7 +13,7 @@ import os
 import shutil
 from pathlib import Path
 
-from .. import cli, fs
+from .. import cli, fs, subp
 from ..db import ensemblgenomes
 
 _log = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ def integrate_wigs(clade: Path):
     outfile = clade / "phastcons.bw"
     is_to_run = not cli.dry_run and fs.is_outdated(outfile, wigs)
     args = ["wigToBigWig", "stdin", chrom_sizes, outfile]
-    p = cli.popen_if(is_to_run, args, stdin=cli.PIPE)
+    p = subp.popen_if(is_to_run, args, stdin=subp.PIPE)
     if is_to_run:
         assert p.stdin
         for wig in wigs:
@@ -58,7 +58,7 @@ def integrate_wigs(clade: Path):
 
 def bigWigInfo(path: Path):
     args = ["bigWigInfo", path]
-    return cli.run(args, stdout=cli.PIPE, text=True).stdout
+    return subp.run(args, stdout=subp.PIPE, text=True).stdout
 
 
 def faToTwoBit(fa_gz: Path):
@@ -66,7 +66,7 @@ def faToTwoBit(fa_gz: Path):
     if fs.is_outdated(outfile, fa_gz) and not cli.dry_run:
         with gzip.open(fa_gz, "rb") as fin:
             args = ["faToTwoBit", "stdin", outfile]
-            p = cli.popen(args, stdin=cli.PIPE)
+            p = subp.popen(args, stdin=subp.PIPE)
             assert p.stdin
             shutil.copyfileobj(fin, p.stdin)
             p.stdin.close()
@@ -80,7 +80,7 @@ def faSize(genome_fa_gz: Path):
     outfile = genome_fa_gz.parent / "fasize.chrom.sizes"
     if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
         with open(outfile, "wb") as fout:
-            cli.run(["faSize", "-detailed", genome_fa_gz], stdout=fout)
+            subp.run(["faSize", "-detailed", genome_fa_gz], stdout=fout)
     return outfile
 
 

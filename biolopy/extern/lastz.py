@@ -13,7 +13,7 @@ import os
 import shutil
 from pathlib import Path
 
-from .. import cli, fs
+from .. import cli, fs, subp
 from ..db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
@@ -107,7 +107,7 @@ class PairwiseAlignment:
         if self._quick:
             args += " --notransition --nogapped"
         is_to_run = fs.is_outdated(axtgz, [target_2bit, query_2bit])
-        lastz = cli.run_if(is_to_run, args, stdout=cli.PIPE)
+        lastz = subp.run_if(is_to_run, args, stdout=subp.PIPE)
         if is_to_run and not cli.dry_run:
             with gzip.open(axtgz, "wb") as fout:
                 fout.write(lastz.stdout)
@@ -118,7 +118,7 @@ class PairwiseAlignment:
         cmd = "axtChain -minScore=5000 -linearGap=medium stdin"
         cmd += f" {target_2bit} {query_2bit} {chain}"
         is_to_run = fs.is_outdated(chain, axtgz)
-        p = cli.popen_if(is_to_run, cmd, stdin=cli.PIPE)
+        p = subp.popen_if(is_to_run, cmd, stdin=subp.PIPE)
         if is_to_run and not cli.dry_run:
             assert p.stdin
             with gzip.open(axtgz, "rb") as fin:
@@ -134,10 +134,10 @@ class PairwiseAlignment:
         pre_chain = subdir / "pre.chain.gz"
         is_to_run = fs.is_outdated(pre_chain, chains)
         merge_cmd = ["chainMergeSort"] + [str(x) for x in chains]
-        merge = cli.popen_if(is_to_run, merge_cmd, stdout=cli.PIPE)
+        merge = subp.popen_if(is_to_run, merge_cmd, stdout=subp.PIPE)
         assert merge.stdout
         pre_cmd = f"chainPreNet stdin {self._target_sizes} {self._query_sizes} stdout"
-        pre = cli.popen_if(is_to_run, pre_cmd, stdin=merge.stdout, stdout=cli.PIPE)
+        pre = subp.popen_if(is_to_run, pre_cmd, stdin=merge.stdout, stdout=subp.PIPE)
         merge.stdout.close()
         if is_to_run and not cli.dry_run:
             (stdout, _stderr) = pre.communicate()
@@ -151,14 +151,14 @@ class PairwiseAlignment:
         cn_cmd = (
             f"chainNet stdin {self._target_sizes} {self._query_sizes} stdout /dev/null"
         )
-        cn = cli.popen_if(is_to_run, cn_cmd, stdin=cli.PIPE, stdout=cli.PIPE)
+        cn = subp.popen_if(is_to_run, cn_cmd, stdin=subp.PIPE, stdout=subp.PIPE)
         assert cn.stdin
         assert cn.stdout
         if is_to_run and not cli.dry_run:
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, cn.stdin)
                 cn.stdin.close()
-        sn = cli.popen_if(
+        sn = subp.popen_if(
             is_to_run, f"netSyntenic stdin {syntenic_net}", stdin=cn.stdout
         )
         cn.stdout.close()
@@ -171,15 +171,15 @@ class PairwiseAlignment:
         query_2bit = ensemblgenomes.get_file("*.genome.2bit", self._query)
         is_to_run = fs.is_outdated(sing_maf, [syntenic_net, pre_chain])
         toaxt_cmd = f"netToAxt {syntenic_net} stdin {target_2bit} {query_2bit} stdout"
-        toaxt = cli.popen_if(is_to_run, toaxt_cmd, stdin=cli.PIPE, stdout=cli.PIPE)
+        toaxt = subp.popen_if(is_to_run, toaxt_cmd, stdin=subp.PIPE, stdout=subp.PIPE)
         assert toaxt.stdin
         assert toaxt.stdout
         if is_to_run and not cli.dry_run:
             with gzip.open(pre_chain, "rb") as fout:
                 shutil.copyfileobj(fout, toaxt.stdin)
                 toaxt.stdin.close()
-        sort = cli.popen_if(
-            is_to_run, "axtSort stdin stdout", stdin=toaxt.stdout, stdout=cli.PIPE
+        sort = subp.popen_if(
+            is_to_run, "axtSort stdin stdout", stdin=toaxt.stdout, stdout=subp.PIPE
         )
         toaxt.stdout.close()
         assert sort.stdout
@@ -189,7 +189,7 @@ class PairwiseAlignment:
             f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
             f" {self._target_sizes} {self._query_sizes} {sing_maf}"
         )
-        atm = cli.popen_if(is_to_run, axttomaf_cmd, stdin=sort.stdout)
+        atm = subp.popen_if(is_to_run, axttomaf_cmd, stdin=sort.stdout)
         sort.stdout.close()
         atm.communicate()
         return sing_maf

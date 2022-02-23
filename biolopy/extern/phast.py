@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 from typing import IO, AnyStr, cast
 
-from .. import cli, fs
+from .. import cli, fs, subp
 from ..db import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
     )
     wig = path / "phastcons.wig.gz"
     is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
-    p = cli.run_if(is_to_run, cmd, stdout=cli.PIPE)
+    p = subp.run_if(is_to_run, cmd, stdout=subp.PIPE)
     with open_if(is_to_run, wig, "wb") as fout:
         fout.write(p.stdout)
     return wig
@@ -104,7 +104,9 @@ def msa_view_features(maf: Path, gff: Path, conserved: bool):
         outfile = maf.parent / "4d-codons.ss"
         cmd += " --4d"
     is_to_run = fs.is_outdated(outfile, maf)
-    p = cli.run_if(is_to_run, cmd, stdout=cli.PIPE, shell=True, executable="/bin/bash")
+    p = subp.run_if(
+        is_to_run, cmd, stdout=subp.PIPE, shell=True, executable="/bin/bash"
+    )
     with open_if(is_to_run, outfile, "wb") as fout:
         fout.write(p.stdout)
     return outfile
@@ -114,7 +116,7 @@ def msa_view_ss(codons_ss: Path):
     outfile = codons_ss.parent / "4d-sites.ss"
     s = f"msa_view {str(codons_ss)} --in-format SS --out-format SS --tuple-size 1"
     is_to_run = fs.is_outdated(outfile, codons_ss)
-    p = cli.run_if(is_to_run, s, stdout=cli.PIPE)
+    p = subp.run_if(is_to_run, s, stdout=subp.PIPE)
     with open_if(is_to_run, outfile, "wb") as fout:
         fout.write(p.stdout)
     return outfile
@@ -133,13 +135,13 @@ def phyloFit(ss: Path, tree: str, conserved: bool):
         f"phyloFit --tree {tree} --msa-format SS {option}"
         f" --out-root {out_root} {str(ss)}"
     )
-    cli.run_if(fs.is_outdated(outfiles[0], ss), cmd)
+    subp.run_if(fs.is_outdated(outfiles[0], ss), cmd)
     return outfiles
 
 
 def phyloBoot(mods: list[Path], outfile: Path):
     read_mods = ",".join(str(x) for x in mods)
-    cli.run_if(
+    subp.run_if(
         fs.is_outdated(outfile, mods),
         f"phyloBoot --read-mods {read_mods} --output-average {outfile}",
     )

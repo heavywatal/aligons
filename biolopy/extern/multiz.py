@@ -14,7 +14,7 @@ import os
 import shutil
 from pathlib import Path
 
-from .. import cli, fs
+from .. import cli, fs, subp
 from ..db import phylo
 
 _log = logging.getLogger(__name__)
@@ -62,10 +62,15 @@ def multiz(path: Path):
         with open(path / "roasted.sh", "wt") as fout:
             fout.write(script)
     try:
-        comp = cli.run_if(
-            is_to_run, script, shell=True, cwd=path, stdout=cli.PIPE, stderr=cli.STDOUT
+        comp = subp.run_if(
+            is_to_run,
+            script,
+            shell=True,
+            cwd=path,
+            stdout=subp.PIPE,
+            stderr=subp.STDOUT,
         )
-    except cli.CalledProcessError as perr:
+    except subp.CalledProcessError as perr:
         for line in perr.stdout.strip().splitlines():
             _log.error(f"{path.name}:{line}")
         _log.error(outfile)
@@ -92,7 +97,7 @@ def roast(sing_mafs: list[Path], clade: str, tmpdir: str, outfile: str):
         + " ".join([x.name for x in sing_mafs])
         + f" {tmpdir}/{outfile}"
     )
-    return cli.run(args, stdout=cli.PIPE, text=True)
+    return subp.run(args, stdout=subp.PIPE, text=True)
 
 
 def prepare(indir: Path, outdir: Path):

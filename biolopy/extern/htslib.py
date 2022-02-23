@@ -4,7 +4,7 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from .. import cli, fs
+from .. import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def create_genome_bgzip(path: Path):
 def bgzip(infiles: list[Path], outfile: Path):
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         with open(outfile, "wb") as fout:
-            bgzip = cli.popen("bgzip -@2", stdin=cli.PIPE, stdout=fout)
+            bgzip = subp.popen("bgzip -@2", stdin=subp.PIPE, stdout=fout)
             assert bgzip.stdin
             if ".gff" in outfile.name:
                 header = collect_gff3_header(infiles)
@@ -64,7 +64,7 @@ def faidx(bgz: Path):
     """http://www.htslib.org/doc/samtools-faidx.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
     if fs.is_outdated(outfile, bgz):
-        cli.run(["samtools", "faidx", bgz])
+        subp.run(["samtools", "faidx", bgz])
     return outfile
 
 
@@ -72,19 +72,19 @@ def tabix(bgz: Path):
     """http://www.htslib.org/doc/tabix.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".tbi")
     if fs.is_outdated(outfile, bgz):
-        cli.run(["tabix", bgz])
+        subp.run(["tabix", bgz])
     return outfile
 
 
 def sort_clean_chromosome_gff3(infile: Path):
     # TODO: jbrowse2 still needs billzt/gff3sort precision?
-    p1 = cli.popen(f"zgrep -v '^#' {str(infile)}", stdout=cli.PIPE, quiet=True)
-    p2 = cli.popen(
-        "grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=cli.PIPE, quiet=True
+    p1 = subp.popen(f"zgrep -v '^#' {str(infile)}", stdout=subp.PIPE, quiet=True)
+    p2 = subp.popen(
+        "grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=subp.PIPE, quiet=True
     )
     if p1.stdout:
         p1.stdout.close()
-    p3 = cli.popen("sort -k4,4n", stdin=p2.stdout, stdout=cli.PIPE, quiet=True)
+    p3 = subp.popen("sort -k4,4n", stdin=p2.stdout, stdout=subp.PIPE, quiet=True)
     if p2.stdout:
         p2.stdout.close()
     return p3
