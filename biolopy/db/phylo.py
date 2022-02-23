@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import logging
 import re
 from collections.abc import Callable, Iterable, Iterator
@@ -12,7 +11,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("-n", "--name", action="store_true")
     parser.add_argument("-s", "--short", action="store_true")
     parser.add_argument("-g", "--graph", action="count")

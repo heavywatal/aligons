@@ -1,6 +1,5 @@
 """https://plants.ensembl.org/
 """
-import argparse
 import functools
 import logging
 import os
@@ -19,7 +18,7 @@ PREFIX = LOCAL_DB_ROOT / f"release-{VERSION}"
 
 
 def main(argv: list[str] | None = None):
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-V", "--versions", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")

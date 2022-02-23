@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Integrate chromosome wigs into a genome-wide bigwig
 
 src: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
@@ -6,7 +5,6 @@ dst: ./multiple/{target}/{clade}/phastcons.bw
 
 https://github.com/ucscGenomeBrowser/kent
 """
-import argparse
 import gzip
 import logging
 import os
@@ -20,7 +18,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("clade", type=Path)

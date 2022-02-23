@@ -5,7 +5,6 @@ dst: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
 
 http://compgen.cshl.edu/phast/
 """
-import argparse
 import concurrent.futures as confu
 import csv
 import gzip
@@ -24,7 +23,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())

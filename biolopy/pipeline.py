@@ -1,4 +1,3 @@
-import argparse
 import logging
 import os
 
@@ -11,7 +10,7 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] = []):
     available_species = ensemblgenomes.species_names()
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-N", "--check-args", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())

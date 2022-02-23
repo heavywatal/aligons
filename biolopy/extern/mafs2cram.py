@@ -3,7 +3,6 @@
 src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 dst: ./pairwise/{target}/{query}/cram/genome.cram
 """
-import argparse
 import concurrent.futures as confu
 import logging
 import os
@@ -18,7 +17,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-t", "--test", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())

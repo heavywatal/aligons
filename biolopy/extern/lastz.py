@@ -5,7 +5,6 @@ dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 
 https://lastz.github.io/lastz/
 """
-import argparse
 import concurrent.futures as confu
 import gzip
 import logging
@@ -21,7 +20,7 @@ _executor = confu.ThreadPoolExecutor()
 
 
 def main(argv: list[str] = []):
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("--quick", action="store_true")

@@ -6,7 +6,7 @@ dry_run = False
 _log = logging.getLogger(__name__)
 
 
-def logging_argparser(options: str = "v") -> argparse.ArgumentParser:
+def logging_argparser(options: str = "v"):
     parser = argparse.ArgumentParser(add_help=False)
     group = parser.add_mutually_exclusive_group()
     if "v" in options:
@@ -52,7 +52,7 @@ def _from_verbosity(level: int):
 
 
 def main():
-    parser = argparse.ArgumentParser(parents=[logging_argparser("vdq")])
+    parser = logging_argparser("vdq")
     args = parser.parse_args()
     logging_config(args.loglevel)
     _log = logging.getLogger(__name__)

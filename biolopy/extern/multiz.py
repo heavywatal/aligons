@@ -6,7 +6,6 @@ dst: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
 
 https://github.com/multiz/multiz
 """
-import argparse
 import concurrent.futures as confu
 import itertools
 import logging
@@ -21,7 +20,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())

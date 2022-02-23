@@ -1,4 +1,3 @@
-import argparse
 import logging
 import re
 from collections.abc import Iterable
@@ -10,7 +9,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("path", nargs="+", type=Path)
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)

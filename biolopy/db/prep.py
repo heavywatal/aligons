@@ -1,4 +1,3 @@
-import argparse
 import concurrent.futures as confu
 import itertools
 import logging
@@ -14,7 +13,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
-    parser = argparse.ArgumentParser(parents=[cli.logging_argparser()])
+    parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-D", "--download", action="store_true")
