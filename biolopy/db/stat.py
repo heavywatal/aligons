@@ -1,7 +1,7 @@
 import csv
 import logging
 
-from .. import cli
+from ..util import cli
 from . import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)

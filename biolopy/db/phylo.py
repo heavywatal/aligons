@@ -5,7 +5,7 @@ import re
 from collections.abc import Callable, Iterable, Iterator
 from typing import NamedTuple, TypeAlias
 
-from .. import cli
+from ..util import cli
 
 _log = logging.getLogger(__name__)
 

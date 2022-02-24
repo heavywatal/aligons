@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from ftplib import FTP
 from pathlib import Path
 
-from .. import cli, subp
+from ..util import cli, subp
 from . import phylo
 
 _log = logging.getLogger(__name__)

@@ -1,9 +1,9 @@
 import logging
 import os
 
-from . import cli
-from .extern import lastz, multiz, phast, mafs2cram, kent
 from .db import ensemblgenomes, phylo
+from .extern import kent, lastz, mafs2cram, multiz, phast
+from .util import cli
 
 _log = logging.getLogger(__name__)
 
