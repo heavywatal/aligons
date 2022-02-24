@@ -15,7 +15,7 @@ def main(argv: list[str] = []):
     parser.add_argument("-N", "--check-args", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("target", choices=available_species)
-    parser.add_argument("clade", choices=phylo.trees.keys())
+    parser.add_argument("clade", choices=phylo.newicks.keys())
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run

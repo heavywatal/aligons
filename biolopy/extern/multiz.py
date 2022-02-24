@@ -25,7 +25,7 @@ def main(argv: list[str] = []):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
-    parser.add_argument("clade", choices=phylo.trees.keys())
+    parser.add_argument("clade", choices=phylo.newicks.keys())
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
@@ -89,8 +89,8 @@ def roast(sing_mafs: list[Path], clade: str, tmpdir: str, outfile: str):
     """Generate shell script to execute multiz"""
     min_width = 18
     ref_label = sing_mafs[0].name.split(".", 1)[0]
-    tree = phylo.trees[clade]
-    tree = phylo.shorten_labels(tree).replace(",", " ").rstrip(";")
+    tree = phylo.newicks[clade]
+    tree = phylo.shorten_names(tree).replace(",", " ").rstrip(";")
     args = (
         f"roast - T={tmpdir} M={min_width} E={ref_label} '{tree}' "
         + " ".join([x.name for x in sing_mafs])
@@ -102,8 +102,8 @@ def roast(sing_mafs: list[Path], clade: str, tmpdir: str, outfile: str):
 def prepare(indir: Path, outdir: Path):
     target = indir.name
     clade = outdir.name
-    tree = phylo.trees[clade]
-    species = phylo.extract_labels(tree)
+    tree = phylo.newicks[clade]
+    species = phylo.extract_names(tree)
     assert target in species
     if not cli.dry_run:
         outdir.mkdir(0o755, parents=True, exist_ok=True)

@@ -14,7 +14,7 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     cli.dry_run = args.dry_run
     cli.logging_config(args.loglevel)
-    newick = phylo.trees[args.clade]
+    newick = phylo.newicks[args.clade]
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangulate(phylo.render_tips(root)):
         fasize, nseqs = chrom_sizes(species)

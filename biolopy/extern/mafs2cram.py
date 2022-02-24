@@ -36,8 +36,8 @@ def main(argv: list[str] = []):
 
 
 def run(target: Path, clade: str, jobs: int):
-    tree = phylo.trees[clade]
-    tips = phylo.extract_labels(tree)
+    tree = phylo.newicks[clade]
+    tips = phylo.extract_names(tree)
     query_names = ensemblgenomes.sanitize_queries(target.name, tips)
     _run([target / q for q in query_names], jobs)
 

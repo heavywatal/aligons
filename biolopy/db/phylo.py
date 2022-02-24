@@ -18,15 +18,15 @@ def main(argv: list[str] = []):
     parser.add_argument("clade", nargs="?")
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
-    global trees
+    global newicks
     if args.short:
-        trees = {k: shorten_labels(v) for k, v in trees.items()}
+        newicks = {k: shorten_names(v) for k, v in newicks.items()}
     if args.clade:
-        tree = trees[args.clade]
+        tree = newicks[args.clade]
         if args.name:
-            print(" ".join(extract_labels(tree)))
+            print(" ".join(extract_names(tree)))
         elif args.graph:
-            newick = full_trees[args.clade]
+            newick = newicks_with_inner[args.clade]
             root = parse_newick(newick)
             if args.graph > 1:
                 gen = render_nodes(root)
@@ -37,26 +37,42 @@ def main(argv: list[str] = []):
         else:
             print(tree)
         return
-    for key, tree in trees.items():
+    for key, tree in newicks.items():
         print(f"{key}: {tree}")
     return
 
 
-def extract_labels(tree: str):
-    labels = (x.split(":")[0] for x in re.findall(r"[^ (),;]+", tree))
-    return list(filter(None, labels))
+def extract_tip_names(newick: str):
+    return extract_names(remove_inner(newick))
 
 
-def extract_lengths(tree: str):
-    return [float(x) for x in re.findall(r"(?<=:)[\d.]+", tree)]
+def extract_names(newick: str):
+    names = (x.split(":")[0] for x in re.findall(r"[^\s(),;]+", newick))
+    return list(filter(None, names))
 
 
-def remove_lengths(tree: str):
-    return re.sub(r":[\d.]+", "", tree)
+def extract_lengths(newick: str):
+    return [float(x.lstrip()) for x in re.findall(r"(?<=:)\s*[\d.]+", newick)]
 
 
-def shorten_labels(tree: str):
-    return re.sub(r"[^ (),:;]+_[^ (),:;]+", lambda m: shorten(m.group(0)), tree)
+def shorten_names(newick: str):
+    return re.sub(r"[^\s(),:;]+_[^\s(),:;]+", lambda m: shorten(m.group(0)), newick)
+
+
+def remove_lengths(newick: str):
+    return re.sub(r":\s*[\d.]+", "", newick)
+
+
+def remove_inner(newick: str):
+    return re.sub(r"\)[^(),;]+", ")", newick)
+
+
+def remove_inner_names(newick: str):
+    return re.sub(r"\)[^(),:;]+", ")", newick)
+
+
+def remove_whitespace(x: str):
+    return "".join(x.split())
 
 
 def shorten(name: str):
@@ -65,11 +81,7 @@ def shorten(name: str):
     return split[0][0] + split[1][:3]
 
 
-def remove_inner(newick: str):
-    return re.sub(r"\)[^(),;]+", ")", newick)
-
-
-def make_trees():
+def make_newicks():
     ehrhartoideae = "(oryza_sativa,leersia_perrieri)ehrhartoideae"
     pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae"
     andropogoneae = "(sorghum_bicolor,zea_mays)andropogoneae"
@@ -82,8 +94,8 @@ def make_trees():
     return {k: v + ";" for k, v in locals().items()}
 
 
-full_trees = make_trees()
-trees = {k: remove_inner(v) for k, v in full_trees.items()}
+newicks_with_inner = make_newicks()
+newicks = {k: remove_inner(v) for k, v in newicks_with_inner.items()}
 
 
 class Node(NamedTuple):

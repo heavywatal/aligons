@@ -1,32 +1,125 @@
+import pytest
 from biolopy.db import phylo
 
-tree = "((oryza_sativa:0.1,leersia_perrieri:0.2):0.3,panicum_hallii_fil2:0.4):0.5;"
+newick_standard = """(
+    (
+        oryza_sativa:0.1,
+        hordeum_vulgare:0.2
+    )bep:0.3,
+    panicum_hallii_fil2:0.4
+)poaceae:0.5;"""
+
+
+@pytest.fixture
+def newick():
+    return phylo.remove_whitespace(newick_standard)
+
+
+@pytest.fixture
+def newick_xlength(newick: str):
+    return phylo.remove_lengths(newick)
+
+
+@pytest.fixture
+def newick_popular(newick: str):  # mod
+    return phylo.remove_inner_names(newick)
+
+
+@pytest.fixture
+def newick_xlength_tips(newick_xlength: str):
+    return phylo.remove_inner_names(newick_xlength)
+
+
+@pytest.fixture
+def newick_short(newick: str):  # mod
+    return phylo.shorten_names(newick)
+
+
+@pytest.fixture
+def newick_xlength_short_tips(newick_xlength_tips: str):  # mod
+    return phylo.shorten_names(newick_xlength_tips)
+
+
+def test_extract_lengths(newick_xlength: str):
+    assert phylo.extract_lengths(newick_standard) == [0.1, 0.2, 0.3, 0.4, 0.5]
+    assert phylo.extract_lengths(newick_xlength) == []
+
+
+def test_extract_labels(
+    newick_xlength: str,
+    newick_popular: str,
+    newick_xlength_tips: str,
+    newick_short: str,
+    newick_xlength_short_tips: str,
+):
+    tip_names = ["oryza_sativa", "hordeum_vulgare", "panicum_hallii_fil2"]
+    names = tip_names[:2] + ["bep", tip_names[2], "poaceae"]
+    short_names = ["osat", "hvul", "bep", "phal", "poaceae"]
+    short_tip_names = [short_names[i] for i in (0, 1, 3)]
+    assert phylo.extract_names(newick_standard) == names
+    assert phylo.extract_names(newick_xlength) == names
+    assert phylo.extract_names(newick_popular) == tip_names
+    assert phylo.extract_names(newick_xlength_tips) == tip_names
+    assert phylo.extract_names(newick_short) == short_names
+    assert phylo.extract_names(newick_xlength_short_tips) == short_tip_names
+    assert phylo.extract_tip_names(newick_standard) == tip_names
+    assert phylo.extract_tip_names(newick_xlength) == tip_names
+    assert phylo.extract_tip_names(newick_popular) == tip_names
+    assert phylo.extract_tip_names(newick_xlength_tips) == tip_names
+    assert phylo.extract_tip_names(newick_short) == short_tip_names
+    assert phylo.extract_tip_names(newick_xlength_short_tips) == short_tip_names
+
+
+def test_remove_inner(
+    newick_xlength: str,
+    newick_popular: str,
+    newick_xlength_tips: str,
+    newick_xlength_short_tips: str,
+):
+    assert (
+        newick_popular
+        == "((oryza_sativa:0.1,hordeum_vulgare:0.2):0.3,panicum_hallii_fil2:0.4):0.5;"
+    )
+    assert (
+        newick_xlength_tips == "((oryza_sativa,hordeum_vulgare),panicum_hallii_fil2);"
+    )
+    assert newick_xlength_short_tips == "((osat,hvul),phal);"
+    assert phylo.remove_inner(newick_xlength) == newick_xlength_tips
+    assert phylo.remove_inner_names(newick_xlength) == newick_xlength_tips
+    assert phylo.remove_inner_names(newick_popular) == newick_popular
+    assert phylo.remove_inner(newick_xlength_tips) == newick_xlength_tips
+    assert phylo.remove_inner(newick_xlength_short_tips) == newick_xlength_short_tips
+
+
+def test_remove_lengths(
+    newick_xlength: str,
+    newick_popular: str,
+    newick_xlength_tips: str,
+    newick_xlength_short_tips: str,
+):
+    newick_xlength == "((oryza_sativa,hordeum_vulgare)bep,panicum_hallii_fil2)poaceae;"
+    assert phylo.remove_lengths(newick_xlength) == newick_xlength
+    assert phylo.remove_lengths(newick_popular) == newick_xlength_tips
+    assert phylo.remove_lengths(newick_xlength_short_tips) == "((osat,hvul),phal);"
+
+
+def test_shorten_labels(
+    newick_short: str,
+    newick_xlength_tips: str,
+    newick_xlength_short_tips: str,
+):
+    assert newick_short == "((osat:0.1,hvul:0.2)bep:0.3,phal:0.4)poaceae:0.5;"
+    assert phylo.shorten_names(newick_short) == newick_short
+    assert newick_xlength_short_tips == "((osat,hvul),phal);"
+    assert phylo.shorten_names(newick_xlength_tips) == newick_xlength_short_tips
+    assert phylo.shorten_names(newick_xlength_short_tips) == newick_xlength_short_tips
 
 
 def test_shorten():
     assert phylo.shorten("Oryza_sativa") == "osat"
 
 
-def test_remove_lengths():
-    exp = "((oryza_sativa,leersia_perrieri),panicum_hallii_fil2);"
-    assert phylo.remove_lengths(tree) == exp
-    assert phylo.remove_lengths(phylo.shorten_labels(tree)) == "((osat,lper),phal);"
-
-
-def test_shorten_labels():
-    assert phylo.shorten_labels(tree) == "((osat:0.1,lper:0.2):0.3,phal:0.4):0.5;"
-    assert phylo.shorten_labels(phylo.remove_lengths(tree)) == "((osat,lper),phal);"
-
-
-def test_extract_labels():
-    labels = ["oryza_sativa", "leersia_perrieri", "panicum_hallii_fil2"]
-    short_labels = ["osat", "lper", "phal"]
-    short_tree = phylo.shorten_labels(tree)
-    assert phylo.extract_labels(tree) == labels
-    assert phylo.extract_labels(phylo.remove_lengths(tree)) == labels
-    assert phylo.extract_labels(short_tree) == short_labels
-    assert phylo.extract_labels(phylo.remove_lengths(short_tree)) == short_labels
-
-
-def test_extract_lengths():
-    assert phylo.extract_lengths(tree) == [0.1, 0.2, 0.3, 0.4, 0.5]
+def test_remove_whitespace():
+    x = """ ( (A , \t B),
+    C) ;\n """
+    assert phylo.remove_whitespace(x) == "((A,B),C);"

@@ -24,7 +24,7 @@ def main(argv: list[str] = []):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("--quick", action="store_true")
-    parser.add_argument("-c", "--clade", choices=phylo.trees.keys())
+    parser.add_argument("-c", "--clade", choices=phylo.newicks.keys())
     parser.add_argument("target", choices=ensemblgenomes.species_names())
     parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
@@ -38,8 +38,8 @@ def main(argv: list[str] = []):
 
 
 def run(target: str, clade: str, jobs: int, quick: bool = False):
-    tree = phylo.trees[clade]
-    _run(target, phylo.extract_labels(tree), jobs, quick)
+    tree = phylo.newicks[clade]
+    _run(target, phylo.extract_names(tree), jobs, quick)
     return Path("pairwise") / target
 
 
