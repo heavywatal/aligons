@@ -2,9 +2,11 @@ import logging
 import re
 from collections.abc import Iterable
 from pathlib import Path
+from typing import TypeVar
 
 from . import cli
 
+StrPath = TypeVar("StrPath", str, Path)
 _log = logging.getLogger(__name__)
 
 
@@ -30,24 +32,18 @@ def is_outdated(destination: Path, source: list[Path] | Path | None = None):
 
 
 def newest(files: list[Path]):
-    champion = files[0]
-    champion_ctime = 0
-    for file in files:
-        if (ctime := file.stat().st_ctime) > champion_ctime:
-            champion = file
-            champion_ctime = ctime
-    return champion
+    return max(files, key=lambda p: p.stat().st_ctime)
 
 
-def sorted_naturally(iterable: Iterable[Path]):
+def sorted_naturally(iterable: Iterable[StrPath]):
     return sorted(iterable, key=natural_key)
 
 
-def natural_key(x: Path):
-    return [try_zeropad(s) for s in re.split(r"\W", x.name)]
+def natural_key(x: StrPath):
+    return [try_zeropad(s) for s in re.split(r"\W", name_if_path(x))]
 
 
-def name_if_path(x: str | Path):
+def name_if_path(x: StrPath):
     return x if isinstance(x, str) else x.name
 
 

@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from ftplib import FTP
 from pathlib import Path
 
-from ..util import cli, subp
+from ..util import cli, fs, subp
 from . import phylo
 
 _log = logging.getLogger(__name__)
@@ -95,10 +95,10 @@ def get_file(pattern: str, species: str):
 
 def rglob(pattern: str, species: list[str] = []):
     for path in species_dirs("fasta", species):
-        for x in path.rglob(pattern):
+        for x in fs.sorted_naturally(path.rglob(pattern)):
             yield x
     for path in species_dirs("gff3", species):
-        for x in path.rglob(pattern):
+        for x in fs.sorted_naturally(path.rglob(pattern)):
             yield x
 
 
