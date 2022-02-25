@@ -55,7 +55,6 @@ def main():
     parser = logging_argparser("vdq")
     args = parser.parse_args()
     logging_config(args.loglevel)
-    _log = logging.getLogger(__name__)
     _log.debug("debug message")
     _log.info("info message")
     _log.warning("warning message")
