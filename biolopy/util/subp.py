@@ -103,7 +103,7 @@ def run_if(
 def prepare_args(args: _CMD, cond: bool = True):
     if isinstance(args, str):
         cmd = args.rstrip()
-        args = shlex.split(args)
+        args = shlex.split(cmd)
     else:
         cmd = " ".join(str(x) for x in args)
     if cli.dry_run or not cond:
