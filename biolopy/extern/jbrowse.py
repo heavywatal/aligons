@@ -59,12 +59,10 @@ class JBrowse:
             assert fin.read().strip() == version
 
     def add(self, force: bool = False):
-        # if self.target.exists() and not force:
-        #     return
         self.target.mkdir(0o755, parents=True, exist_ok=True)
         self.add_assembly()
         tracks: list[str] = []
-        tracks.append(track_id := self.gff.parent.name)
+        tracks.append(track_id := self.gff.parent.name + ".gff3")
         self.add_track(self.gff, id=track_id)
         self.text_index()
         for clade in self.multiple_dir.iterdir():
@@ -99,7 +97,7 @@ class JBrowse:
         if category:
             args.extend(["--category", category])
         args.append(file)
-        jbrowse(args, not (self.target / subdir).exists())
+        jbrowse(args, not (self.target / subdir / file.name).exists())
 
     def text_index(self):
         """--attributes, --exclude, --file,  --perTrack, --tracks, --dryrun"""
