@@ -105,16 +105,12 @@ class JBrowseConfig:
         species = self.multiple_dir.name
         self.add_assembly(species)
         self.add_track_gff(species)
-        for clade in self.multiple_dir.iterdir():
-            wig = clade / "phastcons.bw"
-            if wig.exists():
-                track_id = clade.name
-                self.add_track(wig, "conservation", id=track_id, subdir=track_id)
-        for query in self.pairwise_dir.iterdir():
-            cram = query / "cram" / "genome.cram"
-            if cram.exists():
-                track_id = query.name
-                self.add_track(cram, "alignment", id=track_id, subdir=track_id)
+        for wig in self.multiple_dir.rglob("phastcons.bw"):
+            clade = wig.parent.name
+            self.add_track(wig, "conservation", id=clade, subdir=clade)
+        for cram in self.pairwise_dir.rglob("genome.cram"):
+            query = cram.parent.parent.name
+            self.add_track(cram, "alignment", id=query, subdir=query)
         self.set_default_session()
 
     def add_assembly(self, species: str):
