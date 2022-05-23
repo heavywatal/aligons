@@ -89,7 +89,7 @@ def make_newicks():
     bep = f"({ehrhartoideae},{pooideae})bep"
     pacmad = f"({andropogoneae},{paniceae})pacmad"
     poaceae = f"({bep},{pacmad})poaceae"
-    monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"  # noqa: F841
+    monocot = f"({poaceae},dioscorea_rotundata)monocot"  # noqa: F841
     # pyright: reportUnusedVariable=false
     return {k: v + ";" for k, v in locals().items()}
 
