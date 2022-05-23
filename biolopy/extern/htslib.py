@@ -69,10 +69,12 @@ def faidx(bgz: Path):
 
 
 def tabix(bgz: Path):
-    """http://www.htslib.org/doc/tabix.html"""
-    outfile = bgz.with_suffix(bgz.suffix + ".tbi")
+    """http://www.htslib.org/doc/tabix.html
+    Use .csi instead of .tbi for chromosomes >512 Mbp e.g., atau, hvul
+    """
+    outfile = bgz.with_suffix(bgz.suffix + ".csi")
     if fs.is_outdated(outfile, bgz):
-        subp.run(["tabix", bgz])
+        subp.run(["tabix", "--csi", bgz])
     return outfile
 
 
