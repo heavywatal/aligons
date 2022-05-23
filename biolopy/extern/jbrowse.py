@@ -142,6 +142,8 @@ class JBrowseConfig:
             self.tracks.append(id)
         if category:
             args.extend(["--category", category])
+        if (csi := Path(str(file) + ".csi")).exists():
+            args.extend(["--indexFile", csi])
         args.append(file)
         jbrowse(args, not (self.target / subdir / file.name).exists())
 
