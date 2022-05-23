@@ -80,6 +80,9 @@ def index_fasta(path: Path):  # fasta/{species}
     """Create bgzipped and indexed genome.fa."""
     if path.name != "dna":
         path /= "dna"
+    for assembly in path.glob(r"*.primary_assembly.*.fa.gz"):
+        ln = Path(str(assembly).replace("primary_assembly", "chromosome"))
+        ln.symlink_to(assembly)
     for chromosome in fs.sorted_naturally(path.glob(r"*.chromosome.*.fa.gz")):
         print(kent.faToTwoBit(chromosome))
     genome = htslib.create_genome_bgzip(path)
@@ -92,6 +95,9 @@ def index_fasta(path: Path):  # fasta/{species}
 
 def index_gff3(path: Path):  # gff3/{species}
     """Create bgzipped and indexed genome.gff3."""
+    for assembly in path.glob(r"*.primary_assembly.*.gff3.gz"):
+        ln = Path(str(assembly).replace("primary_assembly", "chromosome"))
+        ln.symlink_to(assembly)
     genome = htslib.create_genome_bgzip(path)
     print(genome)
     print(htslib.tabix(genome))

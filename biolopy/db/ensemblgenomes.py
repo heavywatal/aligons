@@ -140,11 +140,13 @@ class FTPensemblgenomes(FTP):
 
     def download_fasta(self, species: str):
         pattern = r"/CHECKSUMS|/README|_sm\.chromosome\..+fa\.gz$"
+        pattern += r"|_sm\.primary_assembly\..+fa\.gz$"
         for x in self.nlst_search(f"fasta/{species}/dna", pattern):
             print(self.retrieve(x))
 
     def download_gff3(self, species: str):
         pattern = r"/CHECKSUMS|/README|\.chromosome\..+gff3\.gz$"
+        pattern += r"|\.primary_assembly\..+gff3\.gz$"
         for x in self.nlst_search(f"gff3/{species}", pattern):
             print(self.retrieve(x))
 
