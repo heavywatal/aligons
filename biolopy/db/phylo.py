@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterable, Iterator
 from typing import NamedTuple, TypeAlias
 
 from ..util import cli
+from .ensemblgenomes import make_newicks, shorten
 
 _log = logging.getLogger(__name__)
 
@@ -73,25 +74,6 @@ def remove_inner_names(newick: str):
 
 def remove_whitespace(x: str):
     return "".join(x.split())
-
-
-def shorten(name: str):
-    """Oryza_sativa -> osat"""
-    split = name.lower().split("_")
-    return split[0][0] + split[1][:3]
-
-
-def make_newicks():
-    ehrhartoideae = "(oryza_sativa,leersia_perrieri)ehrhartoideae"
-    pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae"
-    andropogoneae = "(sorghum_bicolor,zea_mays)andropogoneae"
-    paniceae = "(setaria_italica,panicum_hallii_fil2)paniceae"
-    bep = f"({ehrhartoideae},{pooideae})bep"
-    pacmad = f"({andropogoneae},{paniceae})pacmad"
-    poaceae = f"({bep},{pacmad})poaceae"
-    monocot = f"({poaceae},dioscorea_rotundata)monocot"  # noqa: F841
-    # pyright: reportUnusedVariable=false
-    return {k: v + ";" for k, v in locals().items()}
 
 
 newicks_with_inner = make_newicks()

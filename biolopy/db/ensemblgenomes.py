@@ -9,7 +9,6 @@ from ftplib import FTP
 from pathlib import Path
 
 from ..util import cli, fs, subp
-from . import phylo
 
 _log = logging.getLogger(__name__)
 LOCAL_DB_ROOT = Path("~/db/ensemblgenomes/plants").expanduser()
@@ -48,6 +47,21 @@ def main(argv: list[str] | None = None):
             print(x.name)
         else:
             print(x)
+
+
+def make_newicks():
+    ehrhartoideae = "(oryza_sativa,leersia_perrieri)ehrhartoideae"
+    pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae"
+    andropogoneae = "(sorghum_bicolor,zea_mays)andropogoneae"
+    paniceae = "(setaria_italica,panicum_hallii_fil2)paniceae"
+    bep = f"({ehrhartoideae},{pooideae})bep"
+    pacmad = f"({andropogoneae},{paniceae})pacmad"
+    poaceae = f"({bep},{pacmad})poaceae"
+    monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"  # noqa: F841
+    if int(VERSION) > 50:
+        monocot = f"({poaceae},dioscorea_rotundata)monocot"  # noqa: F841
+    # pyright: reportUnusedVariable=false
+    return {k: v + ";" for k, v in locals().items()}
 
 
 def list_versions():
@@ -107,7 +121,13 @@ def expand_shortnames(shortnames: list[str]):
 
 
 def filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
-    return (x for x in species if phylo.shorten(x) in queries)
+    return (x for x in species if shorten(x) in queries)
+
+
+def shorten(name: str):
+    """Oryza_sativa -> osat"""
+    split = name.lower().split("_")
+    return split[0][0] + split[1][:3]
 
 
 def sanitize_queries(target: str, queries: list[str]):
