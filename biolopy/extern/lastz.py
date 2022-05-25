@@ -23,7 +23,6 @@ def main(argv: list[str] = []):
     parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
-    parser.add_argument("--quick", action="store_true")
     parser.add_argument("-c", "--clade", choices=phylo.newicks.keys())
     parser.add_argument("target", choices=ensemblgenomes.species_names())
     parser.add_argument("query", nargs="*")
@@ -32,23 +31,23 @@ def main(argv: list[str] = []):
     cli.dry_run = args.dry_run
     if args.clade:
         assert not args.query
-        run(args.target, args.clade, args.jobs, args.quick)
+        run(args.target, args.clade, args.jobs)
     else:
-        _run(args.target, args.query, args.jobs, args.quick)
+        _run(args.target, args.query, args.jobs)
 
 
-def run(target: str, clade: str, jobs: int, quick: bool = False):
+def run(target: str, clade: str, jobs: int):
     tree = phylo.newicks[clade]
-    _run(target, phylo.extract_names(tree), jobs, quick)
+    _run(target, phylo.extract_names(tree), jobs)
     return Path("pairwise") / target
 
 
-def _run(target: str, queries: list[str], jobs: int, quick: bool):
+def _run(target: str, queries: list[str], jobs: int):
     queries = ensemblgenomes.sanitize_queries(target, queries)
     _executor._max_workers = jobs
     futures: list[confu.Future[Path]] = []
     for query in queries:
-        pa = PairwiseAlignment(target, query, quick=quick)
+        pa = PairwiseAlignment(target, query)
         futures.extend(pa.run())
     for future in confu.as_completed(futures):
         if (sing_maf := future.result()).exists():
@@ -56,10 +55,9 @@ def _run(target: str, queries: list[str], jobs: int, quick: bool):
 
 
 class PairwiseAlignment:
-    def __init__(self, target: str, query: str, quick: bool):
+    def __init__(self, target: str, query: str):
         self._target = target
         self._query = query
-        self._quick = quick
         self._target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
         self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
         self._outdir = Path("pairwise") / target / query
@@ -102,11 +100,9 @@ class PairwiseAlignment:
         if not cli.dry_run:
             subdir.mkdir(0o755, exist_ok=True)
         axtgz = subdir / f"{query_label}.axt.gz"
-        args = f"lastz {target_2bit} {query_2bit} --format=axt --inner=2000 --step=7"
-        if self._quick:
-            args += " --notransition --nogapped"
+        cmd = f"lastz {target_2bit} {query_2bit} --format=axt --inner=2000"
         is_to_run = fs.is_outdated(axtgz, [target_2bit, query_2bit])
-        lastz = subp.run_if(is_to_run, args, stdout=subp.PIPE)
+        lastz = subp.run_if(is_to_run, cmd, stdout=subp.PIPE)
         if is_to_run and not cli.dry_run:
             with gzip.open(axtgz, "wb") as fout:
                 fout.write(lastz.stdout)
@@ -114,7 +110,9 @@ class PairwiseAlignment:
 
     def axt_chain(self, target_2bit: Path, query_2bit: Path, axtgz: Path):
         chain = axtgz.with_suffix("").with_suffix(".chain")
-        cmd = "axtChain -minScore=5000 -linearGap=medium stdin"
+        # medium: mouse/human ~80MYA ~poales/poaceae
+        # loose: chicken/human ~300MYA ~gymnosperm/monocot
+        cmd = "axtChain -minScore=3000 -linearGap=medium stdin"
         cmd += f" {target_2bit} {query_2bit} {chain}"
         is_to_run = fs.is_outdated(chain, axtgz)
         p = subp.popen_if(is_to_run, cmd, stdin=subp.PIPE)
