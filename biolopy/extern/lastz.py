@@ -150,18 +150,15 @@ class PairwiseAlignment:
         cn_cmd = (
             f"chainNet stdin {self._target_sizes} {self._query_sizes} stdout /dev/null"
         )
+        ns_cmd = f"netSyntenic stdin {syntenic_net}"
         cn = subp.popen_if(is_to_run, cn_cmd, stdin=subp.PIPE, stdout=subp.PIPE)
-        assert cn.stdin
-        assert cn.stdout
+        ns = subp.popen_if(is_to_run, ns_cmd, stdin=subp.PIPE)
+        content = b""
         if is_to_run and not cli.dry_run:
             with gzip.open(pre_chain, "rb") as fout:
-                shutil.copyfileobj(fout, cn.stdin)
-                cn.stdin.close()
-        sn = subp.popen_if(
-            is_to_run, f"netSyntenic stdin {syntenic_net}", stdin=cn.stdout
-        )
-        cn.stdout.close()
-        sn.communicate()
+                content = fout.read()
+        (cn_out, _) = cn.communicate(content)
+        ns.communicate(cn_out)
         return syntenic_net
 
     def net_axt_maf(self, syntenic_net: Path, pre_chain: Path):
