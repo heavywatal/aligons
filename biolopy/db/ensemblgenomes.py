@@ -177,16 +177,21 @@ class FTPensemblgenomes(FTP):
         os.chdir(PREFIX)
 
     def download_fasta(self, species: str):
-        pattern = r"/CHECKSUMS|/README|_sm\.chromosome\..+fa\.gz$"
-        pattern += r"|_sm\.primary_assembly\..+fa\.gz$"
-        for x in self.nlst_search(f"fasta/{species}/dna", pattern):
-            print(self.retrieve(x))
+        pattern = r"/CHECKSUMS|/README"
+        pattern += r"|_sm\.chromosome\..+\.fa\.gz$"
+        pattern += r"|_sm\.primary_assembly\..+\.fa\.gz$"
+        self.check_download(f"fasta/{species}/dna", pattern)
 
     def download_gff3(self, species: str):
-        pattern = r"/CHECKSUMS|/README|\.chromosome\..+gff3\.gz$"
-        pattern += r"|\.primary_assembly\..+gff3\.gz$"
-        for x in self.nlst_search(f"gff3/{species}", pattern):
+        pattern = r"/CHECKSUMS|/README"
+        pattern += r"|\.chromosome\..+\.gff3\.gz$"
+        pattern += r"|\.primary_assembly\..+\.gff3\.gz$"
+        self.check_download(f"gff3/{species}", pattern)
+
+    def check_download(self, dir: str, pattern: str):
+        for x in self.nlst_search(dir, pattern):
             print(self.retrieve(x))
+        fs.checksums(Path(dir) / "CHECKSUMS")
 
     def nlst_search(self, dir: str, pattern: str):
         _log.info(f"ftp.nlst({dir})")  # ensembl does not support mlsd

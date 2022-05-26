@@ -1,12 +1,10 @@
 import concurrent.futures as confu
-import itertools
 import logging
 import os
 from pathlib import Path
-from typing import Iterable
 
 from ..extern import htslib, kent
-from ..util import cli, fs, subp
+from ..util import cli, fs
 from . import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
@@ -17,7 +15,6 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("-c", "--checksums", action="store_true")
     parser.add_argument("-i", "--index", action="store_true")
     parser.add_argument("clade")
     args = parser.parse_args(argv or None)
@@ -27,11 +24,9 @@ def main(argv: list[str] | None = None):
     species = phylo.extract_names(tree)
     if args.download:
         download(species)
-    if args.checksums:
-        checksums(ensemblgenomes.rglob("CHECKSUMS", species))
     if args.index:
         index(species, jobs=args.jobs)
-    if not any([args.download, args.checksums, args.index]):
+    if not any([args.download, args.index]):
         for x in ensemblgenomes.rglob("CHECKSUMS", species):
             print(x.parent)
 
@@ -48,26 +43,6 @@ def download(species: list[str]):
     #     ensemblgenomes.rsync(f"fasta/{sp}/dna", options)
     #     options = "--include *.chromosome.*.gff3.gz --exclude *.gz"
     #     ensemblgenomes.rsync(f"gff3/{sp}", options)
-
-
-def checksums(files: Iterable[Path]):
-    with confu.ThreadPoolExecutor(max_workers=8) as pool:
-        for file in files:
-            _log.info(f"{file}")
-            with file.open("rt") as fin:
-                lines = fin.readlines()
-            pool.map(checkline, lines, itertools.repeat(file.parent))
-
-
-def checkline(line: str, directory: Path):
-    (e_sum, e_blocks, name) = line.split()
-    if (path := directory / name).exists():
-        p = subp.run(f"sum {path}", stdout=subp.PIPE, text=True, quiet=True)
-        (o_sum, o_blocks, _) = p.stdout.split()
-        if (e_sum.lstrip("0"), e_blocks) != (o_sum, o_blocks):
-            _log.error(f"{name}")
-            _log.error(f"expected: {e_sum}\t{e_blocks}")
-            _log.error(f"observed: {o_sum}\t{o_blocks}")
 
 
 def index(species: list[str] = [], jobs: int | None = os.cpu_count()):
