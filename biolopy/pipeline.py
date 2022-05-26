@@ -26,10 +26,10 @@ def main(argv: list[str] = []):
 
 def phastcons(target: str, clade: str, jobs: int):
     pairwise = lastz.run(target, clade, jobs)
+    mafs2cram.run(pairwise, clade, jobs)
     multiple = multiz.run(pairwise, clade, jobs)
     phast.run(multiple, jobs)
     kent.run(multiple)
-    mafs2cram.run(pairwise, clade, jobs)
 
 
 if __name__ == "__main__":
