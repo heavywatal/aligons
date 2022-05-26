@@ -70,22 +70,20 @@ class PairwiseAlignment:
         target_chromosomes = fs.sorted_naturally(it)
         it = ensemblgenomes.rglob(patt, [self._query])
         query_chromosomes = fs.sorted_naturally(it)
-        subexe = confu.ThreadPoolExecutor(max_workers=len(target_chromosomes))
-        waiters: list[confu.Future[list[Path]]] = []
+        flists: list[list[confu.Future[Path]]] = []
         for t in target_chromosomes:
-            futures = [
-                _executor.submit(self.align_chr, t, q) for q in query_chromosomes
-            ]
-            waiters.append(subexe.submit(wait_results, futures))
-        return [
-            _executor.submit(self.integrate, future.result())
-            for future in confu.as_completed(waiters)
-        ]
+            flists.append(
+                [_executor.submit(self.align_chr, t, q) for q in query_chromosomes]
+            )
+        return [_executor.submit(self.wait_integrate, futures) for futures in flists]
 
     def align_chr(self, target_2bit: Path, query_2bit: Path):
         axtgz = self.lastz(target_2bit, query_2bit)
         chain = self.axt_chain(target_2bit, query_2bit, axtgz)
         return chain
+
+    def wait_integrate(self, futures: list[confu.Future[Path]]):
+        return self.integrate([f.result() for f in futures])
 
     def integrate(self, chains: list[Path]):
         pre_chain = self.merge_sort_pre(chains)
@@ -187,10 +185,6 @@ class PairwiseAlignment:
         sort.stdout.close()
         atm.communicate()
         return sing_maf
-
-
-def wait_results(futures: list[confu.Future[Path]]):
-    return [f.result() for f in futures]
 
 
 if __name__ == "__main__":
