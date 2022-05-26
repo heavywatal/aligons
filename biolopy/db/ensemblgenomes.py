@@ -50,7 +50,6 @@ def main(argv: list[str] | None = None):
 
 
 def make_newicks():
-    # pyright: reportUnusedVariable=false
     ehrhartoideae = "(oryza_sativa,leersia_perrieri)ehrhartoideae"
     pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae"
     andropogoneae = "(sorghum_bicolor,zea_mays)andropogoneae"
@@ -60,7 +59,7 @@ def make_newicks():
     poaceae = f"({bep},{pacmad})poaceae"
     monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"  # noqa: F841
     if int(VERSION) > 50:
-        monocot = f"({poaceae},dioscorea_rotundata)monocot"  # noqa: F841
+        monocot = f"({poaceae},dioscorea_rotundata)monocot"
 
     _solanum = "(solanum_lycopersicum,solanum_tuberosum)"
     solanaceae = f"(({_solanum},capsicum_annuum),nicotiana_attenuata)solanaceae"
@@ -76,7 +75,10 @@ def make_newicks():
     _companulids = f"({_asteraceae},daucus_carota)"
     _core_asterids = f"({lamiids},{_companulids})"
     asterids = f"({_core_asterids},actinidia_chinensis)asterids"
-    eudicots = f"({asterids},arabidopsis_thaliana)eudicots"  # noqa: F841
+    eudicots = f"({asterids},arabidopsis_thaliana)eudicots"
+
+    angiospermae = f"({eudicots},{monocot})angiospermae"  # noqa: F841
+    # pyright: reportUnusedVariable=false
     return {k: v + ";" for k, v in locals().items() if not k.startswith("_")}
 
 

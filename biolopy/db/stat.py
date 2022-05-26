@@ -11,14 +11,14 @@ def main(argv: list[str] | None = None):
     parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-l", "--long", action="store_true")
-    parser.add_argument("-c", "--clade", default="monocot")
+    parser.add_argument("-c", "--clade", default="angiospermae")
     args = parser.parse_args(argv or None)
     cli.dry_run = args.dry_run
     cli.logging_config(args.loglevel)
     newick = phylo.newicks[args.clade]
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangulate(phylo.render_tips(root)):
-        if args.dry_run:
+        if species not in ensemblgenomes.species_names():
             print(f"{pre} {species}")
             continue
         rows = chrom_sizes(species)
