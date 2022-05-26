@@ -63,22 +63,20 @@ def make_newicks():
         monocot = f"({poaceae},dioscorea_rotundata)monocot"  # noqa: F841
 
     _solanum = "(solanum_lycopersicum,solanum_tuberosum)"
-    _caps = "(capsicum_annuum,nicotiana_attenuata)"
-    solanaceae = f"({_solanum},{_caps})solanaceae"
+    solanaceae = f"(({_solanum},capsicum_annuum),nicotiana_attenuata)solanaceae"
     _convolvulaceae = "ipomoea_triloba"
     solanales = f"({solanaceae},{_convolvulaceae})solanales"
     _lamiales = "olea_europaea_sylvestris"
     if int(VERSION) > 51:
         _lamiales = f"({_lamiales},sesamum_indicum)"
-    lamiids = f"({solanales},{_lamiales})lamiids"
+    lamiids = f"(({solanales},coffea_canephora),{_lamiales})lamiids"
     _asteraceae = "helianthus_annuus"
     if int(VERSION) > 52:
         _asteraceae = f"({_asteraceae},lactuca_sativa)"
     _companulids = f"({_asteraceae},daucus_carota)"
     _core_asterids = f"({lamiids},{_companulids})"
     asterids = f"({_core_asterids},actinidia_chinensis)asterids"
-    eudicots = f"({asterids},arabidopsis_thaliana)eudicots"
-    angiospermae = f"({eudicots},coffea_canephora)angiospermae"  # noqa: F841
+    eudicots = f"({asterids},arabidopsis_thaliana)eudicots"  # noqa: F841
     return {k: v + ";" for k, v in locals().items() if not k.startswith("_")}
 
 
