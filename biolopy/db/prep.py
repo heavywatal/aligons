@@ -15,6 +15,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-D", "--download", action="store_true")
+    parser.add_argument("-C", "--compara")
     parser.add_argument("clade")
     args = parser.parse_args(argv or None)
     cli.dry_run = args.dry_run
@@ -25,6 +26,9 @@ def main(argv: list[str] | None = None):
         download(species, jobs=args.jobs)
     else:
         index(species, jobs=args.jobs)
+    if args.compara:
+        with ensemblgenomes.FTPensemblgenomes() as ftp:
+            ftp.download_maf(args.compara)
 
 
 def download(species: list[str], jobs: int | None = os.cpu_count()):

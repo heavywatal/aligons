@@ -180,20 +180,27 @@ class FTPensemblgenomes(FTP):
         pattern = r"/CHECKSUMS|/README"
         pattern += r"|_sm\.chromosome\..+\.fa\.gz$"
         pattern += r"|_sm\.primary_assembly\..+\.fa\.gz$"
-        return self.check_download(f"fasta/{species}/dna", pattern)
+        dir = self.download(f"fasta/{species}/dna", pattern)
+        fs.checksums(dir / "CHECKSUMS")
+        return dir
 
     def download_gff3(self, species: str):
         pattern = r"/CHECKSUMS|/README"
         pattern += r"|\.chromosome\..+\.gff3\.gz$"
         pattern += r"|\.primary_assembly\..+\.gff3\.gz$"
-        return self.check_download(f"gff3/{species}", pattern)
+        dir = self.download(f"gff3/{species}", pattern)
+        fs.checksums(dir / "CHECKSUMS")
+        return dir
 
-    def check_download(self, dir: str, pattern: str):
+    def download_maf(self, species: str):
+        dir = "maf/ensembl-compara/pairwise_alignments"
+        sp = shorten(species)
+        return self.download(dir, f"/{sp}_")
+
+    def download(self, dir: str, pattern: str):
         for x in self.nlst_search(dir, pattern):
             print(self.retrieve(x))
-        pathdir = Path(dir)
-        fs.checksums(pathdir / "CHECKSUMS")
-        return pathdir
+        return Path(dir)
 
     def nlst_search(self, dir: str, pattern: str):
         _log.info(f"ftp.nlst({dir})")  # ensembl does not support mlsd
