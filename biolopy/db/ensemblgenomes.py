@@ -180,18 +180,20 @@ class FTPensemblgenomes(FTP):
         pattern = r"/CHECKSUMS|/README"
         pattern += r"|_sm\.chromosome\..+\.fa\.gz$"
         pattern += r"|_sm\.primary_assembly\..+\.fa\.gz$"
-        self.check_download(f"fasta/{species}/dna", pattern)
+        return self.check_download(f"fasta/{species}/dna", pattern)
 
     def download_gff3(self, species: str):
         pattern = r"/CHECKSUMS|/README"
         pattern += r"|\.chromosome\..+\.gff3\.gz$"
         pattern += r"|\.primary_assembly\..+\.gff3\.gz$"
-        self.check_download(f"gff3/{species}", pattern)
+        return self.check_download(f"gff3/{species}", pattern)
 
     def check_download(self, dir: str, pattern: str):
         for x in self.nlst_search(dir, pattern):
             print(self.retrieve(x))
-        fs.checksums(Path(dir) / "CHECKSUMS")
+        pathdir = Path(dir)
+        fs.checksums(pathdir / "CHECKSUMS")
+        return pathdir
 
     def nlst_search(self, dir: str, pattern: str):
         _log.info(f"ftp.nlst({dir})")  # ensembl does not support mlsd
@@ -208,7 +210,10 @@ class FTPensemblgenomes(FTP):
                 cmd = f"RETR {path}"
                 _log.info(cmd)
                 _log.info(self.retrbinary(cmd, fout.write))
-        return outfile
+        common = Path(path.replace("primary_assembly", "chromosome"))
+        if not common.exists():
+            common.symlink_to(outfile)
+        return common
 
     def quit(self):
         _log.info(f"os.chdir({self.orig_wd})")
