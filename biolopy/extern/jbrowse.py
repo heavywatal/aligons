@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 from typing import Any, TypeAlias
 
-from ..db import ensemblgenomes
+from ..db import ensemblgenomes, phylo
 from ..util import cli, subp
 
 StrPath: TypeAlias = str | Path[str]
@@ -108,8 +108,16 @@ class JBrowseConfig:
         for wig in self.multiple_dir.rglob("phastcons.bw"):
             clade = wig.parent.name
             self.add_track(wig, "conservation", id=clade, subdir=clade)
-        for cram in self.pairwise_dir.rglob("genome.cram"):
-            query = cram.parent.parent.name
+        for bed in self.multiple_dir.rglob("cns.bed.gz"):
+            clade = bed.parent.name
+            self.add_track(bed, "conservation", id="CNS-" + clade, subdir=clade)
+        clade = phylo.outermost([x.name for x in self.multiple_dir.iterdir()])
+        gen = self.pairwise_dir.rglob("genome.cram")
+        crams = {cram.parent.parent.name: cram for cram in gen}
+        for query in phylo.extract_tip_names(phylo.newicks[clade]):
+            if cram := crams.pop(query, None):
+                self.add_track(cram, "alignment", id=query, subdir=query)
+        for query, cram in crams.items():
             self.add_track(cram, "alignment", id=query, subdir=query)
         self.set_default_session()
 
@@ -163,6 +171,7 @@ class JBrowseConfig:
 
     def configure(self):
         config_json = self.target / "config.json"
+        subp.run(f"sed -i -e 's/bed.gz.tbi/bed.gz.csi/' {config_json}")
         with open(config_json) as fin:
             cfg = json.load(fin)
         session = cfg["defaultSession"]
@@ -190,23 +199,38 @@ def make_display(track: dict[str, Any]):
         "poaceae": "#C8641E",
         "monocot": "#C8B414",
     }
+    item = {}
     if track["type"] == "FeatureTrack":
-        return {
-            "type": "LinearBasicDisplay",
-            "height": 80,
-        }
+        if "gff3" in track["type"]:
+            item = {
+                "type": "LinearBasicDisplay",
+                "height": 80,
+            }
+        else:  # bed
+            item = {
+                "type": "LinearBasicDisplay",
+                "height": 30,
+                "trackShowLabels": False,
+                "renderer": {
+                    "type": "SvgFeatureRenderer",
+                    "height": 10,
+                    "color": "#800000",
+                }
+            }
     elif track["type"] == "QuantitativeTrack":
-        return {
+        item = {
             "type": "LinearWiggleDisplay",
             "height": 40,
             "color": clade_color.get(track["configuration"], "#888888"),
             "constraints": {"max": 1, "min": 0},
         }
     elif track["type"] == "AlignmentsTrack":
-        return {
+        item = {
             "type": "LinearPileupDisplay",
             "height": 20,
         }
+    item["configuration"] = "-".join([track["configuration"], item["type"]])
+    return item
 
 
 def jbrowse(args: subp.Args, cond: bool = True):
