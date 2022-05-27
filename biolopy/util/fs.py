@@ -43,7 +43,7 @@ def sorted_naturally(iterable: Iterable[StrPath]):
 
 
 def natural_key(x: StrPath):
-    return [try_zeropad(s) for s in re.split(r"\W", name_if_path(x))]
+    return [try_zeropad(s) for s in re.split(r"[\W_]", name_if_path(x))]
 
 
 def name_if_path(x: StrPath):
