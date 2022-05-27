@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 from .db import ensemblgenomes, phylo
 from .extern import kent, lastz, mafs2cram, multiz, phast
@@ -14,6 +15,7 @@ def main(argv: list[str] = []):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-N", "--check-args", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
+    parser.add_argument("-c", "--compara", action="store_true")
     parser.add_argument("target", choices=available_species)
     parser.add_argument("clade", choices=phylo.newicks.keys())
     args = parser.parse_args(argv or None)
@@ -21,11 +23,14 @@ def main(argv: list[str] = []):
     cli.dry_run = args.dry_run
     if args.check_args:
         return
-    phastcons(args.target, args.clade, args.jobs)
+    phastcons(args.target, args.clade, args.jobs, args.compara)
 
 
-def phastcons(target: str, clade: str, jobs: int):
-    pairwise = lastz.run(target, clade, jobs)
+def phastcons(target: str, clade: str, jobs: int, compara: bool):
+    if compara:
+        pairwise = Path("compara") / target
+    else:
+        pairwise = lastz.run(target, clade, jobs)
     mafs2cram.run(pairwise, clade, jobs)
     multiple = multiz.run(pairwise, clade, jobs)
     phast.run(multiple, jobs)

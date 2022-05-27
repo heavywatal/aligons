@@ -135,7 +135,7 @@ def rglob(pattern: str, species: list[str] = []):
 
 
 def expand_shortnames(shortnames: list[str]):
-    return filter_by_shortname(species_names(), shortnames)
+    return filter_by_shortname(species_names_all(), shortnames)
 
 
 def filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
@@ -144,6 +144,8 @@ def filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
 
 def shorten(name: str):
     """Oryza_sativa -> osat"""
+    if name.lower() == "olea_europaea_sylvestris":
+        return "oesy"
     split = name.lower().split("_")
     return split[0][0] + split[1][:3]
 
@@ -195,7 +197,14 @@ class FTPensemblgenomes(FTP):
     def download_maf(self, species: str):
         dir = "maf/ensembl-compara/pairwise_alignments"
         sp = shorten(species)
-        return self.download(dir, f"/{sp}_")
+        path = self.download(dir, f"/{sp}_")
+        dirs: list[Path] = []
+        for targz in path.glob("*.tar.gz"):
+            expanded = targz.with_suffix("").with_suffix("")
+            tar = ["tar", "xzf", targz, "-C", path]
+            subp.run_if(fs.is_outdated(expanded / "README.maf"), tar)
+            dirs.append(expanded.resolve())
+        return dirs
 
     def download(self, dir: str, pattern: str):
         for x in self.nlst_search(dir, pattern):
