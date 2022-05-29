@@ -12,8 +12,8 @@ import os
 from pathlib import Path
 from typing import Any, TypeAlias
 
-from ..db import ensemblgenomes, phylo
-from ..util import cli, subp
+from ..db import ensemblgenomes, phylo, plantregmap
+from ..util import cli, subp, fs
 
 StrPath: TypeAlias = str | Path[str]
 
@@ -119,6 +119,10 @@ class JBrowseConfig:
                 self.add_track(cram, "alignment", id=query, subdir=query)
         for query, cram in crams.items():
             self.add_track(cram, "alignment", id=query, subdir=query)
+        for gff in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
+            self.add_track(gff, "plantregmap", id=gff.name)
+        for bed in fs.sorted_naturally(plantregmap.rglob("*.bed.gz", species)):
+            self.add_track(bed, "plantregmap", id=bed.name)
         self.set_default_session()
 
     def add_assembly(self, species: str):
@@ -184,7 +188,7 @@ class JBrowseConfig:
                 "start": 0,
                 "end": 43270923,
                 "reversed": False,
-                "assemblyName": "Oryza_sativa.IRGSP-1.0.dna_sm.genome",
+                "assemblyName": cfg["assemblies"][0]["name"],
             }
         ]
         for track in view["tracks"]:
@@ -243,7 +247,9 @@ def iter_targets(path: Path):
     for config in path.rglob("config.json"):
         if "test_data" in str(config):
             continue
-        yield config.parent.resolve()
+        config = config.resolve()
+        if config.parent.parent.name.startswith("jbrowse-"):
+            yield config.parent.resolve()
 
 
 def redirect_html(url: str):
