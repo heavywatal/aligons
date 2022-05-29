@@ -4,7 +4,7 @@ import functools
 import logging
 import os
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from ftplib import FTP
 from pathlib import Path
 
@@ -89,16 +89,9 @@ def list_versions():
 
 @functools.cache
 def species_names_all():
-    cache = PREFIX / "species.tsv"
-    if not cache.exists():
-        assert cache.parent.exists(), f"{cache.parent} exists"
-        with FTPensemblgenomes() as ftp:
-            species = [Path(x).name for x in ftp.nlst("fasta")]
-        with open(cache, "wt") as fout:
-            fout.write("\n".join(species) + "\n")
-    _log.debug(f"{cache=}")
-    with open(cache, "r") as fin:
-        return [x.rstrip() for x in fin.readlines()]
+    with FTPensemblgenomes() as ftp:
+        lst = ftp.nlst_cache("fasta")
+    return [Path(x).name for x in lst]
 
 
 @functools.cache
@@ -164,19 +157,25 @@ def sanitize_queries(target: str, queries: list[str]):
 
 class FTPensemblgenomes(FTP):
     def __init__(self):
-        host = "ftp.ensemblgenomes.org"
-        _log.info(f"FTP({host})")
-        super().__init__(host)
-        _log.debug("ftp.login()")
-        _log.info(self.login())
-        _log.debug("ftp.getwelcome()")
-        _log.info(self.getwelcome())
-        path = f"/pub/plants/release-{VERSION}"
-        _log.info(f"ftp.cwd({path})")
-        _log.info(self.cwd(path))
+        _log.info("FTP()")
+        super().__init__()
         self.orig_wd = os.getcwd()
         _log.info(f"os.chdir({PREFIX})")
         os.chdir(PREFIX)
+        self.is_connected = False
+
+    def lazy_init(self):
+        if self.is_connected:
+            return
+        host = "ftp.ensemblgenomes.org"
+        _log.debug(f"ftp.connect({host})")
+        _log.info(self.connect(host))
+        _log.debug("ftp.login()")
+        _log.info(self.login())
+        path = f"/pub/plants/release-{VERSION}"
+        _log.info(f"ftp.cwd({path})")
+        _log.info(self.cwd(path))
+        self.is_connected = True
 
     def download_fasta(self, species: str):
         pattern = r"/CHECKSUMS|/README"
@@ -212,11 +211,23 @@ class FTPensemblgenomes(FTP):
         return Path(dir)
 
     def nlst_search(self, dir: str, pattern: str):
-        _log.info(f"ftp.nlst({dir})")  # ensembl does not support mlsd
         rex = re.compile(pattern)
-        for x in self.nlst(dir):
+        for x in self.nlst_cache(dir):
             if rex.search(x):
                 yield x
+
+    def nlst_cache(self, dir: str):
+        path = Path(dir)
+        cache = path / ".ftp_nlst_cache"
+        if cache.exists():
+            _log.info(f"{cache=}")
+            with cache.open("r") as fin:
+                lst = fin.read().rstrip().splitlines()
+        else:
+            lst = self.nlst(dir)
+            with cache.open("w") as fout:
+                fout.write("\n".join(lst) + "\n")
+        return lst
 
     def retrieve(self, path: str):
         outfile = Path(path)
@@ -224,12 +235,23 @@ class FTPensemblgenomes(FTP):
             outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
             with open(outfile, "wb") as fout:
                 cmd = f"RETR {path}"
-                _log.info(cmd)
                 _log.info(self.retrbinary(cmd, fout.write))
         common = Path(path.replace("primary_assembly", "chromosome"))
         if not common.exists():
             common.symlink_to(outfile)
         return common
+
+    # pyright: reportIncompatibleMethodOverride=false
+    def nlst(self, dir: str):  # ensembl does not support mlsd
+        self.lazy_init()
+        _log.info(f"ftp.nlst({dir})")
+        return super().nlst(dir)
+
+    # pyright: reportIncompatibleMethodOverride=false
+    def retrbinary(self, cmd: str, callback: Callable[[bytes], int]):
+        self.lazy_init()
+        _log.info(f"ftp.retrbinary({cmd})")
+        return super().retrbinary(cmd, callback)
 
     def quit(self):
         _log.info(f"os.chdir({self.orig_wd})")
