@@ -48,7 +48,6 @@ def download(query: str):
     else:
         cmd = f"wget -O {path} {url}"
     if path.with_suffix("").suffix in (".bed", ".gff"):
-        cmd += " | sed -e 's/^Chr//'"
         cmd += f" | bgzip -@2 -c >{path}"
         cmd += f"; tabix --csi {path}"
     elif path.with_suffix("").suffix in (".txt"):

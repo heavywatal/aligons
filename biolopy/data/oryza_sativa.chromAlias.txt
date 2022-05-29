@@ -1,0 +1,12 @@
+1	Chr1
+2	Chr2
+3	Chr3
+4	Chr4
+5	Chr5
+6	Chr6
+7	Chr7
+8	Chr8
+9	Chr9
+10	Chr10
+11	Chr11
+12	Chr12

@@ -9,6 +9,7 @@ dst: {document_root}/{jbrowse_XYZ}/{vNN}/{species} ->
 import json
 import logging
 import os
+import importlib.resources as resources
 from pathlib import Path
 from typing import Any, TypeAlias
 
@@ -178,6 +179,7 @@ class JBrowseConfig:
         subp.run(f"sed -i -e 's/bed.gz.tbi/bed.gz.csi/' {config_json}")
         with open(config_json) as fin:
             cfg = json.load(fin)
+        assembly = cfg["assemblies"][0]
         session = cfg["defaultSession"]
         view = session["views"][0]
         view["offsetPx"] = 5002000
@@ -188,13 +190,30 @@ class JBrowseConfig:
                 "start": 0,
                 "end": 43270923,
                 "reversed": False,
-                "assemblyName": cfg["assemblies"][0]["name"],
+                "assemblyName": assembly["name"],
             }
         ]
         for track in view["tracks"]:
             track["displays"] = [make_display(track)]
+        if refnamealiases := self.make_refnamealiases():
+            assembly["refNameAliases"] = refnamealiases
         with open(config_json, "w") as fout:
             json.dump(cfg, fout, indent=2)
+
+    def make_refnamealiases(self):
+        species = self.target.name
+        filename = f"{species}.chromAlias.txt"
+        if not resources.is_resource("biolopy.data", filename):
+            return None
+        with open(self.target / filename, "w") as fout:
+            fout.write(resources.read_text("biolopy.data", filename))
+        return {"adapter": {
+            "type": "RefNameAliasAdapter",
+            "location": {
+                "uri": filename,
+                "locationType": "UriLocation",
+            }
+        }}
 
 
 def make_display(track: dict[str, Any]):
