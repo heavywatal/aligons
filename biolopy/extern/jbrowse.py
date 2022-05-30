@@ -9,6 +9,7 @@ dst: {document_root}/{jbrowse_XYZ}/{vNN}/{species} ->
 import json
 import logging
 import os
+import re
 import importlib.resources as resources
 from pathlib import Path
 from typing import Any, TypeAlias
@@ -120,10 +121,12 @@ class JBrowseConfig:
                 self.add_track(cram, "alignment", id=query, subdir=query)
         for query, cram in crams.items():
             self.add_track(cram, "alignment", id=query, subdir=query)
-        for gff in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
-            self.add_track(gff, "plantregmap", id=gff.name)
-        for bed in fs.sorted_naturally(plantregmap.rglob("*.bed.gz", species)):
-            self.add_track(bed, "plantregmap", id=bed.name)
+        for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
+            id = re.sub(r"_[^_]+\.gff\.gz$", "", path.name)
+            self.add_track(path, "plantregmap", id=id)
+        for path in fs.sorted_naturally(plantregmap.rglob("*.bed.gz", species)):
+            id = re.sub(r"(_normal)?\.bed\.gz$", "", path.name)
+            self.add_track(path, "plantregmap", id=id)
         self.set_default_session()
 
     def add_assembly(self, species: str):
@@ -171,7 +174,9 @@ class JBrowseConfig:
         args.extend(["--target", self.target])
         args.extend(["--name", f"New {self.target.name} session"])
         args.extend(["--view", "LinearGenomeView"])
-        args.extend(["--tracks", ",".join(self.tracks)])
+        rex = re.compile(r"_inProm|_CE_genome-wide")  # redundant subsets
+        tracks = [x for x in self.tracks if not rex.search(x)]
+        args.extend(["--tracks", ",".join(tracks)])
         jbrowse(args)
 
     def configure(self):
