@@ -41,9 +41,9 @@ def use_compara(dir: Path):
     mobj = re.search(r"([^_]+)_.+?\.v\.([^_]+)", dir.name)
     assert mobj
     target_short = mobj.group(1)
-    target = list(ensemblgenomes.expand_shortnames(target_short))[0]
+    target = list(ensemblgenomes.expand_shortnames([target_short]))[0]
     query_short = mobj.group(2)
-    query = list(ensemblgenomes.expand_shortnames(query_short))[0]
+    query = list(ensemblgenomes.expand_shortnames([query_short]))[0]
     pat = re.compile(r"lastz_net\.([^_]+)_(\d+)\.maf$")
     up_to_date: set[Path] = set()
     for maf in fs.sorted_naturally(dir.glob("*_*.maf")):
