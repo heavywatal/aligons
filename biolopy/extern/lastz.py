@@ -77,22 +77,26 @@ class PairwiseAlignment:
             )
         return [_executor.submit(self.wait_integrate, futures) for futures in flists]
 
-    def align_chr(self, target_2bit: Path, query_2bit: Path):
-        axtgz = self.lastz(target_2bit, query_2bit)
-        chain = self.axt_chain(target_2bit, query_2bit, axtgz)
+    def align_chr(self, t2bit: Path, q2bit: Path):
+        lastz_opts: subp.Optdict = {}
+        axtch_opts: subp.Optdict = {}
+        axtgz = self.lastz(t2bit, q2bit, self._outdir, lastz_opts)
+        chain = self.axt_chain(t2bit, q2bit, axtgz, axtch_opts)
         return chain
 
     def wait_integrate(self, futures: list[confu.Future[Path]]):
         return self.integrate([f.result() for f in futures])
 
     def integrate(self, chains: list[Path]):
-        pre_chain = self.merge_sort_pre(chains)
-        syntenic_net = self.chain_net_syntenic(pre_chain)
-        sing_maf = self.net_axt_maf(syntenic_net, pre_chain)
+        pre_chain = self.merge_sort_pre(chains, self._target_sizes, self._query_sizes)
+        syntenic_net = self.chain_net_syntenic(
+            pre_chain, self._target_sizes, self._query_sizes
+        )
+        sing_maf = self.net_axt_maf(syntenic_net, pre_chain, self._target, self._query)
         return sing_maf
 
-    def lastz(self, target_2bit: Path, query_2bit: Path):
-        options = {
+    def lastz(self, t2bit: Path, q2bit: Path, outdir: Path, options: subp.Optdict = {}):
+        defaults: subp.Optdict = {
             "gap": None,  # 400,30 (open, extend)
             "xdrop": None,  # 910
             "hspthresh": None,  # 3000
@@ -100,32 +104,34 @@ class PairwiseAlignment:
             "gappedthresh": None,  # 3000
             "inner": 2000,
         }
-        target_label = target_2bit.stem.rsplit("dna_sm.", 1)[1]
-        query_label = query_2bit.stem.rsplit("dna_sm.", 1)[1]
-        subdir = self._outdir / target_label
+        options = defaults | options
+        target_label = t2bit.stem.rsplit("dna_sm.", 1)[1]
+        query_label = q2bit.stem.rsplit("dna_sm.", 1)[1]
+        subdir = outdir / target_label
         if not cli.dry_run:
             subdir.mkdir(0o755, exist_ok=True)
         axtgz = subdir / f"{query_label}.axt.gz"
-        cmd = f"lastz {target_2bit} {query_2bit} --format=axt"
+        cmd = f"lastz {t2bit} {q2bit} --format=axt"
         cmd += subp.optjoin(options)
-        is_to_run = fs.is_outdated(axtgz, [target_2bit, query_2bit])
+        is_to_run = fs.is_outdated(axtgz, [t2bit, q2bit])
         lastz = subp.run_if(is_to_run, cmd, stdout=subp.PIPE)
         if is_to_run and not cli.dry_run:
             with gzip.open(axtgz, "wb") as fout:
                 fout.write(lastz.stdout)
         return axtgz
 
-    def axt_chain(self, target_2bit: Path, query_2bit: Path, axtgz: Path):
-        options = {
+    def axt_chain(self, t2bit: Path, q2bit: Path, axtgz: Path, options: subp.Optdict = {}):
+        # medium: mouse/human ~80MYA ~poales/poaceae
+        # loose: chicken/human ~300MYA ~gymnosperm/monocot
+        defaults: subp.Optdict = {
             "minScore": 3000,
             "linearGap": "medium",
         }
-        # medium: mouse/human ~80MYA ~poales/poaceae
-        # loose: chicken/human ~300MYA ~gymnosperm/monocot
+        options = defaults | options
         chain = axtgz.with_suffix("").with_suffix(".chain")
         cmd = "axtChain"
         cmd += subp.optjoin(options, "-")
-        cmd += f" stdin {target_2bit} {query_2bit} {chain}"
+        cmd += f" stdin {t2bit} {q2bit} {chain}"
         is_to_run = fs.is_outdated(chain, axtgz)
         p = subp.popen_if(is_to_run, cmd, stdin=subp.PIPE)
         if is_to_run and not cli.dry_run:
@@ -136,7 +142,7 @@ class PairwiseAlignment:
         p.communicate()
         return chain
 
-    def merge_sort_pre(self, chains: list[Path]):
+    def merge_sort_pre(self, chains: list[Path], target_sizes: Path, query_sizes: Path):
         parent = set(x.parent for x in chains)
         subdir = parent.pop()
         assert not parent, "chains are in the same directory"
@@ -145,7 +151,7 @@ class PairwiseAlignment:
         merge_cmd = ["chainMergeSort"] + [str(x) for x in chains]
         merge = subp.popen_if(is_to_run, merge_cmd, stdout=subp.PIPE)
         assert merge.stdout
-        pre_cmd = f"chainPreNet stdin {self._target_sizes} {self._query_sizes} stdout"
+        pre_cmd = f"chainPreNet stdin {target_sizes} {query_sizes} stdout"
         pre = subp.popen_if(is_to_run, pre_cmd, stdin=merge.stdout, stdout=subp.PIPE)
         merge.stdout.close()
         if is_to_run and not cli.dry_run:
@@ -154,12 +160,10 @@ class PairwiseAlignment:
                 fout.write(stdout)
         return pre_chain
 
-    def chain_net_syntenic(self, pre_chain: Path):
+    def chain_net_syntenic(self, pre_chain: Path, target_sizes: Path, query_sizes: Path):
         syntenic_net = pre_chain.parent / "syntenic.net"
         is_to_run = fs.is_outdated(syntenic_net, pre_chain)
-        cn_cmd = (
-            f"chainNet stdin {self._target_sizes} {self._query_sizes} stdout /dev/null"
-        )
+        cn_cmd = f"chainNet stdin {target_sizes} {query_sizes} stdout /dev/null"
         ns_cmd = f"netSyntenic stdin {syntenic_net}"
         cn = subp.popen_if(is_to_run, cn_cmd, stdin=subp.PIPE, stdout=subp.PIPE)
         ns = subp.popen_if(is_to_run, ns_cmd, stdin=subp.PIPE)
@@ -171,10 +175,12 @@ class PairwiseAlignment:
         ns.communicate(cn_out)
         return syntenic_net
 
-    def net_axt_maf(self, syntenic_net: Path, pre_chain: Path):
+    def net_axt_maf(self, syntenic_net: Path, pre_chain: Path, target: str, query: str):
         sing_maf = syntenic_net.parent / "sing.maf"
-        target_2bit = ensemblgenomes.get_file("*.genome.2bit", self._target)
-        query_2bit = ensemblgenomes.get_file("*.genome.2bit", self._query)
+        target_2bit = ensemblgenomes.get_file("*.genome.2bit", target)
+        query_2bit = ensemblgenomes.get_file("*.genome.2bit", query)
+        target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
+        query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
         is_to_run = fs.is_outdated(sing_maf, [syntenic_net, pre_chain])
         toaxt_cmd = f"netToAxt {syntenic_net} stdin {target_2bit} {query_2bit} stdout"
         toaxt = subp.popen_if(is_to_run, toaxt_cmd, stdin=subp.PIPE, stdout=subp.PIPE)
@@ -189,11 +195,11 @@ class PairwiseAlignment:
         )
         toaxt.stdout.close()
         assert sort.stdout
-        tprefix = phylo.shorten(self._target)
-        qprefix = phylo.shorten(self._query)
+        tprefix = phylo.shorten(target)
+        qprefix = phylo.shorten(query)
         axttomaf_cmd = (
             f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
-            f" {self._target_sizes} {self._query_sizes} {sing_maf}"
+            f" {target_sizes} {query_sizes} {sing_maf}"
         )
         atm = subp.popen_if(is_to_run, axttomaf_cmd, stdin=sort.stdout)
         sort.stdout.close()
