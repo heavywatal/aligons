@@ -16,3 +16,17 @@ def test_popen(cmd: str | list[str]):
     assert subp.popen_if(False, cmd, stdout=subp.PIPE).communicate()[0] == b""
     assert subp.popen_if(True, cmd, stdout=subp.PIPE).communicate()[0] == b"hello"
     assert subp.popen(cmd, stdout=subp.PIPE).communicate()[0] == b"hello"
+
+
+def test_optjoin():
+    values = {
+        "key": "value",
+        "zero": 0,
+        "one": 1,
+        "true": True,
+        "false": False,
+        "none": None,
+    }
+    assert subp.optjoin(values) == " --key=value --zero=0 --one=1 --true"
+    assert subp.optjoin({"key": "value"}, "-") == " -key=value"
+    assert subp.optjoin({}) == ""

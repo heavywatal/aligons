@@ -110,3 +110,16 @@ def prepare_args(args: _CMD, cond: bool = True):
         cmd = re.sub("^", "# ", cmd, flags=re.MULTILINE)
         args = ["sleep", "0"]
     return (args, cmd)
+
+
+def optjoin(values: dict[str, Any], prefix: str = "--"):
+    return "".join([optstr(k, v, prefix) for k, v in values.items()])
+
+
+def optstr(key: str, value: Any, prefix: str = "--"):
+    if value is None or value is False:
+        return ""
+    elif value is True:
+        return f" {prefix}{key}"
+    else:
+        return f" {prefix}{key}={value}"

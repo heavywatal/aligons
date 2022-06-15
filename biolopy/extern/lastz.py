@@ -92,13 +92,22 @@ class PairwiseAlignment:
         return sing_maf
 
     def lastz(self, target_2bit: Path, query_2bit: Path):
+        options = {
+            "gap": None,  # 400,30 (open, extend)
+            "xdrop": None,  # 910
+            "hspthresh": None,  # 3000
+            "ydrop": None,  # 9400 = Open + 30 * Extend
+            "gappedthresh": None,  # 3000
+            "inner": 2000,
+        }
         target_label = target_2bit.stem.rsplit("dna_sm.", 1)[1]
         query_label = query_2bit.stem.rsplit("dna_sm.", 1)[1]
         subdir = self._outdir / target_label
         if not cli.dry_run:
             subdir.mkdir(0o755, exist_ok=True)
         axtgz = subdir / f"{query_label}.axt.gz"
-        cmd = f"lastz {target_2bit} {query_2bit} --format=axt --inner=2000"
+        cmd = f"lastz {target_2bit} {query_2bit} --format=axt"
+        cmd += subp.optjoin(options)
         is_to_run = fs.is_outdated(axtgz, [target_2bit, query_2bit])
         lastz = subp.run_if(is_to_run, cmd, stdout=subp.PIPE)
         if is_to_run and not cli.dry_run:
@@ -107,11 +116,16 @@ class PairwiseAlignment:
         return axtgz
 
     def axt_chain(self, target_2bit: Path, query_2bit: Path, axtgz: Path):
-        chain = axtgz.with_suffix("").with_suffix(".chain")
+        options = {
+            "minScore": 3000,
+            "linearGap": "medium",
+        }
         # medium: mouse/human ~80MYA ~poales/poaceae
         # loose: chicken/human ~300MYA ~gymnosperm/monocot
-        cmd = "axtChain -minScore=3000 -linearGap=medium stdin"
-        cmd += f" {target_2bit} {query_2bit} {chain}"
+        chain = axtgz.with_suffix("").with_suffix(".chain")
+        cmd = "axtChain"
+        cmd += subp.optjoin(options, "-")
+        cmd += f" stdin {target_2bit} {query_2bit} {chain}"
         is_to_run = fs.is_outdated(chain, axtgz)
         p = subp.popen_if(is_to_run, cmd, stdin=subp.PIPE)
         if is_to_run and not cli.dry_run:
