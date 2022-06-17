@@ -222,11 +222,12 @@ class FTPensemblgenomes(FTP):
         if cache.exists():
             _log.info(f"{cache=}")
             with cache.open("r") as fin:
-                lst = fin.read().rstrip().splitlines()
+                names = fin.read().rstrip().splitlines()
+            lst = [str(path / x) for x in names]
         else:
             lst = self.nlst(dir)
             with cache.open("w") as fout:
-                fout.write("\n".join(lst) + "\n")
+                fout.write("\n".join([Path(x).name for x in lst]) + "\n")
         return lst
 
     def retrieve(self, path: str):
