@@ -24,36 +24,39 @@ def main(argv: list[str] = []):
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
+    parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
     parser.add_argument("clade", choices=phylo.newicks.keys())
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
+    config = cli.read_config(args.config)
     if args.clean:
         clean(Path("multiple") / args.indir.name)
         return
-    run(args.indir, args.clade, args.jobs)
+    run(args.indir, args.clade, args.jobs, config)
 
 
-def run(indir: Path, clade: str, jobs: int):
+def run(indir: Path, clade: str, jobs: int, options: cli.Optdict = {}):
     target = indir.name
     outdir = Path("multiple") / target / clade
     prepare(indir, outdir)
     chromodirs = outdir.glob("chromosome.*")
+    multiz_opts = options["multiz"]
     with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
-        futures = [executor.submit(multiz, p) for p in chromodirs]
+        futures = [executor.submit(multiz, p, multiz_opts) for p in chromodirs]
     for future in confu.as_completed(futures):
         if (multiz_maf := future.result()).exists():
             print(multiz_maf)
     return outdir
 
 
-def multiz(path: Path):
+def multiz(path: Path, options: subp.Optdict = {}):
     sing_mafs = list(path.glob("*.sing.maf"))
     clade = path.parent.name
     tmpdir = path / "_tmp"
     outfile = path / "multiz.maf"
-    roasted = roast(sing_mafs, clade, tmpdir.name, outfile.name)
+    roasted = roast(sing_mafs, clade, tmpdir.name, outfile.name, options)
     script = "set -eu\n" + roasted.stdout
     is_to_run = fs.is_outdated(outfile, sing_mafs)
     if is_to_run and not cli.dry_run:
@@ -85,14 +88,21 @@ def multiz(path: Path):
     return outfile
 
 
-def roast(sing_mafs: list[Path], clade: str, tmpdir: str, outfile: str):
+def roast(
+    sing_mafs: list[Path],
+    clade: str,
+    tmpdir: str,
+    outfile: str,
+    options: subp.Optdict = {},
+):
     """Generate shell script to execute multiz"""
-    min_width = 18
+    radius = options.get("R", 30)
+    min_width = options.get("M", 1)
     ref_label = sing_mafs[0].name.split(".", 1)[0]
     tree = phylo.newicks[clade]
     tree = phylo.shorten_names(tree).replace(",", " ").rstrip(";")
     args = (
-        f"roast - T={tmpdir} M={min_width} E={ref_label} '{tree}' "
+        f"roast - R={radius} M={min_width} T={tmpdir} E={ref_label} '{tree}' "
         + " ".join([x.name for x in sing_mafs])
         + f" {tmpdir}/{outfile}"
     )

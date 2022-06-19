@@ -35,7 +35,7 @@ def phastcons(target: str, clade: str, jobs: int, compara: bool, config: cli.Opt
     else:
         pairwise = lastz.run(target, clade, jobs, config)
     mafs2cram.run(pairwise, clade, jobs)
-    multiple = multiz.run(pairwise, clade, jobs)
+    multiple = multiz.run(pairwise, clade, jobs, config)
     phast.run(multiple, jobs)
     kent.run(multiple)
 

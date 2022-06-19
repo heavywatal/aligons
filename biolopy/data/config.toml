@@ -21,3 +21,7 @@ linearGap = "medium"
 # qChain = false
 # maxGap = 100
 # noSplit = false
+
+[multiz]
+R = 30  # (30) dynamic programing radius
+M = 18  # (1) minimum block length of output
