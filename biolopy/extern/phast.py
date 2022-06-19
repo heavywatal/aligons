@@ -14,7 +14,6 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import IO, AnyStr, cast
 
 from ..db import ensemblgenomes, phylo
 from ..util import cli, fs, subp
@@ -57,7 +56,7 @@ def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
     wig = path / "phastcons.wig.gz"
     is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
     p = subp.run_if(is_to_run, cmd, stdout=subp.PIPE)
-    with open_if(is_to_run, wig, "wb") as fout:
+    with gzip.open(devnull_if(not is_to_run, wig), "wb") as fout:
         fout.write(p.stdout)
     return wig
 
@@ -106,7 +105,7 @@ def msa_view_features(maf: Path, gff: Path, conserved: bool):
     p = subp.run_if(
         is_to_run, cmd, stdout=subp.PIPE, shell=True, executable="/bin/bash"
     )
-    with open_if(is_to_run, outfile, "wb") as fout:
+    with open(devnull_if(not is_to_run, outfile), "wb") as fout:
         fout.write(p.stdout)
     return outfile
 
@@ -116,7 +115,7 @@ def msa_view_ss(codons_ss: Path):
     s = f"msa_view {str(codons_ss)} --in-format SS --out-format SS --tuple-size 1"
     is_to_run = fs.is_outdated(outfile, codons_ss)
     p = subp.run_if(is_to_run, s, stdout=subp.PIPE)
-    with open_if(is_to_run, outfile, "wb") as fout:
+    with open(devnull_if(not is_to_run, outfile), "wb") as fout:
         fout.write(p.stdout)
     return outfile
 
@@ -229,15 +228,11 @@ def clean(path: Path):
             file.unlink()
 
 
-def open_if(cond: bool, file: Path, mode: str = "r") -> IO[AnyStr]:
-    suffix = file.suffix
-    if cli.dry_run or not cond:
-        file = Path(os.devnull)
-    if suffix == ".gz":
-        f = cast(IO[AnyStr], gzip.open(file, mode))
+def devnull_if(cond: bool, file: Path):
+    if cond:
+        return Path(os.devnull)
     else:
-        f = open(file, mode)
-    return f
+        return file
 
 
 if __name__ == "__main__":
