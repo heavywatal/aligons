@@ -26,33 +26,37 @@ def main(argv: list[str] = []):
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
+    parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("clade", type=Path)  # multiple/{target}/{clade}
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
+    config = cli.read_config(args.config)
     if args.clean:
         clean(args.clade)
         return
-    run(args.clade, args.jobs)
+    run(args.clade, args.jobs, config)
 
 
-def run(path_clade: Path, jobs: int):
+def run(path_clade: Path, jobs: int, options: cli.Optdict = {}):
     (cons_mod, noncons_mod) = prepare_mods(path_clade, jobs)
+    opts = options.get("phastCons", {})
     with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
         chrs = path_clade.glob("chromosome*")
-        futures = [pool.submit(phastCons, d, cons_mod, noncons_mod) for d in chrs]
+        futures = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]
         for future in confu.as_completed(futures):
             if (wig := future.result()).exists():
                 print(wig)
 
 
-def phastCons(path: Path, cons_mod: Path, noncons_mod: Path):
+def phastCons(
+    path: Path, cons_mod: Path, noncons_mod: Path, options: subp.Optdict = {}
+):
     maf = str(path / "multiz.maf")
     seqname = path.name.split(".", 1)[1]  # remove "chromosome."
-    cmd = (
-        "phastCons --target-coverage 0.25 --expected-length 12"
-        f" --seqname {seqname} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
-    )
+    cmd = "phastCons"
+    cmd += subp.optjoin(options)
+    cmd += f" --seqname {seqname} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
     wig = path / "phastcons.wig.gz"
     is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
     p = subp.run_if(is_to_run, cmd, stdout=subp.PIPE)
