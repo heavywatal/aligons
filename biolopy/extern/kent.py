@@ -117,10 +117,14 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
     return pre_chain
 
 
-def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path):
+def chain_net_syntenic(
+    pre_chain: Path, target_sizes: Path, query_sizes: Path, options: subp.Optdict = {}
+):
     syntenic_net = pre_chain.parent / "syntenic.net"
     is_to_run = fs.is_outdated(syntenic_net, pre_chain)
-    cn_cmd = f"chainNet stdin {target_sizes} {query_sizes} stdout /dev/null"
+    cn_cmd = "chainNet"
+    cn_cmd += subp.optjoin(options, "-")
+    cn_cmd += f" stdin {target_sizes} {query_sizes} stdout /dev/null"
     ns_cmd = f"netSyntenic stdin {syntenic_net}"
     cn = subp.popen_if(is_to_run, cn_cmd, stdin=subp.PIPE, stdout=subp.PIPE)
     ns = subp.popen_if(is_to_run, ns_cmd, stdin=subp.PIPE)
@@ -133,14 +137,22 @@ def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path):
     return syntenic_net
 
 
-def net_axt_maf(syntenic_net: Path, pre_chain: Path, target: str, query: str):
+def net_axt_maf(
+    syntenic_net: Path,
+    pre_chain: Path,
+    target: str,
+    query: str,
+    options: subp.Optdict = {},
+):
     sing_maf = syntenic_net.parent / "sing.maf"
     target_2bit = ensemblgenomes.get_file("*.genome.2bit", target)
     query_2bit = ensemblgenomes.get_file("*.genome.2bit", query)
     target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
     query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
     is_to_run = fs.is_outdated(sing_maf, [syntenic_net, pre_chain])
-    toaxt_cmd = f"netToAxt {syntenic_net} stdin {target_2bit} {query_2bit} stdout"
+    toaxt_cmd = "netToAxt"
+    toaxt_cmd += subp.optjoin(options, "-")
+    toaxt_cmd += f" {syntenic_net} stdin {target_2bit} {query_2bit} stdout"
     toaxt = subp.popen_if(is_to_run, toaxt_cmd, stdin=subp.PIPE, stdout=subp.PIPE)
     assert toaxt.stdin
     assert toaxt.stdout

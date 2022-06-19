@@ -11,3 +11,13 @@ minScore = 3000  # 1000
 linearGap = "medium"
 # medium: mouse/human ~80MYA ~poales/poaceae
 # loose: chicken/human ~300MYA ~gymnosperm/monocot
+
+[chainNet]
+# minSpace = 25
+# minFill  # minSpace / 2
+# minScore = 2000
+
+[netToAxt]
+# qChain = false
+# maxGap = 100
+# noSplit = false

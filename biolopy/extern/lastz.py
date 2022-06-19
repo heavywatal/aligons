@@ -60,6 +60,8 @@ class PairwiseAlignment:
         self._outdir = Path("pairwise") / target / query
         self._lastz_opts: subp.Optdict = options["lastz"]
         self._axtch_opts: subp.Optdict = options["axtChain"]
+        self._cn_opts: subp.Optdict = options["chainNet"]
+        self._toaxt_opts: subp.Optdict = options["netToAxt"]
 
     def run(self):
         if not cli.dry_run:
@@ -87,9 +89,11 @@ class PairwiseAlignment:
     def integrate(self, chains: list[Path]):
         pre_chain = kent.merge_sort_pre(chains, self._target_sizes, self._query_sizes)
         syntenic_net = kent.chain_net_syntenic(
-            pre_chain, self._target_sizes, self._query_sizes
+            pre_chain, self._target_sizes, self._query_sizes, self._cn_opts
         )
-        sing_maf = kent.net_axt_maf(syntenic_net, pre_chain, self._target, self._query)
+        sing_maf = kent.net_axt_maf(
+            syntenic_net, pre_chain, self._target, self._query, self._toaxt_opts
+        )
         return sing_maf
 
 
