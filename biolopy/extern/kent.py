@@ -82,14 +82,7 @@ def faSize(genome_fa_gz: Path):
     return outfile
 
 
-def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path, options: subp.Optdict = {}):
-    # medium: mouse/human ~80MYA ~poales/poaceae
-    # loose: chicken/human ~300MYA ~gymnosperm/monocot
-    defaults: subp.Optdict = {
-        "minScore": 3000,
-        "linearGap": "medium",
-    }
-    options = defaults | options
+def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path, options: subp.Optdict):
     chain = axtgz.with_suffix("").with_suffix(".chain")
     cmd = "axtChain"
     cmd += subp.optjoin(options, "-")

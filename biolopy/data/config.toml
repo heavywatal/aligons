@@ -1,0 +1,13 @@
+[lastz]
+gap = "400,30"  # open,extend
+xdrop = 910  # 10 * scores[A][A]
+hspthresh = 3000
+ydrop = 9400  # open + 30 * extend
+gappedthresh = 3000
+inner = 2000  # 0
+
+[axtChain]
+minScore = 3000  # 1000
+linearGap = "medium"
+# medium: mouse/human ~80MYA ~poales/poaceae
+# loose: chicken/human ~300MYA ~gymnosperm/monocot

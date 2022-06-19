@@ -23,31 +23,28 @@ def main(argv: list[str] = []):
     parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
-    parser.add_argument("-c", "--clade", choices=phylo.newicks.keys())
+    parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("target", choices=ensemblgenomes.species_names())
     parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    if args.clade:
-        assert not args.query
-        run(args.target, args.clade, args.jobs)
-    else:
-        _run(args.target, args.query, args.jobs)
+    config = cli.read_config(args.config)
+    _run(args.target, args.query, args.jobs, config)
 
 
-def run(target: str, clade: str, jobs: int):
+def run(target: str, clade: str, jobs: int, options: cli.Optdict):
     tree = phylo.newicks[clade]
-    _run(target, phylo.extract_names(tree), jobs)
+    _run(target, phylo.extract_names(tree), jobs, options)
     return Path("pairwise") / target
 
 
-def _run(target: str, queries: list[str], jobs: int):
+def _run(target: str, queries: list[str], jobs: int, options: cli.Optdict):
     queries = ensemblgenomes.sanitize_queries(target, queries)
     _executor._max_workers = jobs
     futures: list[confu.Future[Path]] = []
     for query in queries:
-        pa = PairwiseAlignment(target, query)
+        pa = PairwiseAlignment(target, query, options)
         futures.extend(pa.run())
     for future in confu.as_completed(futures):
         if (sing_maf := future.result()).exists():
@@ -55,12 +52,14 @@ def _run(target: str, queries: list[str], jobs: int):
 
 
 class PairwiseAlignment:
-    def __init__(self, target: str, query: str):
+    def __init__(self, target: str, query: str, options: subp.Optdict):
         self._target = target
         self._query = query
         self._target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
         self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
         self._outdir = Path("pairwise") / target / query
+        self._lastz_opts: subp.Optdict = options["lastz"]
+        self._axtch_opts: subp.Optdict = options["axtChain"]
 
     def run(self):
         if not cli.dry_run:
@@ -78,10 +77,8 @@ class PairwiseAlignment:
         return [_executor.submit(self.wait_integrate, futures) for futures in flists]
 
     def align_chr(self, t2bit: Path, q2bit: Path):
-        lastz_opts: subp.Optdict = {}
-        axtch_opts: subp.Optdict = {}
-        axtgz = lastz(t2bit, q2bit, self._outdir, lastz_opts)
-        chain = kent.axt_chain(t2bit, q2bit, axtgz, axtch_opts)
+        axtgz = lastz(t2bit, q2bit, self._outdir, self._lastz_opts)
+        chain = kent.axt_chain(t2bit, q2bit, axtgz, self._axtch_opts)
         return chain
 
     def wait_integrate(self, futures: list[confu.Future[Path]]):
@@ -97,15 +94,6 @@ class PairwiseAlignment:
 
 
 def lastz(t2bit: Path, q2bit: Path, outdir: Path, options: subp.Optdict = {}):
-    defaults: subp.Optdict = {
-        "gap": None,  # 400,30 (open, extend)
-        "xdrop": None,  # 910
-        "hspthresh": None,  # 3000
-        "ydrop": None,  # 9400 = Open + 30 * Extend
-        "gappedthresh": None,  # 3000
-        "inner": 2000,
-    }
-    options = defaults | options
     target_label = t2bit.stem.rsplit("dna_sm.", 1)[1]
     query_label = q2bit.stem.rsplit("dna_sm.", 1)[1]
     subdir = outdir / target_label

@@ -5,13 +5,14 @@ import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 from typing import IO, Any, Final, TypeAlias
+
 from . import cli
 
 StrPath: TypeAlias = str | Path[str]
 Args: TypeAlias = list[StrPath]
 _CMD: TypeAlias = Sequence[StrPath] | str
 _FILE: TypeAlias = IO[Any] | int | None
-Optdict: TypeAlias = dict[str, Any]
+Optdict: TypeAlias = cli.Optdict
 
 CalledProcessError = subprocess.CalledProcessError
 PIPE: Final = subprocess.PIPE

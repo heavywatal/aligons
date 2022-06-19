@@ -15,22 +15,25 @@ def main(argv: list[str] = []):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-N", "--check-args", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
-    parser.add_argument("-c", "--compara", action="store_true")
+    parser.add_argument("-c", "--config", type=Path)
+    parser.add_argument("--compara", action="store_true")
     parser.add_argument("target", choices=available_species)
     parser.add_argument("clade", choices=phylo.newicks.keys())
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
+    config = cli.read_config(args.config)
+    print(config)
     if args.check_args:
         return
-    phastcons(args.target, args.clade, args.jobs, args.compara)
+    phastcons(args.target, args.clade, args.jobs, args.compara, config)
 
 
-def phastcons(target: str, clade: str, jobs: int, compara: bool):
+def phastcons(target: str, clade: str, jobs: int, compara: bool, config: cli.Optdict):
     if compara:
         pairwise = Path("compara") / target
     else:
-        pairwise = lastz.run(target, clade, jobs)
+        pairwise = lastz.run(target, clade, jobs, config)
     mafs2cram.run(pairwise, clade, jobs)
     multiple = multiz.run(pairwise, clade, jobs)
     phast.run(multiple, jobs)

@@ -7,8 +7,6 @@ name = "biolopy"
 authors = [{name = "Watal M. Iwasaki", email = "heavywatal@gmail.com"}]
 license = {file = "LICENSE"}
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = []
 dynamic = ["description", "version"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
@@ -16,6 +14,10 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+requires-python = ">=3.10"
+dependencies = [
+  "tomli>=2.0"
 ]
 
 [project.optional-dependencies]
