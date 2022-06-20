@@ -30,19 +30,20 @@ def main(argv: list[str] = []):
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    config = cli.read_config(args.config)
+    if args.config:
+        cli.read_config(args.config)
     if args.clean:
         clean(Path("multiple") / args.indir.name)
         return
-    run(args.indir, args.clade, args.jobs, config)
+    run(args.indir, args.clade, args.jobs)
 
 
-def run(indir: Path, clade: str, jobs: int, options: cli.Optdict = {}):
+def run(indir: Path, clade: str, jobs: int):
     target = indir.name
     outdir = Path("multiple") / target / clade
     prepare(indir, outdir)
     chromodirs = outdir.glob("chromosome.*")
-    multiz_opts = options["multiz"]
+    multiz_opts = cli.config["multiz"]
     with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
         futures = [executor.submit(multiz, p, multiz_opts) for p in chromodirs]
     for future in confu.as_completed(futures):

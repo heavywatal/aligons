@@ -31,16 +31,17 @@ def main(argv: list[str] = []):
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    config = cli.read_config(args.config)
+    if args.config:
+        cli.read_config(args.config)
     if args.clean:
         clean(args.clade)
         return
-    run(args.clade, args.jobs, config)
+    run(args.clade, args.jobs)
 
 
-def run(path_clade: Path, jobs: int, options: cli.Optdict = {}):
+def run(path_clade: Path, jobs: int):
     (cons_mod, noncons_mod) = prepare_mods(path_clade, jobs)
-    opts = options.get("phastCons", {})
+    opts = cli.config.get("phastCons", {})
     with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
         chrs = path_clade.glob("chromosome*")
         futures = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]

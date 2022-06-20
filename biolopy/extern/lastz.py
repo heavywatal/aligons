@@ -29,22 +29,23 @@ def main(argv: list[str] = []):
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    config = cli.read_config(args.config)
-    _run(args.target, args.query, args.jobs, config)
+    if args.config:
+        cli.read_config(args.config)
+    _run(args.target, args.query, args.jobs)
 
 
-def run(target: str, clade: str, jobs: int, options: cli.Optdict):
+def run(target: str, clade: str, jobs: int):
     tree = phylo.newicks[clade]
-    _run(target, phylo.extract_names(tree), jobs, options)
+    _run(target, phylo.extract_names(tree), jobs)
     return Path("pairwise") / target
 
 
-def _run(target: str, queries: list[str], jobs: int, options: cli.Optdict):
+def _run(target: str, queries: list[str], jobs: int):
     queries = ensemblgenomes.sanitize_queries(target, queries)
     _executor._max_workers = jobs
     futures: list[confu.Future[Path]] = []
     for query in queries:
-        pa = PairwiseAlignment(target, query, options)
+        pa = PairwiseAlignment(target, query, cli.config)
         futures.extend(pa.run())
     for future in confu.as_completed(futures):
         if (sing_maf := future.result()).exists():

@@ -9,6 +9,8 @@ import tomli
 Optdict: TypeAlias = dict[str, Any]
 
 dry_run = False
+with resources.open_binary("biolopy.data", "config.toml") as fin:
+    config: Optdict = tomli.load(fin)
 
 _log = logging.getLogger(__name__)
 
@@ -59,12 +61,8 @@ def _from_verbosity(level: int):
 
 
 def read_config(path: Path):
-    with resources.open_binary("biolopy.data", "config.toml") as fin:
-        config = tomli.load(fin)
-    if path:
-        with open(path, "rb") as fin:
-            update_nested(config, tomli.load(fin))
-    return config
+    with open(path, "rb") as fin:
+        update_nested(config, tomli.load(fin))
 
 
 def update_nested(x: Optdict, other: Optdict):

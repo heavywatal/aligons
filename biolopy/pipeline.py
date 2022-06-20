@@ -22,21 +22,21 @@ def main(argv: list[str] = []):
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
-    config = cli.read_config(args.config)
-    print(config)
+    if args.config:
+        cli.read_config(args.config)
     if args.check_args:
         return
-    phastcons(args.target, args.clade, args.jobs, args.compara, config)
+    phastcons(args.target, args.clade, args.jobs, args.compara)
 
 
-def phastcons(target: str, clade: str, jobs: int, compara: bool, config: cli.Optdict):
+def phastcons(target: str, clade: str, jobs: int, compara: bool):
     if compara:
         pairwise = Path("compara") / target
     else:
-        pairwise = lastz.run(target, clade, jobs, config)
+        pairwise = lastz.run(target, clade, jobs)
     mafs2cram.run(pairwise, clade, jobs)
-    multiple = multiz.run(pairwise, clade, jobs, config)
-    phast.run(multiple, jobs, config)
+    multiple = multiz.run(pairwise, clade, jobs)
+    phast.run(multiple, jobs)
     kent.run(multiple)
 
 
