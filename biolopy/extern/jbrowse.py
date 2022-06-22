@@ -181,7 +181,6 @@ class JBrowseConfig:
 
     def configure(self):
         config_json = self.target / "config.json"
-        subp.run(f"sed -i -e 's/bed.gz.tbi/bed.gz.csi/' {config_json}")
         with open(config_json) as fin:
             cfg = json.load(fin)
         assembly = cfg["assemblies"][0]
