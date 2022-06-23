@@ -7,6 +7,7 @@ import re
 from collections.abc import Callable, Iterable
 from ftplib import FTP
 from pathlib import Path
+from typing import Any
 
 from ..util import cli, fs, subp
 
@@ -164,6 +165,12 @@ class FTPensemblgenomes(FTP):
         os.chdir(PREFIX)
         self.is_connected = False
 
+    def __exit__(self, *args: Any):
+        _log.info(f"os.chdir({self.orig_wd})")
+        os.chdir(self.orig_wd)
+        _log.info("ftp.__exit__()")
+        super().__exit__(*args)
+
     def lazy_init(self):
         if self.is_connected:
             return
@@ -253,13 +260,6 @@ class FTPensemblgenomes(FTP):
         self.lazy_init()
         _log.info(f"ftp.retrbinary({cmd})")
         return super().retrbinary(cmd, callback)
-
-    def quit(self):
-        _log.info(f"os.chdir({self.orig_wd})")
-        os.chdir(self.orig_wd)
-        _log.debug("ftp.quit()")
-        _log.info(ret := super().quit())
-        return ret
 
 
 def rsync(relpath: str, options: str = ""):
