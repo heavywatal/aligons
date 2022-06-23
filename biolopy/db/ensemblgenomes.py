@@ -156,6 +156,62 @@ def sanitize_queries(target: str, queries: list[str]):
     return queries
 
 
+def consolidate_compara_mafs(dir: Path):
+    _log.debug(f"{dir=}")
+    mobj = re.search(r"([^_]+)_.+?\.v\.([^_]+)", dir.name)
+    assert mobj
+    target_short = mobj.group(1)
+    query_short = mobj.group(2)
+    target = list(expand_shortnames([target_short]))[0]
+    query = list(expand_shortnames([query_short]))[0]
+    pat = re.compile(r"lastz_net\.([^_]+)_(\d+)\.maf$")
+    up_to_date: set[Path] = set()
+    for maf in fs.sorted_naturally(dir.glob("*_*.maf")):
+        mobj = pat.search(maf.name)
+        assert mobj
+        seq = mobj.group(1)
+        serial = mobj.group(2)
+        outdir = Path(f"compara/{target}/{query}/chromosome.{seq}")
+        sing_maf = outdir / "sing.maf"
+        if serial == "1":
+            print(str(sing_maf))
+            if not fs.is_outdated(sing_maf, maf):
+                up_to_date.add(sing_maf)
+            mode = "w"
+            outdir.mkdir(0o755, parents=True, exist_ok=True)
+        else:
+            mode = "a"
+        if sing_maf in up_to_date:
+            continue
+        lines = readlines_compara_maf(maf)
+        lines = [s.replace(target, target_short) for s in lines]
+        lines = [s.replace(query, query_short) for s in lines]
+        # TODO: multiz inconsistent row size
+        with open(sing_maf, mode) as fout:
+            if serial == "1":
+                fout.write("##maf version=1 scoring=LASTZ_NET\n")
+            fout.writelines(lines)
+
+
+def readlines_compara_maf(file: Path):
+    """maf files of ensembl compara have broken "a" lines
+
+    a# id: 0000000
+     score=9999
+    s aaa.1
+    s bbb.1
+    """
+    lines: list[str] = []
+    with open(file, "r") as fin:
+        for line in fin:
+            if line.startswith("#") or line.startswith("a#"):
+                continue
+            elif line.startswith(" score"):
+                line = "a" + line
+            lines.append(line)
+    return lines
+
+
 class FTPensemblgenomes(FTP):
     def __init__(self):
         _log.info("FTP()")

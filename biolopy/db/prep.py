@@ -1,7 +1,6 @@
 import concurrent.futures as confu
 import logging
 import os
-import re
 from pathlib import Path
 
 from ..extern import htslib, kent
@@ -25,9 +24,7 @@ def main(argv: list[str] | None = None):
         with ensemblgenomes.FTPensemblgenomes() as ftp:
             dirs = ftp.download_maf(args.compara)
         for dir in dirs:
-            if dir.is_dir():
-                print(dir)
-                use_compara(dir)
+            ensemblgenomes.consolidate_compara_mafs(dir)
         return
     tree = phylo.newicks[args.clade]
     species = phylo.extract_names(tree)
@@ -35,49 +32,6 @@ def main(argv: list[str] | None = None):
         download(species, jobs=args.jobs)
     else:
         index(species, jobs=args.jobs)
-
-
-def use_compara(dir: Path):
-    mobj = re.search(r"([^_]+)_.+?\.v\.([^_]+)", dir.name)
-    assert mobj
-    target_short = mobj.group(1)
-    target = list(ensemblgenomes.expand_shortnames([target_short]))[0]
-    query_short = mobj.group(2)
-    query = list(ensemblgenomes.expand_shortnames([query_short]))[0]
-    pat = re.compile(r"lastz_net\.([^_]+)_(\d+)\.maf$")
-    up_to_date: set[Path] = set()
-    for maf in fs.sorted_naturally(dir.glob("*_*.maf")):
-        mobj = pat.search(maf.name)
-        assert mobj
-        seq = mobj.group(1)
-        serial = mobj.group(2)
-        outdir = Path(f"compara/{target}/{query}/chromosome.{seq}")
-        outfile = outdir / "sing.maf"
-        lines: list[str] = []
-        if serial == "1":
-            _log.info(str(outfile))
-            if not fs.is_outdated(outfile, maf):
-                up_to_date.add(outfile)
-            mode = "w"
-            lines.append("##maf version=1 scoring=LASTZ_NET\n")
-            outdir.mkdir(0o755, parents=True, exist_ok=True)
-        else:
-            mode = "a"
-        if outfile in up_to_date:
-            continue
-        with open(maf, "r") as fin:
-            for line in fin:
-                if line.startswith("#") or line.startswith("a#"):
-                    continue
-                elif line.startswith(" score"):
-                    line = "a" + line
-                elif line.startswith("s"):
-                    line = line.replace(target, target_short)
-                    line = line.replace(query, query_short)
-                    # TODO: multiz inconsistent row size
-                lines.append(line)
-        with open(outfile, mode) as fout:
-            fout.writelines(lines)
 
 
 def download(species: list[str], jobs: int | None = os.cpu_count()):
