@@ -7,7 +7,6 @@ import re
 from collections.abc import Callable, Iterable
 from ftplib import FTP
 from pathlib import Path
-from typing import Any
 
 from ..util import cli, fs, subp
 
@@ -156,41 +155,42 @@ def sanitize_queries(target: str, queries: list[str]):
     return queries
 
 
-def consolidate_compara_mafs(dir: Path):
-    _log.debug(f"{dir=}")
-    mobj = re.search(r"([^_]+)_.+?\.v\.([^_]+)", dir.name)
+def consolidate_compara_mafs(indir: Path):
+    _log.debug(f"{indir=}")
+    mobj = re.search(r"([^_]+)_.+?\.v\.([^_]+)", indir.name)
     assert mobj
     target_short = mobj.group(1)
     query_short = mobj.group(2)
     target = list(expand_shortnames([target_short]))[0]
     query = list(expand_shortnames([query_short]))[0]
-    pat = re.compile(r"lastz_net\.([^_]+)_(\d+)\.maf$")
-    up_to_date: set[Path] = set()
-    for maf in fs.sorted_naturally(dir.glob("*_*.maf")):
+    outdir = Path("compara") / target / query
+    pat = re.compile(r"lastz_net\.([^_]+)_\d+\.maf$")
+    infiles_by_seq: dict[str, list[Path]] = {}
+    for maf in fs.sorted_naturally(indir.glob("*_*.maf")):
         mobj = pat.search(maf.name)
         assert mobj
         seq = mobj.group(1)
-        serial = mobj.group(2)
-        outdir = Path(f"compara/{target}/{query}/chromosome.{seq}")
-        sing_maf = outdir / "sing.maf"
-        if serial == "1":
-            print(str(sing_maf))
-            if not fs.is_outdated(sing_maf, maf):
-                up_to_date.add(sing_maf)
-            mode = "w"
-            outdir.mkdir(0o755, parents=True, exist_ok=True)
-        else:
-            mode = "a"
-        if sing_maf in up_to_date:
+        infiles_by_seq.setdefault(seq, []).append(maf)
+    for seq, infiles in infiles_by_seq.items():
+        chrdir = outdir / f"chromosome.{seq}"
+        chrdir.mkdir(0o755, parents=True, exist_ok=True)
+        sing_maf = chrdir / "sing.maf"
+        _log.info(str(sing_maf))
+        if not fs.is_outdated(sing_maf, infiles):
             continue
-        lines = readlines_compara_maf(maf)
-        lines = [s.replace(target, target_short) for s in lines]
-        lines = [s.replace(query, query_short) for s in lines]
-        # TODO: multiz inconsistent row size
-        with open(sing_maf, mode) as fout:
-            if serial == "1":
-                fout.write("##maf version=1 scoring=LASTZ_NET\n")
-            fout.writelines(lines)
+        lines: list[str] = ["##maf version=1 scoring=LASTZ_NET\n"]
+        for maf in infiles:
+            lines.extend(readlines_compara_maf(maf))
+        with open(sing_maf, "wb") as fout:
+            cmd = f"sed -e 's/{target}/{target_short}/' -e 's/{query}/{query_short}/'"
+            sed = subp.popen(cmd, stdin=subp.PIPE, stdout=subp.PIPE)
+            maff = subp.popen("mafFilter stdin", stdin=sed.stdout, stdout=fout)
+            # for padding, not for filtering
+            assert sed.stdout
+            sed.stdout.close()
+            sed.communicate("".join(lines).encode())
+            maff.communicate()
+    return outdir
 
 
 def readlines_compara_maf(file: Path):
@@ -216,19 +216,15 @@ class FTPensemblgenomes(FTP):
     def __init__(self):
         _log.info("FTP()")
         super().__init__()
-        self.orig_wd = os.getcwd()
-        _log.info(f"os.chdir({PREFIX})")
-        os.chdir(PREFIX)
-        self.is_connected = False
 
-    def __exit__(self, *args: Any):
+    def quit(self):
         _log.info(f"os.chdir({self.orig_wd})")
         os.chdir(self.orig_wd)
-        _log.info("ftp.__exit__()")
-        super().__exit__(*args)
+        _log.info("ftp.quit()")
+        super().quit()
 
     def lazy_init(self):
-        if self.is_connected:
+        if self.sock is not None:
             return
         host = "ftp.ensemblgenomes.org"
         _log.debug(f"ftp.connect({host})")
@@ -238,7 +234,9 @@ class FTPensemblgenomes(FTP):
         path = f"/pub/plants/release-{VERSION}"
         _log.info(f"ftp.cwd({path})")
         _log.info(self.cwd(path))
-        self.is_connected = True
+        _log.info(f"os.chdir({PREFIX})")
+        self.orig_wd = os.getcwd()
+        os.chdir(PREFIX)  # for RETR only
 
     def download_fasta(self, species: str):
         pattern = r"/CHECKSUMS|/README"
@@ -262,9 +260,10 @@ class FTPensemblgenomes(FTP):
         path = self.download(dir, f"/{sp}_")
         dirs: list[Path] = []
         for targz in path.glob("*.tar.gz"):
-            expanded = targz.with_suffix("").with_suffix("")
+            expanded = PREFIX / targz.with_suffix("").with_suffix("")
             tar = ["tar", "xzf", targz, "-C", path]
             subp.run_if(fs.is_outdated(expanded / "README.maf"), tar)
+            # TODO: MD5SUM
             dirs.append(expanded.resolve())
         return dirs
 
@@ -280,21 +279,21 @@ class FTPensemblgenomes(FTP):
                 yield x
 
     def nlst_cache(self, dir: str):
-        path = Path(dir)
-        cache = path / ".ftp_nlst_cache"
+        cache = PREFIX / dir / ".ftp_nlst_cache"
         if cache.exists():
             _log.info(f"{cache=}")
             with cache.open("r") as fin:
                 names = fin.read().rstrip().splitlines()
-            lst = [str(path / x) for x in names]
+            lst = [str(Path(dir) / x) for x in names]
         else:
             lst = self.nlst(dir)
+            cache.parent.mkdir(0o755, parents=True, exist_ok=True)
             with cache.open("w") as fout:
                 fout.write("\n".join([Path(x).name for x in lst]) + "\n")
         return lst
 
     def retrieve(self, path: str):
-        outfile = Path(path)
+        outfile = PREFIX / path
         if not outfile.exists() and not cli.dry_run:
             outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
             with open(outfile, "wb") as fout:

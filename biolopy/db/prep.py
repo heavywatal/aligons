@@ -23,8 +23,9 @@ def main(argv: list[str] | None = None):
     if args.compara:
         with ensemblgenomes.FTPensemblgenomes() as ftp:
             dirs = ftp.download_maf(args.compara)
-        for dir in dirs:
-            ensemblgenomes.consolidate_compara_mafs(dir)
+        with confu.ThreadPoolExecutor(max_workers=args.jobs) as pool:
+            for dir in dirs:
+                pool.submit(ensemblgenomes.consolidate_compara_mafs, dir)
         return
     tree = phylo.newicks[args.clade]
     species = phylo.extract_names(tree)
