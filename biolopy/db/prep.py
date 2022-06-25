@@ -15,7 +15,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("-C", "--compara")
+    parser.add_argument("-C", "--compara", choices=ensemblgenomes.species_names())
     parser.add_argument("-c", "--clade", default="bep")
     args = parser.parse_args(argv or None)
     cli.dry_run = args.dry_run
@@ -24,8 +24,12 @@ def main(argv: list[str] | None = None):
         with ensemblgenomes.FTPensemblgenomes() as ftp:
             dirs = ftp.download_maf(args.compara)
         with confu.ThreadPoolExecutor(max_workers=args.jobs) as pool:
-            for dir in dirs:
+            futures = [
                 pool.submit(ensemblgenomes.consolidate_compara_mafs, dir)
+                for dir in dirs
+            ]
+            for f in confu.as_completed(futures):
+                print(f.result())
         return
     tree = phylo.newicks[args.clade]
     species = phylo.extract_names(tree)

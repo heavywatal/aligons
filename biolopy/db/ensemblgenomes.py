@@ -172,6 +172,8 @@ def consolidate_compara_mafs(indir: Path):
         seq = mobj.group(1)
         infiles_by_seq.setdefault(seq, []).append(maf)
     for seq, infiles in infiles_by_seq.items():
+        if seq == "supercontig":
+            continue
         chrdir = outdir / f"chromosome.{seq}"
         chrdir.mkdir(0o755, parents=True, exist_ok=True)
         sing_maf = chrdir / "sing.maf"
@@ -258,6 +260,7 @@ class FTPensemblgenomes(FTP):
         dir = "maf/ensembl-compara/pairwise_alignments"
         sp = shorten(species)
         path = self.download(dir, f"/{sp}_")
+        _log.debug(f"{path=}")
         dirs: list[Path] = []
         for targz in path.glob("*.tar.gz"):
             expanded = PREFIX / targz.with_suffix("").with_suffix("")
@@ -270,7 +273,7 @@ class FTPensemblgenomes(FTP):
     def download(self, dir: str, pattern: str):
         for x in self.nlst_search(dir, pattern):
             print(self.retrieve(x))
-        return Path(dir)
+        return PREFIX / dir
 
     def nlst_search(self, dir: str, pattern: str):
         rex = re.compile(pattern)
@@ -299,7 +302,7 @@ class FTPensemblgenomes(FTP):
             with open(outfile, "wb") as fout:
                 cmd = f"RETR {path}"
                 _log.info(self.retrbinary(cmd, fout.write))
-        common = Path(path.replace("primary_assembly", "chromosome"))
+        common = Path(str(outfile).replace("primary_assembly", "chromosome"))
         if not common.exists():
             common.symlink_to(outfile)
         return common
