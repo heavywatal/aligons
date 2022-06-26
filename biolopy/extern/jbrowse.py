@@ -14,7 +14,7 @@ import importlib.resources as resources
 from pathlib import Path
 from typing import Any, TypeAlias
 
-from ..db import ensemblgenomes, phylo, plantregmap
+from ..db import ensemblgenomes, phylo, plantregmap, stat
 from ..util import cli, subp, fs
 
 StrPath: TypeAlias = str | Path[str]
@@ -181,19 +181,22 @@ class JBrowseConfig:
         jbrowse(args)
 
     def configure(self):
+        chrom_sizes = {x[0]: x[1] for x in stat.chrom_sizes(self.target.name)}
         config_json = self.target / "config.json"
         with open(config_json) as fin:
             cfg = json.load(fin)
         assembly = cfg["assemblies"][0]
         session = cfg["defaultSession"]
         view = session["views"][0]
-        view["offsetPx"] = 5002000
-        view["bpPerPx"] = 2.0
+        chrom = "6"
+        start = 27475500
+        view["bpPerPx"] = 5.0
+        view["offsetPx"] = int(start / view["bpPerPx"])
         view["displayedRegions"] = [
             {
-                "refName": "1",
+                "refName": chrom,
                 "start": 0,
-                "end": 43270923,
+                "end": int(chrom_sizes[chrom]),
                 "reversed": False,
                 "assemblyName": assembly["name"],
             }
