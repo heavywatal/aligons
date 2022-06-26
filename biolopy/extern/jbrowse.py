@@ -107,16 +107,17 @@ class JBrowseConfig:
         species = self.multiple_dir.name
         self.add_assembly(species)
         self.add_track_gff(species)
-        for wig in self.multiple_dir.rglob("phastcons.bw"):
-            clade = wig.parent.name
+        clades = [x.name for x in self.multiple_dir.iterdir()]
+        clades = phylo.sorted_by_len_newicks(clades, reverse=True)
+        for clade in clades:
+            wig = self.multiple_dir / clade / "phastcons.bw"
             self.add_track(wig, "conservation", id=clade, subdir=clade)
         for bed in self.multiple_dir.rglob("cns.bed.gz"):
             clade = bed.parent.name
             self.add_track(bed, "conservation", id="CNS-" + clade, subdir=clade)
-        clade = phylo.outermost([x.name for x in self.multiple_dir.iterdir()])
         gen = self.pairwise_dir.rglob("genome.cram")
         crams = {cram.parent.parent.name: cram for cram in gen}
-        for query in phylo.extract_tip_names(phylo.newicks[clade]):
+        for query in phylo.extract_tip_names(phylo.newicks[clades[0]]):
             if cram := crams.pop(query, None):
                 self.add_track(cram, "alignment", id=query, subdir=query)
         for query, cram in crams.items():

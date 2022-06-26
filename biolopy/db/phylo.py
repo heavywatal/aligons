@@ -43,8 +43,8 @@ def main(argv: list[str] = []):
     return
 
 
-def outermost(clades: list[str]):
-    return max(clades, key=lambda x: len(newicks[x]))
+def sorted_by_len_newicks(clades: list[str], reverse: bool = False):
+    return sorted(clades, key=lambda x: len(newicks[x]), reverse=reverse)
 
 
 def extract_tip_names(newick: str):
