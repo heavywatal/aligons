@@ -209,6 +209,7 @@ class JBrowseConfig:
             track["displays"] = [make_display(track)]
         if refnamealiases := self.make_refnamealiases():
             assembly["refNameAliases"] = refnamealiases
+        cfg["configuration"] = make_configuration()
         with open(config_json, "w") as fout:
             json.dump(cfg, fout, indent=2)
 
@@ -266,6 +267,21 @@ def make_display(track: dict[str, Any]):
         }
     item["configuration"] = "-".join([track["configuration"], item["type"]])
     return item
+
+
+def make_configuration():
+    return {"theme": make_theme()}
+
+
+def make_theme():
+    return {
+        "palette": {
+            "primary": {"main": "#186038"},
+            "secondary": {"main": "#009259"},
+            "tertiary": {"main": "#8fc21f"},
+            "quaternary": {"main": "#d9e000"},
+        }
+    }
 
 
 def jbrowse(args: subp.Args, cond: bool = True):
