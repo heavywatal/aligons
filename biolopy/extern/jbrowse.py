@@ -122,6 +122,10 @@ class JBrowseConfig:
                 self.add_track(cram, "alignment", id=query, subdir=query)
         for query, cram in crams.items():
             self.add_track(cram, "alignment", id=query, subdir=query)
+        if self.target.name == "oryza_sativa":
+            f = Path("~/db/suzuemon/SV.bed.gz").expanduser()
+            if f.exists():
+                self.add_track(f, category="misc", id="suzuemon-SV", subdir="suzuemon")
         for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
             id = re.sub(r"_[^_]+\.gff\.gz$", "", path.name)
             self.add_track(path, "plantregmap", id=id)
