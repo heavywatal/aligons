@@ -11,8 +11,11 @@ from pathlib import Path
 from ..util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
+VERSION = int(
+    os.getenv("ENSEMBLGENOMES_VERSION", cli.config["ensemblgenomes"]["version"])
+)
+assert VERSION > 0
 LOCAL_DB_ROOT = Path("~/db/ensemblgenomes/plants").expanduser()
-VERSION = os.environ["ENSEMBLGENOMES_VERSION"]
 PREFIX = LOCAL_DB_ROOT / f"release-{VERSION}"
 
 
@@ -58,7 +61,7 @@ def make_newicks():
     pacmad = f"({andropogoneae},{paniceae})pacmad"
     poaceae = f"({bep},{pacmad})poaceae"
     monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"  # noqa: F841
-    if int(VERSION) > 50:
+    if VERSION > 50:
         monocot = f"({poaceae},dioscorea_rotundata)monocot"
 
     _solanum = "(solanum_lycopersicum,solanum_tuberosum)"
@@ -66,11 +69,11 @@ def make_newicks():
     _convolvulaceae = "ipomoea_triloba"
     solanales = f"({solanaceae},{_convolvulaceae})solanales"
     _lamiales = "olea_europaea_sylvestris"
-    if int(VERSION) > 51:
+    if VERSION > 51:
         _lamiales = f"({_lamiales},sesamum_indicum)"
     lamiids = f"(({solanales},coffea_canephora),{_lamiales})lamiids"
     _asteraceae = "helianthus_annuus"
-    if int(VERSION) > 52:
+    if VERSION > 52:
         _asteraceae = f"({_asteraceae},lactuca_sativa)"
     _companulids = f"({_asteraceae},daucus_carota)"
     _core_asterids = f"({lamiids},{_companulids})"
