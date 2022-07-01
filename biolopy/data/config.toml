@@ -32,3 +32,6 @@ expected-length = 12
 
 [ensemblgenomes]
 version = 49
+
+[db]
+root = "~/db"

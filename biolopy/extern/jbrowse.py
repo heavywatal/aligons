@@ -6,16 +6,17 @@ src: {vNN}/multiple/{species}/{clade}/phastcons.bw
 dst: {vNN}/{jbrowse_XYZ}/{species}/config.json
 dst: {document_root}/{jbrowse_XYZ}/{vNN}/{species} ->
 """
+import importlib.resources as resources
 import json
 import logging
 import os
 import re
-import importlib.resources as resources
 from pathlib import Path
 from typing import Any, TypeAlias
 
+from .. import db
 from ..db import ensemblgenomes, phylo, plantregmap, stat
-from ..util import cli, subp, fs
+from ..util import cli, fs, subp
 
 StrPath: TypeAlias = str | Path[str]
 
@@ -123,7 +124,7 @@ class JBrowseConfig:
         for query, cram in crams.items():
             self.add_track(cram, "alignment", id=query, subdir=query)
         if self.target.name == "oryza_sativa":
-            f = Path("~/db/suzuemon/SV.bed.gz").expanduser()
+            f = db.root / "suzuemon/SV.bed.gz"
             if f.exists():
                 self.add_track(f, category="misc", id="suzuemon-SV", subdir="suzuemon")
         for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):

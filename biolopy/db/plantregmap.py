@@ -4,12 +4,12 @@
 import logging
 import re
 import urllib.request
-from pathlib import Path
 
+from .. import db
 from ..util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
-LOCAL_DB_ROOT = Path("~/db/plantregmap").expanduser()
+LOCAL_DB_ROOT = db.root / "plantregmap"
 HOST = "plantregmap.gao-lab.org"
 
 
