@@ -14,7 +14,7 @@ import shutil
 from pathlib import Path
 
 from ..db import phylo
-from ..util import cli, fs, subp
+from ..util import ConfDict, cli, config, fs, read_config, subp
 
 _log = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def main(argv: list[str] = []):
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
     if args.config:
-        cli.read_config(args.config)
+        read_config(args.config)
     if args.clean:
         clean(Path("multiple") / args.indir.name)
         return
@@ -43,7 +43,7 @@ def run(indir: Path, clade: str, jobs: int):
     outdir = Path("multiple") / target / clade
     prepare(indir, outdir)
     chromodirs = outdir.glob("chromosome.*")
-    multiz_opts = cli.config["multiz"]
+    multiz_opts = config["multiz"]
     with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
         futures = [executor.submit(multiz, p, multiz_opts) for p in chromodirs]
     for future in confu.as_completed(futures):
@@ -52,7 +52,7 @@ def run(indir: Path, clade: str, jobs: int):
     return outdir
 
 
-def multiz(path: Path, options: subp.Optdict = {}):
+def multiz(path: Path, options: ConfDict = {}):
     sing_mafs = list(path.glob("*.sing.maf"))
     clade = path.parent.name
     tmpdir = path / "_tmp"
@@ -94,7 +94,7 @@ def roast(
     clade: str,
     tmpdir: str,
     outfile: str,
-    options: subp.Optdict = {},
+    options: ConfDict = {},
 ):
     """Generate shell script to execute multiz"""
     radius = options.get("R", 30)

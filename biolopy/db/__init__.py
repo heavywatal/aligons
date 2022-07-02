@@ -1,6 +1,6 @@
 import os.path
 from pathlib import Path
 
-from ..util import cli
+from ..util import config
 
-root = Path(os.path.expandvars(cli.config["db"]["root"])).expanduser()
+root = Path(os.path.expandvars(config["db"]["root"])).expanduser()

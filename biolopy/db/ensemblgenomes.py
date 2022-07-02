@@ -9,11 +9,11 @@ from ftplib import FTP
 from pathlib import Path
 
 from .. import db
-from ..util import cli, fs, subp
+from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
 VERSION = int(
-    os.getenv("ENSEMBLGENOMES_VERSION", cli.config["ensemblgenomes"]["version"])
+    os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"])
 )
 assert VERSION > 0
 LOCAL_DB_ROOT = db.root / "ensemblgenomes/plants"

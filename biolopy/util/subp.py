@@ -6,13 +6,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import IO, Any, Final, TypeAlias
 
+from ..util import ConfDict
 from . import cli
 
 StrPath: TypeAlias = str | Path[str]
 Args: TypeAlias = list[StrPath]
 _CMD: TypeAlias = Sequence[StrPath] | str
 _FILE: TypeAlias = IO[Any] | int | None
-Optdict: TypeAlias = cli.Optdict
 
 CalledProcessError = subprocess.CalledProcessError
 PIPE: Final = subprocess.PIPE
@@ -114,7 +114,7 @@ def prepare_args(args: _CMD, cond: bool = True):
     return (args, cmd)
 
 
-def optjoin(values: Optdict, prefix: str = "--"):
+def optjoin(values: ConfDict, prefix: str = "--"):
     return "".join([optstr(k, v, prefix) for k, v in values.items()])
 
 

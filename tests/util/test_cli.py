@@ -15,11 +15,3 @@ def test_argparser():
     assert cli._from_verbosity(0) == logging.WARNING
     assert cli._from_verbosity(1) == logging.INFO
     assert cli._from_verbosity(2) == logging.DEBUG
-
-
-def test_update_nested():
-    x = {"both": 1, "x": 1}
-    y = {"both": 2, "y": 2}
-    cli.update_nested(x, y)
-    assert x == {"both": 2, "x": 1, "y": 2}
-    assert y == {"both": 2, "y": 2}

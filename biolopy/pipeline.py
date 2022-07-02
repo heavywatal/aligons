@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .db import ensemblgenomes, phylo
 from .extern import kent, lastz, mafs2cram, multiz, phast
-from .util import cli
+from .util import cli, read_config
 
 _log = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def main(argv: list[str] = []):
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
     if args.config:
-        cli.read_config(args.config)
+        read_config(args.config)
     if args.check_args:
         return
     phastcons(args.target, args.clade, args.jobs, args.compara)

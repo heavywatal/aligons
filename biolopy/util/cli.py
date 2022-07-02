@@ -1,16 +1,7 @@
 import argparse
-import importlib.resources as resources
 import logging
-from pathlib import Path
-from typing import Any, TypeAlias
-
-import tomli
-
-Optdict: TypeAlias = dict[str, Any]
 
 dry_run = False
-with resources.open_binary("biolopy.data", "config.toml") as fin:
-    config: Optdict = tomli.load(fin)
 
 _log = logging.getLogger(__name__)
 
@@ -58,20 +49,6 @@ def _from_verbosity(level: int):
         return logging.DEBUG
     else:
         return logging.NOTSET
-
-
-def read_config(path: Path):
-    with open(path, "rb") as fin:
-        update_nested(config, tomli.load(fin))
-
-
-def update_nested(x: Optdict, other: Optdict):
-    for key, value in other.items():
-        if isinstance(x_val := x.get(key), dict):
-            update_nested(x_val, value)  # type: ignore
-        else:
-            x[key] = value
-    return x
 
 
 def main():

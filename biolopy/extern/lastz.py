@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 from ..db import ensemblgenomes, phylo
-from ..util import cli, fs, subp
+from ..util import ConfDict, cli, config, fs, read_config, subp
 from . import kent
 
 _log = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ def main(argv: list[str] = []):
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
     if args.config:
-        cli.read_config(args.config)
+        read_config(args.config)
     _run(args.target, args.query, args.jobs)
 
 
@@ -45,7 +45,7 @@ def _run(target: str, queries: list[str], jobs: int):
     _executor._max_workers = jobs
     futures: list[confu.Future[Path]] = []
     for query in queries:
-        pa = PairwiseAlignment(target, query, cli.config)
+        pa = PairwiseAlignment(target, query, config)
         futures.extend(pa.run())
     for future in confu.as_completed(futures):
         if (sing_maf := future.result()).exists():
@@ -53,16 +53,16 @@ def _run(target: str, queries: list[str], jobs: int):
 
 
 class PairwiseAlignment:
-    def __init__(self, target: str, query: str, options: subp.Optdict):
+    def __init__(self, target: str, query: str, options: ConfDict):
         self._target = target
         self._query = query
         self._target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
         self._query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
         self._outdir = Path("pairwise") / target / query
-        self._lastz_opts: subp.Optdict = options["lastz"]
-        self._axtch_opts: subp.Optdict = options["axtChain"]
-        self._cn_opts: subp.Optdict = options["chainNet"]
-        self._toaxt_opts: subp.Optdict = options["netToAxt"]
+        self._lastz_opts: ConfDict = options["lastz"]
+        self._axtch_opts: ConfDict = options["axtChain"]
+        self._cn_opts: ConfDict = options["chainNet"]
+        self._toaxt_opts: ConfDict = options["netToAxt"]
 
     def run(self):
         if not cli.dry_run:
@@ -98,7 +98,7 @@ class PairwiseAlignment:
         return sing_maf
 
 
-def lastz(t2bit: Path, q2bit: Path, outdir: Path, options: subp.Optdict = {}):
+def lastz(t2bit: Path, q2bit: Path, outdir: Path, options: ConfDict = {}):
     target_label = t2bit.stem.rsplit("dna_sm.", 1)[1]
     query_label = q2bit.stem.rsplit("dna_sm.", 1)[1]
     subdir = outdir / target_label

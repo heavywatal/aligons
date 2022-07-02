@@ -12,7 +12,7 @@ import shutil
 from pathlib import Path
 
 from ..db import ensemblgenomes, phylo
-from ..util import cli, fs, subp
+from ..util import cli, fs, subp, ConfDict
 
 _log = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ def faSize(genome_fa_gz: Path):
     return outfile
 
 
-def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path, options: subp.Optdict):
+def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path, options: ConfDict):
     chain = axtgz.with_suffix("").with_suffix(".chain")
     cmd = "axtChain"
     cmd += subp.optjoin(options, "-")
@@ -118,7 +118,7 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
 
 
 def chain_net_syntenic(
-    pre_chain: Path, target_sizes: Path, query_sizes: Path, options: subp.Optdict = {}
+    pre_chain: Path, target_sizes: Path, query_sizes: Path, options: ConfDict = {}
 ):
     syntenic_net = pre_chain.parent / "syntenic.net"
     is_to_run = fs.is_outdated(syntenic_net, pre_chain)
@@ -142,7 +142,7 @@ def net_axt_maf(
     pre_chain: Path,
     target: str,
     query: str,
-    options: subp.Optdict = {},
+    options: ConfDict = {},
 ):
     sing_maf = syntenic_net.parent / "sing.maf"
     target_2bit = ensemblgenomes.get_file("*.genome.2bit", target)

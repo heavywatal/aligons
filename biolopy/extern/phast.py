@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 from ..db import ensemblgenomes, phylo
-from ..util import cli, fs, subp
+from ..util import ConfDict, cli, config, fs, read_config, subp
 
 _log = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def main(argv: list[str] = []):
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
     if args.config:
-        cli.read_config(args.config)
+        read_config(args.config)
     if args.clean:
         clean(args.clade)
         return
@@ -41,7 +41,7 @@ def main(argv: list[str] = []):
 
 def run(path_clade: Path, jobs: int):
     (cons_mod, noncons_mod) = prepare_mods(path_clade, jobs)
-    opts = cli.config.get("phastCons", {})
+    opts = config.get("phastCons", {})
     with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
         chrs = path_clade.glob("chromosome*")
         futures = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]
@@ -51,7 +51,7 @@ def run(path_clade: Path, jobs: int):
 
 
 def phastCons(
-    path: Path, cons_mod: Path, noncons_mod: Path, options: subp.Optdict = {}
+    path: Path, cons_mod: Path, noncons_mod: Path, options: ConfDict = {}
 ):
     maf = str(path / "multiz.maf")
     seqname = path.name.split(".", 1)[1]  # remove "chromosome."
