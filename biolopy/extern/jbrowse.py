@@ -14,9 +14,8 @@ import re
 from pathlib import Path
 from typing import Any, TypeAlias
 
-from .. import db
 from ..db import ensemblgenomes, phylo, plantregmap, stat
-from ..util import cli, fs, subp
+from ..util import cli, config, fs, subp
 
 StrPath: TypeAlias = str | Path[str]
 
@@ -124,7 +123,7 @@ class JBrowseConfig:
         for query, cram in crams.items():
             self.add_track(cram, "alignment", id=query, subdir=query)
         if self.target.name == "oryza_sativa":
-            f = db.root / "suzuemon/SV.bed.gz"
+            f = config["db"]["root"] / "suzuemon/SV.bed.gz"
             if f.exists():
                 self.add_track(f, category="misc", id="suzuemon-SV", subdir="suzuemon")
         for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):

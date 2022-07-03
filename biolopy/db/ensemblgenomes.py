@@ -8,7 +8,6 @@ from collections.abc import Callable, Iterable
 from ftplib import FTP
 from pathlib import Path
 
-from .. import db
 from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -16,7 +15,7 @@ VERSION = int(
     os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"])
 )
 assert VERSION > 0
-LOCAL_DB_ROOT = db.root / "ensemblgenomes/plants"
+LOCAL_DB_ROOT = config["db"]["root"] / "ensemblgenomes/plants"
 PREFIX = LOCAL_DB_ROOT / f"release-{VERSION}"
 
 

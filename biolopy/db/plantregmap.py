@@ -5,11 +5,10 @@ import logging
 import re
 import urllib.request
 
-from .. import db
-from ..util import cli, fs, subp
+from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
-LOCAL_DB_ROOT = db.root / "plantregmap"
+LOCAL_DB_ROOT = config["db"]["root"] / "plantregmap"
 HOST = "plantregmap.gao-lab.org"
 
 
