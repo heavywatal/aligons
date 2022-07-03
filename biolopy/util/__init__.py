@@ -10,13 +10,13 @@ ConfDict: TypeAlias = dict[str, Any]
 
 def read_config(path: Path):
     with open(path, "rb") as fin:
-        _update_nested(config, tomli.load(fin))
+        update_nested(config, tomli.load(fin))
 
 
-def _update_nested(x: ConfDict, other: ConfDict):
+def update_nested(x: ConfDict, other: ConfDict):
     for key, value in other.items():
         if isinstance(x_val := x.get(key), dict):
-            _update_nested(x_val, value)  # type: ignore
+            update_nested(x_val, value)  # type: ignore
         else:
             x[key] = value
     return x
