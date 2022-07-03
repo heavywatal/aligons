@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from biolopy.util import fs
+from aligons.util import fs
 
 
 def test_is_outdated(tmp_path: Path):

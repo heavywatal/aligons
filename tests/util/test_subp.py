@@ -1,5 +1,5 @@
 import pytest
-from biolopy.util import subp
+from aligons.util import subp
 
 hello = "printf hello"
 

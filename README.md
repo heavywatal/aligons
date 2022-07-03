@@ -1,1 +1,1 @@
-# biolopy: miscellaneous python scripts for biology
+# aligons: pipeline for genome alignment and conservation scoring

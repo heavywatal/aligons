@@ -216,10 +216,10 @@ class JBrowseConfig:
     def make_refnamealiases(self):
         species = self.target.name
         filename = f"{species}.chromAlias.txt"
-        if not resources.is_resource("biolopy.data", filename):
+        if not resources.is_resource("aligons.data", filename):
             return None
         with open(self.target / filename, "w") as fout:
-            fout.write(resources.read_text("biolopy.data", filename))
+            fout.write(resources.read_text("aligons.data", filename))
         return {
             "adapter": {
                 "type": "RefNameAliasAdapter",

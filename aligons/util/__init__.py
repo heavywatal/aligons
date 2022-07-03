@@ -26,7 +26,7 @@ def _expand_path(s: str):
     return Path(os.path.expandvars(s)).expanduser()
 
 
-with resources.open_binary("biolopy.data", "config.toml") as fin:
+with resources.open_binary("aligons.data", "config.toml") as fin:
     config: ConfDict = tomli.load(fin)
 
 config["db"]["root"] = _expand_path(config["db"]["root"])

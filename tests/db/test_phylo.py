@@ -1,5 +1,5 @@
 import pytest
-from biolopy.db import phylo
+from aligons.db import phylo
 
 newick_standard = """(
     (

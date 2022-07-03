@@ -1,5 +1,5 @@
 import logging
-from biolopy.util import cli
+from aligons.util import cli
 
 _log = logging.getLogger(__name__)
 

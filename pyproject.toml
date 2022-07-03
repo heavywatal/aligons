@@ -3,7 +3,7 @@ requires = ["flit_core >=3.6,<4"]
 build-backend = "flit_core.buildapi"
 
 [project]
-name = "biolopy"
+name = "aligons"
 authors = [{name = "Watal M. Iwasaki", email = "heavywatal@gmail.com"}]
 license = {file = "LICENSE"}
 readme = "README.md"
@@ -29,7 +29,7 @@ test = [
 ]
 
 [project.urls]
-source = "https://github.com/heavywatal/biolopy"
+source = "https://github.com/heavywatal/aligons"
 
 [tool.pyright]
 typeCheckingMode = "strict"

@@ -1,4 +1,4 @@
-from biolopy.util import update_nested
+from aligons.util import update_nested
 
 
 def test_update_nested():
