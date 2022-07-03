@@ -291,12 +291,12 @@ def jbrowse(args: subp.Args, cond: bool = True):
 
 
 def iter_targets(path: Path):
-    for config in path.rglob("config.json"):
-        if "test_data" in str(config):
+    for config_json in path.rglob("config.json"):
+        if "test_data" in str(config_json):
             continue
-        config = config.resolve()
-        if config.parent.parent.name.startswith("jbrowse-"):
-            yield config.parent.resolve()
+        config_json = config_json.resolve()
+        if config_json.parent.parent.name.startswith("jbrowse-"):
+            yield config_json.parent.resolve()
 
 
 def redirect_html(url: str):
