@@ -17,11 +17,13 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-  "tomli>=2.0"
+  "tomli >= 2.0; python_version < '3.11'"
 ]
 
 [project.optional-dependencies]
 test = [
+  "black",
+  "flake8",
   "pyproject-flake8",
   "pytest",
 ]
