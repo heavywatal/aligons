@@ -50,9 +50,7 @@ def run(path_clade: Path, jobs: int):
                 print(wig)
 
 
-def phastCons(
-    path: Path, cons_mod: Path, noncons_mod: Path, options: ConfDict = {}
-):
+def phastCons(path: Path, cons_mod: Path, noncons_mod: Path, options: ConfDict = {}):
     maf = str(path / "multiz.maf")
     seqname = path.name.split(".", 1)[1]  # remove "chromosome."
     cmd = "phastCons"

@@ -11,9 +11,7 @@ from pathlib import Path
 from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
-VERSION = int(
-    os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"])
-)
+VERSION = int(os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"]))
 assert VERSION > 0
 LOCAL_DB_ROOT = config["db"]["root"] / "ensemblgenomes/plants"
 PREFIX = LOCAL_DB_ROOT / f"release-{VERSION}"

@@ -220,13 +220,15 @@ class JBrowseConfig:
             return None
         with open(self.target / filename, "w") as fout:
             fout.write(resources.read_text("biolopy.data", filename))
-        return {"adapter": {
-            "type": "RefNameAliasAdapter",
-            "location": {
-                "uri": filename,
-                "locationType": "UriLocation",
+        return {
+            "adapter": {
+                "type": "RefNameAliasAdapter",
+                "location": {
+                    "uri": filename,
+                    "locationType": "UriLocation",
+                },
             }
-        }}
+        }
 
 
 def make_display(track: dict[str, Any]):
@@ -251,7 +253,7 @@ def make_display(track: dict[str, Any]):
                     "type": "SvgFeatureRenderer",
                     "height": 10,
                     "color": "#800000",
-                }
+                },
             }
     elif track["type"] == "QuantitativeTrack":
         item = {
