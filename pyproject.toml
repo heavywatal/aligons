@@ -26,6 +26,7 @@ test = [
   "flake8",
   "pyproject-flake8",
   "pytest",
+  "pytest-cov",
 ]
 
 [project.urls]
@@ -39,3 +40,6 @@ max-line-length = 88
 
 [tool.pytest.ini_options]
 testpaths = "tests"
+
+[tool.coverage.run]
+source = ["src"]
