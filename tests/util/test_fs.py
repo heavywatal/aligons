@@ -17,8 +17,7 @@ def test_is_outdated(tmp_path: Path):
 
 def test_sorted_naturally():
     names = ["chr.1.fa", "chr.2.fa", "chr.10.fa", "chr.Mt.fa"]
-    files = [Path(".") / x for x in names]
-    assert Path(".").absolute() == Path("/Users/watal/git/biolopy")
+    files = [Path(x) for x in names]
     assert sorted(files) != files
     assert fs.sorted_naturally(names) == names
     assert fs.sorted_naturally(files) == files
