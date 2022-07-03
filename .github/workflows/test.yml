@@ -17,5 +17,3 @@ jobs:
       run: python -m pflake8 . --count --show-source --statistics
     - uses: psf/black@stable
     - uses: codecov/codecov-action@v3
-      with:
-        verbose: true
