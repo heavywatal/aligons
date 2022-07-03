@@ -51,9 +51,9 @@ def _from_verbosity(level: int):
         return logging.NOTSET
 
 
-def main():
+def main(argv: list[str] | None = None):
     parser = logging_argparser("vdq")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     logging_config(args.loglevel)
     _log.debug("debug message")
     _log.info("info message")
