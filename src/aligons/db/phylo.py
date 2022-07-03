@@ -28,13 +28,7 @@ def main(argv: list[str] = []):
             print(" ".join(extract_names(tree)))
         elif args.graph:
             newick = newicks_with_inner[args.clade]
-            root = parse_newick(newick)
-            if args.graph > 1:
-                gen = render_nodes(root)
-            else:
-                gen = render_tips(root)
-            for branch, label in gen:
-                print(f"{branch} {label}")
+            print_graph(newick, args.graph)
         else:
             print(tree)
         return
@@ -82,6 +76,20 @@ def remove_whitespace(x: str):
 
 newicks_with_inner = make_newicks()
 newicks = {k: remove_inner(v) for k, v in newicks_with_inner.items()}
+
+
+def print_graph(newick: str, graph: int = 0):
+    root = parse_newick(newick)
+    if graph >= 4:
+        gen = rectangulate(render_tips(root))
+    elif graph == 3:
+        gen = elongate(render_tips(root))
+    elif graph == 2:
+        gen = render_tips(root)
+    else:
+        gen = render_nodes(root)
+    for branch, label in gen:
+        print(f"{branch} {label}")
 
 
 class Node(NamedTuple):

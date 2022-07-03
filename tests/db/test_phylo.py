@@ -97,7 +97,10 @@ def test_remove_lengths(
     newick_xlength_tips: str,
     newick_xlength_short_tips: str,
 ):
-    newick_xlength == "((oryza_sativa,hordeum_vulgare)bep,panicum_hallii_fil2)poaceae;"
+    assert (
+        newick_xlength
+        == "((oryza_sativa,hordeum_vulgare)bep,panicum_hallii_fil2)poaceae;"
+    )
     assert phylo.remove_lengths(newick_xlength) == newick_xlength
     assert phylo.remove_lengths(newick_popular) == newick_xlength_tips
     assert phylo.remove_lengths(newick_xlength_short_tips) == "((osat,hvul),phal);"
@@ -123,3 +126,49 @@ def test_remove_whitespace():
     x = """ ( (A , \t B),
     C) ;\n """
     assert phylo.remove_whitespace(x) == "((A,B),C);"
+
+
+def test_print_graph(capsys: pytest.CaptureFixture[str]):
+    newick = "(one:1,(two:2,three:3)anc:0.5)root"
+    phylo.print_graph(newick, 1)
+    captured = capsys.readouterr()
+    assert (
+        captured.out
+        == """\
+ root
+├─ one
+└─ anc
+  ├─ two
+  └─ three
+"""
+    )
+    phylo.print_graph(newick, 2)
+    captured = capsys.readouterr()
+    assert (
+        captured.out
+        == """\
+┬─ one
+└─┬─ two
+  └─ three
+"""
+    )
+    phylo.print_graph(newick, 3)
+    captured = capsys.readouterr()
+    assert (
+        captured.out
+        == """\
+┬─── one
+└─┬─ two
+  └─ three
+"""
+    )
+    phylo.print_graph(newick, 4)
+    captured = capsys.readouterr()
+    assert (
+        captured.out
+        == """\
+┬───── one
+└─┬─── two
+  └─ three
+"""
+    )
