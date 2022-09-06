@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = [
+dev = [
   "black",
   "flake8",
   "pyproject-flake8",
@@ -39,7 +39,7 @@ typeCheckingMode = "strict"
 max-line-length = 88
 
 [tool.pytest.ini_options]
-testpaths = "tests"
+testpaths = ["tests"]
 
 [tool.coverage.run]
 source = ["src"]
