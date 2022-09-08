@@ -39,6 +39,7 @@ typeCheckingMode = "strict"
 max-line-length = 88
 
 [tool.pytest.ini_options]
+pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.coverage.run]
