@@ -12,10 +12,8 @@ jobs:
     - name: Install this
       run: python -m pip install -U .[dev]
     - name: pytest
-      run: python -m pytest --cov --cov-report=xml
+      run: python -m pytest --cov=. --cov-report=xml
     - name: flake8
       run: python -m pflake8 . --count --show-source --statistics
     - uses: psf/black@stable
     - uses: codecov/codecov-action@v3
-      with:
-        files: ./coverage.xml
