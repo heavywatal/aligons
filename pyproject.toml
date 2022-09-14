@@ -23,7 +23,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "black",
-  "flake8 < 5.0",
   "pyproject-flake8",
   "pytest",
   "pytest-cov",
