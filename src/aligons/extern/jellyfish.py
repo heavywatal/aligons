@@ -73,10 +73,10 @@ def dump(jffile: Path):
     args.append(jffile)
     is_to_run = fs.is_outdated(outfile, jffile)
     subp.run_if(is_to_run, args)
+    hard_mask = "N" * config["jellyfish"]["count"]["mer_len"]
     if is_to_run and not cli.dry_run:
         # append NNN to prevent dCNS from reverting n to N
         with open(outfile, "a") as fout:
-            hard_mask = "N" * config["jellyfish"]["mer_len"]
             fout.write(f">65535\n{hard_mask}\n")
     return outfile
 
