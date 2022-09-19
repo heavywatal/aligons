@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 
-from ..extern import htslib, kent
+from ..extern import htslib, jellyfish, kent
 from ..util import cli, fs
 from . import ensemblgenomes, phylo
 
@@ -62,11 +62,19 @@ def index(species: list[str] = [], jobs: int | None = os.cpu_count()):
     with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
         pool.map(index_fasta, ensemblgenomes.species_dirs("fasta", species))
         pool.map(index_gff3, ensemblgenomes.species_dirs("gff3", species))
+        pool.map(softmask, ensemblgenomes.species_dirs("fasta", species))
+    # for path in ensemblgenomes.species_dirs("fasta", species):
+    #     softmask(path)
 
 
-def index_fasta(path: Path):  # fasta/{species}
+def softmask(species: Path):
+    masked = jellyfish.run(species.name)
+    return index_fasta(masked)
+
+
+def index_fasta(path: Path):  # fasta/{species} or fasta/{species}/dna/kmer
     """Create bgzipped and indexed genome.fa."""
-    if path.name != "dna":
+    if (path / "dna").exists():
         path /= "dna"
     for chromosome in fs.sorted_naturally(path.glob(r"*.chromosome.*.fa.gz")):
         _log.info(str(kent.faToTwoBit(chromosome)))

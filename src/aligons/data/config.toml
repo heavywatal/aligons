@@ -35,3 +35,15 @@ version = 49
 
 [db]
 root = "~/db"
+
+[jellyfish.count]
+mer_len = 20
+size = 500
+threads = 4
+lower_count = 5
+
+[jellyfish.dump]
+lower_count = 10
+
+[jellyfish.histo]
+high = 1000
