@@ -28,7 +28,7 @@ def main(argv: list[str] = []):
     if args.test:
         for path in args.query:
             target = path.parent.parent.parent.name
-            reference = ensemblgenomes.get_file("*.genome.fa.gz", target)
+            reference = ensemblgenomes.get_file("*.genome.fa.gz", target, "kmer")
             stem = str(path.parent).replace("/", "_")
             maf2cram(path, Path(stem + ".cram"), reference)
         return
@@ -50,7 +50,7 @@ def _run(queries: Iterable[Path], jobs: int):
 
 def mafs2cram(path: Path, jobs: int = 1):
     target_species = path.parent.name
-    reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species)
+    reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species, "kmer")
     outdir = path / "cram"
     if not cli.dry_run:
         outdir.mkdir(0o755, exist_ok=True)

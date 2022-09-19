@@ -145,8 +145,8 @@ def net_axt_maf(
     options: ConfDict = {},
 ):
     sing_maf = syntenic_net.parent / "sing.maf"
-    target_2bit = ensemblgenomes.get_file("*.genome.2bit", target)
-    query_2bit = ensemblgenomes.get_file("*.genome.2bit", query)
+    target_2bit = ensemblgenomes.get_file("*.genome.2bit", target, "kmer")
+    query_2bit = ensemblgenomes.get_file("*.genome.2bit", query, "kmer")
     target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
     query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
     is_to_run = fs.is_outdated(sing_maf, [syntenic_net, pre_chain])
