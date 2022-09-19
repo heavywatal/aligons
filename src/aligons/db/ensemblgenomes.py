@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None):
         for sp in species:
             print(sp)
         return
-    for x in rglob(args.glob, species):
+    for x in glob(args.glob, species):
         if args.name:
             print(x.name)
         else:
@@ -112,19 +112,19 @@ def species_dirs(format: str = "fasta", species: list[str] = []):
     assert not requests, f"directory not found: {requests}"
 
 
-def get_file(pattern: str, species: str):
-    found = list(rglob(pattern, [species]))
+def get_file(pattern: str, species: str, subdir: str = ""):
+    found = list(glob(pattern, [species], subdir))
     _log.debug(f"{found=}")
     assert len(found) == 1
     return found[0]
 
 
-def rglob(pattern: str, species: list[str] = []):
+def glob(pattern: str, species: list[str] = [], subdir: str = ""):
     for path in species_dirs("fasta", species):
-        for x in fs.sorted_naturally(path.rglob(pattern)):
+        for x in fs.sorted_naturally((path / "dna" / subdir).glob(pattern)):
             yield x
     for path in species_dirs("gff3", species):
-        for x in fs.sorted_naturally(path.rglob(pattern)):
+        for x in fs.sorted_naturally(path.glob(pattern)):
             yield x
 
 

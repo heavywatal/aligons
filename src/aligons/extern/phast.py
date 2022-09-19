@@ -184,7 +184,7 @@ def prepare_labeled_gff3(species: str):
     dst: ./gff3/{species}/labeled-{chromosome}.gff3.gz
     """
     shortname = phylo.shorten(species)
-    for infile in ensemblgenomes.rglob("*.chromosome*.gff3.gz", [species]):
+    for infile in ensemblgenomes.glob("*.chromosome*.gff3.gz", [species]):
         mobj = re.search(r"(chromosome.+)\.gff3\.gz$", infile.name)
         assert mobj
         outfile = path_labeled_gff3(species, mobj.group(1))
