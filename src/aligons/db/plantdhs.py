@@ -15,7 +15,7 @@ def main(argv: list[str] | None = None):
     parser = cli.logging_argparser()
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("species", nargs="?", default=".")
+    parser.add_argument("pattern", nargs="?", default="*")
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
@@ -23,8 +23,12 @@ def main(argv: list[str] | None = None):
         for query in iter_download_queries():
             file = download(query)
             _log.info(f"{file}")
-    for x in fs.sorted_naturally(LOCAL_DB_ROOT.iterdir()):
+    for x in fs.sorted_naturally(glob(args.pattern)):
         print(x)
+
+
+def glob(pattern: str):
+    return LOCAL_DB_ROOT.glob(pattern)
 
 
 def download(query: str):

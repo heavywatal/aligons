@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from typing import Any, TypeAlias
 
-from ..db import ensemblgenomes, phylo, plantregmap, stat
+from ..db import ensemblgenomes, phylo, plantdhs, plantregmap, stat
 from ..util import cli, config, fs, subp
 
 StrPath: TypeAlias = str | Path[str]
@@ -126,13 +126,22 @@ class JBrowseConfig:
             f = config["db"]["root"] / "suzuemon/SV.bed.gz"
             if f.exists():
                 self.add_track(f, category="misc", id="suzuemon-SV", subdir="suzuemon")
+            self.add_plantdhs()
+        self.add_plantregmap(species)
+        self.set_default_session()
+
+    def add_plantdhs(self):
+        for path in fs.sorted_naturally(plantdhs.glob("Rice_*.bw")):
+            id = path.stem.removeprefix("Rice_")
+            self.add_track(path, "plantdhs", id=id)
+
+    def add_plantregmap(self, species: str):
         for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
             id = re.sub(r"_[^_]+\.gff\.gz$", "", path.name)
             self.add_track(path, "plantregmap", id=id)
         for path in fs.sorted_naturally(plantregmap.rglob("*.bed.gz", species)):
             id = re.sub(r"(_normal)?\.bed\.gz$", "", path.name)
             self.add_track(path, "plantregmap", id=id)
-        self.set_default_session()
 
     def add_assembly(self, species: str):
         """--alias, --name, --displayName"""
@@ -262,6 +271,8 @@ def make_display(track: dict[str, Any]):
             "color": clade_color.get(track["configuration"], "#888888"),
             "constraints": {"max": 1, "min": 0},
         }
+        if not track["configuration"] in clade_color:
+            del item["constraints"]
     elif track["type"] == "AlignmentsTrack":
         item = {
             "type": "LinearPileupDisplay",

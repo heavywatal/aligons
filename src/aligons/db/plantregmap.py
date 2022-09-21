@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """http://plantregmap.gao-lab.org/
 """
 import logging
