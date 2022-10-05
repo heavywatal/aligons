@@ -126,9 +126,15 @@ class JBrowseConfig:
             f = config["db"]["root"] / "suzuemon/SV.bed.gz"
             if f.exists():
                 self.add_track(f, category="misc", id="suzuemon-SV", subdir="suzuemon")
+            self.add_papers_data()
             self.add_plantdhs()
         self.add_plantregmap(species)
         self.set_default_session()
+
+    def add_papers_data(self):
+        dir = config["db"]["root"] / "papers"
+        for path in fs.sorted_naturally(dir.glob("*.bed.gz")):
+            self.add_track(path, "plantdhs", id=path.with_suffix("").stem)
 
     def add_plantdhs(self):
         for path in fs.sorted_naturally(plantdhs.glob("Rice_*.bw")):
