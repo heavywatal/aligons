@@ -3,8 +3,10 @@
 import logging
 import re
 import urllib.request
+import zipfile
 from pathlib import Path
 
+from ..extern import htslib
 from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -23,6 +25,13 @@ def main(argv: list[str] | None = None):
         for query in iter_download_queries():
             file = download(query)
             _log.info(f"{file}")
+            if unzipped := unzip_if_is_zipfile(file):
+                if unzipped.suffix == ".gff":
+                    # TODO: sort
+                    bgz = htslib.bgzip(unzipped)
+                    _log.info(f"{bgz}")
+                    tabix = htslib.tabix(bgz)
+                    _log.info(f"{tabix}")
     for x in fs.sorted_naturally(glob(args.pattern)):
         print(x)
 
@@ -38,6 +47,23 @@ def download(query: str):
     cmd = f"wget {url} -O {path}"
     subp.run_if(fs.is_outdated(path), cmd, shell=True)
     return path
+
+
+def unzip_if_is_zipfile(path: Path):
+    outfile = path.with_suffix("")
+    if path.name.endswith(".gff.zip"):
+        with zipfile.ZipFile(path, "r") as fin:
+            members = fin.namelist()
+            assert len(members) == 1
+            assert not Path(members[0]).is_absolute()
+            gzipped = outfile.with_suffix(outfile.suffix + ".gz")
+            if fs.is_outdated(outfile, path) and fs.is_outdated(gzipped, path):
+                fin.extract(members[0], path.parent)
+        return outfile
+    elif path.name.endswith(".gff.gz"):
+        tabix = path.with_suffix(path.suffix + ".csi")
+        subp.run_if(fs.is_outdated(tabix, path), ["gunzip", path])
+        return outfile
 
 
 def iter_download_queries():

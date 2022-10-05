@@ -134,6 +134,8 @@ class JBrowseConfig:
         for path in fs.sorted_naturally(plantdhs.glob("Rice_*.bw")):
             id = path.stem.removeprefix("Rice_")
             self.add_track(path, "plantdhs", id=id)
+        for path in fs.sorted_naturally(plantdhs.glob("*.gff.gz")):
+            self.add_track(path, "plantdhs", id=path.stem)
 
     def add_plantregmap(self, species: str):
         for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
