@@ -20,10 +20,10 @@ def create_genome_bgzip(path: Path):
     (outname, count) = re.subn(rf"\.chromosome\..+\.{ext}", rf".genome.{ext}", name)
     assert count == 1
     outfile = path / outname
-    return bgzip(files, outfile)
+    return concat_bgzip(files, outfile)
 
 
-def bgzip(infiles: list[Path], outfile: Path):
+def concat_bgzip(infiles: list[Path], outfile: Path):
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         with open(outfile, "wb") as fout:
             bgzip = subp.popen("bgzip -@2", stdin=subp.PIPE, stdout=fout)
@@ -60,8 +60,16 @@ def collect_gff3_header(infiles: Iterable[Path]):
     return header
 
 
+def bgzip(path: Path):
+    """https://www.htslib.org/doc/bgzip.html"""
+    outfile = path.with_suffix(path.suffix + ".gz")
+    if fs.is_outdated(outfile, path):
+        subp.run(["bgzip", "-@2", path])
+    return outfile
+
+
 def faidx(bgz: Path):
-    """http://www.htslib.org/doc/samtools-faidx.html"""
+    """https://www.htslib.org/doc/samtools-faidx.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
     if fs.is_outdated(outfile, bgz):
         subp.run(["samtools", "faidx", bgz])
@@ -69,7 +77,7 @@ def faidx(bgz: Path):
 
 
 def tabix(bgz: Path):
-    """http://www.htslib.org/doc/tabix.html
+    """https://www.htslib.org/doc/tabix.html
     Use .csi instead of .tbi for chromosomes >512 Mbp e.g., atau, hvul
     """
     outfile = bgz.with_suffix(bgz.suffix + ".csi")
