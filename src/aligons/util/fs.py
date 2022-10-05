@@ -22,14 +22,14 @@ def main(argv: list[str] | None = None):
         print(x)
 
 
-def is_outdated(destination: Path, source: list[Path] | Path | None = None):
-    if not destination.exists():
+def is_outdated(product: Path, source: list[Path] | Path | None = None):
+    if not product.exists():
         return True
-    if destination.stat().st_size == 0:
+    if product.stat().st_size == 0:
         return True
     if isinstance(source, list):
         source = newest(source)
-    if source and destination.stat().st_ctime < source.stat().st_ctime:
+    if source and source.exists() and product.stat().st_ctime < source.stat().st_ctime:
         return True
     return False
 
