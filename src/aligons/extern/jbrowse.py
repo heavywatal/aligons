@@ -123,9 +123,6 @@ class JBrowseConfig:
         for query, cram in crams.items():
             self.add_track(cram, "alignment", id=query, subdir=query)
         if self.target.name == "oryza_sativa":
-            f = config["db"]["root"] / "suzuemon/SV.bed.gz"
-            if f.exists():
-                self.add_track(f, category="misc", id="suzuemon-SV", subdir="suzuemon")
             self.add_papers_data()
             self.add_plantdhs()
         self.add_plantregmap(species)
@@ -134,7 +131,12 @@ class JBrowseConfig:
     def add_papers_data(self):
         dir = config["db"]["root"] / "papers"
         for path in fs.sorted_naturally(dir.glob("*.bed.gz")):
-            self.add_track(path, "plantdhs", id=path.with_suffix("").stem)
+            self.add_track(path, "papers", id=path.with_suffix("").stem)
+        suzuemon = config["db"]["root"] / "suzuemon"
+        if (f := suzuemon / "sv_with_DEG.bed.gz").exists():
+            self.add_track(f, "papers", id="SV_DEG-qin2021", subdir="suzuemon")
+        if (f := suzuemon / "SV.bed.gz").exists():
+            self.add_track(f, "papers", id="SV_all-qin2021", subdir="suzuemon")
 
     def add_plantdhs(self):
         for path in fs.sorted_naturally(plantdhs.glob("Rice_*.bw")):
@@ -196,7 +198,7 @@ class JBrowseConfig:
         args.extend(["--target", self.target])
         args.extend(["--name", f"New {self.target.name} session"])
         args.extend(["--view", "LinearGenomeView"])
-        rex = re.compile(r"_inProm|_CE_genome-wide")  # redundant subsets
+        rex = re.compile(r"_inProm|_CE_genome-wide|SV_all-qin")  # redundant subsets
         tracks = [x for x in self.tracks if not rex.search(x)]
         args.extend(["--tracks", ",".join(tracks)])
         jbrowse(args)
