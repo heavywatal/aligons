@@ -3,14 +3,17 @@ import os.path
 from pathlib import Path
 from typing import Any, TypeAlias
 
-import tomli
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 ConfDict: TypeAlias = dict[str, Any]
 
 
 def read_config(path: Path):
     with open(path, "rb") as fin:
-        update_nested(config, tomli.load(fin))
+        update_nested(config, tomllib.load(fin))
 
 
 def update_nested(x: ConfDict, other: ConfDict):
@@ -27,6 +30,6 @@ def _expand_path(s: str):
 
 
 with resources.open_binary("aligons.data", "config.toml") as fin:
-    config: ConfDict = tomli.load(fin)
+    config: ConfDict = tomllib.load(fin)
 
 config["db"]["root"] = _expand_path(config["db"]["root"])
