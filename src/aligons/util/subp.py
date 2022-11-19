@@ -9,7 +9,7 @@ from typing import IO, Any, Final, TypeAlias
 from ..util import ConfDict
 from . import cli
 
-StrPath: TypeAlias = str | Path[str]
+StrPath: TypeAlias = str | Path
 Args: TypeAlias = list[StrPath]
 _CMD: TypeAlias = Sequence[StrPath] | str
 _FILE: TypeAlias = IO[Any] | int | None

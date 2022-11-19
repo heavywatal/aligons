@@ -17,7 +17,7 @@ from typing import Any, TypeAlias
 from ..db import ensemblgenomes, phylo, plantdhs, plantregmap, stat
 from ..util import cli, config, fs, subp
 
-StrPath: TypeAlias = str | Path[str]
+StrPath: TypeAlias = str | Path
 
 _log = logging.getLogger(__name__)
 _load = "symlink"
