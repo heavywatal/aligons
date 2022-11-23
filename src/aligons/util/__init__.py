@@ -29,7 +29,7 @@ def _expand_path(s: str):
     return Path(os.path.expandvars(s)).expanduser()
 
 
-with resources.open_binary("aligons.data", "config.toml") as fin:
+with resources.files("aligons.data").joinpath("config.toml").open("rb") as fin:
     config: ConfDict = tomllib.load(fin)
 
 config["db"]["root"] = _expand_path(config["db"]["root"])
