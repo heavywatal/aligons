@@ -15,24 +15,30 @@ def main(argv: list[str] = []):
     parser = cli.logging_argparser()
     parser.add_argument("-n", "--name", action="store_true")
     parser.add_argument("-s", "--short", action="store_true")
+    parser.add_argument("-i", "--inner", action="store_true")
     parser.add_argument("-g", "--graph", action="count")
-    parser.add_argument("clade", nargs="?")
+    parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
-    global newicks
+    if args.inner or args.graph:
+        trees = newicks_with_inner
+    else:
+        trees = newicks
     if args.short:
-        newicks = {k: shorten_names(v) for k, v in newicks.items()}
-    if args.clade:
-        tree = newicks[args.clade]
+        trees = {k: shorten_names(v) for k, v in trees.items()}
+    if args.query:
+        if len(args.query) > 1:
+            tree = get_subtree(trees["angiospermae"], args.query)
+        else:
+            tree = trees[args.query[0]]
         if args.name:
             print(" ".join(extract_names(tree)))
         elif args.graph:
-            newick = newicks_with_inner[args.clade]
-            print_graph(newick, args.graph)
+            print_graph(tree, args.graph)
         else:
             print(tree)
         return
-    for key, tree in newicks.items():
+    for key, tree in trees.items():
         print(f"{key}: {tree}")
     return
 
@@ -74,6 +80,20 @@ def remove_whitespace(x: str):
     return "".join(x.split())
 
 
+def get_subtree(newick: str, tips: list[str]):
+    def repl(mobj: re.Match[str]):
+        if (s := mobj.group(0)) in tips:
+            return s
+        else:
+            return ""
+    filtered = re.sub(r"[\w_]+", repl, newick)
+    while re.search(r"\(,\)", filtered):
+        filtered = re.sub(r"\(,\)", "", filtered)
+    _log.debug(filtered)
+    root = parse_newick(filtered)
+    return newickize(root)
+
+
 newicks_with_inner = make_newicks()
 newicks = {k: remove_inner(v) for k, v in newicks_with_inner.items()}
 
@@ -110,6 +130,23 @@ StrGen: TypeAlias = Iterator[str]
 GraphGen: TypeAlias = Iterable[tuple[str, str]]
 NORMAL_BRICKS = Bricks()
 COMPACT_BRICKS = Bricks("┬─")
+
+
+def newickize(node: Node) -> str:
+    return _newickize(node) + ";"
+
+
+def _newickize(node: Node) -> str:
+    ret = ""
+    if node.children:
+        ret += "("
+        ret += ",".join([_newickize(child) for child in node.children])
+        ret += ")"
+    if "+" not in node.name:
+        ret += node.name
+    if node.distance:
+        ret += f":{node.distance}"
+    return ret
 
 
 def render_nodes(node: Node, columns: list[StrGen] = []) -> GraphGen:
@@ -168,11 +205,16 @@ def _extract_tip_clade(tree: str, nodes: dict[str, Node]):
     for mobj in re.finditer(r"\(([^(]+?)\)([^(),;]+)?", tree):
         children: list[Node] = []
         for label in mobj.group(1).split(","):
-            name, distance = _parse_node_label(label)
-            children.append(nodes.pop(name, Node(name, [], distance)))
-        name, distance = _parse_node_label(mobj.group(2) or "")
-        name = name or "+".join([x.name for x in children])
-        nodes[name] = Node(name, children, distance)
+            if label:
+                name, distance = _parse_node_label(label)
+                children.append(nodes.pop(name, Node(name, [], distance)))
+        if len(children) > 1:
+            name, distance = _parse_node_label(mobj.group(2) or "")
+            name = name or "+".join([x.name for x in children])
+            nodes[name] = Node(name, children, distance)
+        else:
+            name = children[0].name
+            nodes[name] = children[0]
         tree = tree.replace(mobj.group(0), name)
     return tree, nodes
 

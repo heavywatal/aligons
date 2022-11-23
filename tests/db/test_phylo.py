@@ -128,6 +128,18 @@ def test_remove_whitespace():
     assert phylo.remove_whitespace(x) == "((A,B),C);"
 
 
+def test_newickize(newick: str):
+    root = phylo.parse_newick(newick)
+    assert phylo.newickize(root) == newick
+
+
+def test_subtree(newick_xlength_short_tips: str):
+    tree = "((((A,B),(C,D)),(E,(F,G))),H);"
+    subtree = "((A,C),E);"
+    tips = phylo.extract_names(subtree)
+    assert phylo.get_subtree(tree, tips) == subtree
+
+
 def test_print_graph(capsys: pytest.CaptureFixture[str]):
     newick = "(one:1,(two:2,three:3)anc:0.5)root"
     phylo.print_graph(newick, 1)
