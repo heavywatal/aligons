@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from typing import NamedTuple, TypeAlias
 
 from ..util import cli
@@ -43,6 +43,15 @@ def main(argv: list[str] = []):
     return
 
 
+def get_newick(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x):
+    if len(queries) == 1:
+        return fun(newicks[queries[0]])
+    tree = fun(newicks["angiospermae"])
+    if len(queries) > 1:
+        tree = get_subtree(tree, queries)
+    return tree
+
+
 def sorted_by_len_newicks(clades: list[str], reverse: bool = False):
     return sorted(clades, key=lambda x: len(newicks[x]), reverse=reverse)
 
@@ -80,7 +89,7 @@ def remove_whitespace(x: str):
     return "".join(x.split())
 
 
-def get_subtree(newick: str, tips: list[str]):
+def get_subtree(newick: str, tips: Sequence[str]):
     def repl(mobj: re.Match[str]):
         if (s := mobj.group(0)) in tips:
             return s

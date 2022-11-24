@@ -11,6 +11,7 @@ import itertools
 import logging
 import os
 import shutil
+from collections.abc import Sequence
 from pathlib import Path
 
 from ..db import phylo
@@ -20,13 +21,14 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
+    nodes_all = phylo.extract_names(phylo.newicks_with_inner["angiospermae"])
     parser = cli.logging_argparser()
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
-    parser.add_argument("clade", choices=phylo.newicks.keys())
+    parser.add_argument("query", choices=nodes_all)
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
@@ -35,15 +37,23 @@ def main(argv: list[str] = []):
     if args.clean:
         clean(Path("multiple") / args.indir.name)
         return
-    run(args.indir, args.clade, args.jobs)
+    run(args.indir, args.query, args.jobs)
 
 
-def run(indir: Path, clade: str, jobs: int):
+def run(indir: Path, query: Sequence[str], jobs: int):
     target = indir.name
-    outdir = Path("multiple") / target / clade
-    prepare(indir, outdir)
+    assert target in query
+    tree = phylo.get_newick(query)
+    if len(query) > 1:
+        dirname = "-".join(phylo.shorten(x) for x in query)
+    else:
+        dirname = query[0]
+        query = phylo.extract_names(tree)
+    outdir = Path("multiple") / target / dirname
+    prepare(indir, outdir, query)
     chromodirs = outdir.glob("chromosome.*")
     multiz_opts = config["multiz"]
+    multiz_opts["tree"] = tree
     with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
         futures = [executor.submit(multiz, p, multiz_opts) for p in chromodirs]
     for future in confu.as_completed(futures):
@@ -54,10 +64,9 @@ def run(indir: Path, clade: str, jobs: int):
 
 def multiz(path: Path, options: ConfDict = {}):
     sing_mafs = list(path.glob("*.sing.maf"))
-    clade = path.parent.name
     tmpdir = path / "_tmp"
     outfile = path / "multiz.maf"
-    roasted = roast(sing_mafs, clade, tmpdir.name, outfile.name, options)
+    roasted = roast(sing_mafs, tmpdir.name, outfile.name, options)
     script = "set -eu\n" + roasted.stdout
     is_to_run = fs.is_outdated(outfile, sing_mafs)
     if is_to_run and not cli.dry_run:
@@ -91,17 +100,15 @@ def multiz(path: Path, options: ConfDict = {}):
 
 def roast(
     sing_mafs: list[Path],
-    clade: str,
     tmpdir: str,
     outfile: str,
     options: ConfDict = {},
 ):
     """Generate shell script to execute multiz"""
+    tree = options["tree"]
     radius = options.get("R", 30)
     min_width = options.get("M", 1)
     ref_label = sing_mafs[0].name.split(".", 1)[0]
-    tree = phylo.newicks[clade]
-    tree = phylo.shorten_names(tree).replace(",", " ").rstrip(";")
     args = (
         f"roast - R={radius} M={min_width} T={tmpdir} E={ref_label} '{tree}' "
         + " ".join([x.name for x in sing_mafs])
@@ -110,15 +117,12 @@ def roast(
     return subp.run(args, stdout=subp.PIPE, text=True)
 
 
-def prepare(indir: Path, outdir: Path):
+def prepare(indir: Path, outdir: Path, queries: Sequence[str]):
     target = indir.name
-    clade = outdir.name
-    tree = phylo.newicks[clade]
-    species = phylo.extract_names(tree)
-    assert target in species
+    assert target in queries
     if not cli.dry_run:
         outdir.mkdir(0o755, parents=True, exist_ok=True)
-    for query in species:
+    for query in queries:
         if query == target:
             continue
         querypath = indir / query

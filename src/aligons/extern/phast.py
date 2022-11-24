@@ -69,7 +69,7 @@ def prepare_mods(clade: Path, jobs: int):
     prepare_labeled_gff3(target)
     cons_mod = clade / "cons.mod"
     noncons_mod = clade / "noncons.mod"
-    tree = phylo.shorten_names(phylo.newicks[clade.name])
+    tree = phylo.get_newick(clade.name.split("-"), phylo.shorten_names)
     cfutures: list[confu.Future[Path]] = []
     nfutures: list[confu.Future[Path]] = []
     with confu.ThreadPoolExecutor(max_workers=jobs) as pool:

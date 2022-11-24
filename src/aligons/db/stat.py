@@ -39,6 +39,12 @@ def chrom_sizes(species: str):
     return rows
 
 
+def fasize(species: str):
+    rows = chrom_sizes(species)
+    lengths = [int(row[1]) for row in rows]
+    return sum(lengths)
+
+
 def gff3_size(species: str):
     path = ensemblgenomes.get_file("*.genome.gff3.gz", species)
     return path.stat().st_size / 1e6
