@@ -106,6 +106,7 @@ def roast(
 ):
     """Generate shell script to execute multiz"""
     tree = options["tree"]
+    tree = phylo.shorten_names(tree).replace(",", " ").rstrip(";")
     radius = options.get("R", 30)
     min_width = options.get("M", 1)
     ref_label = sing_mafs[0].name.split(".", 1)[0]
