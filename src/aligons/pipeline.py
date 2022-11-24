@@ -44,6 +44,8 @@ def phastcons(
     species = list(filter(lambda x: test_fasize(x, max_bp), species))
     n = tips or len(species)
     for species in itertools.combinations(species, n):
+        if target not in species:
+            continue
         _log.info(f"{species = }")
         multiple = multiz.run(pairwise, species, jobs)
         phast.run(multiple, jobs)

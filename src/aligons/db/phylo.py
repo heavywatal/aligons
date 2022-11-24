@@ -95,6 +95,7 @@ def get_subtree(newick: str, tips: Sequence[str]):
             return s
         else:
             return ""
+
     filtered = re.sub(r"[\w_]+", repl, newick)
     while re.search(r"\(,\)", filtered):
         filtered = re.sub(r"\(,\)", "", filtered)
