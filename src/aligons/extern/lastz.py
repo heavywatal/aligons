@@ -68,9 +68,10 @@ class PairwiseAlignment:
         if not cli.dry_run:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
         patt = "*.chromosome.*.2bit"
-        it = ensemblgenomes.glob(patt, [self._target], "kmer")
+        subdir = "kmer" if config["db"]["kmer"] else ""
+        it = ensemblgenomes.glob(patt, [self._target], subdir)
         target_chromosomes = fs.sorted_naturally(it)
-        it = ensemblgenomes.glob(patt, [self._query], "kmer")
+        it = ensemblgenomes.glob(patt, [self._query], subdir)
         query_chromosomes = fs.sorted_naturally(it)
         flists: list[list[confu.Future[Path]]] = []
         for t in target_chromosomes:

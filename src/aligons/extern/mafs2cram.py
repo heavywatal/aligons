@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Iterable
 
 from ..db import ensemblgenomes, phylo
-from ..util import cli, fs, subp
+from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -25,10 +25,11 @@ def main(argv: list[str] = []):
     args = parser.parse_args(argv or None)
     cli.logging_config(args.loglevel)
     cli.dry_run = args.dry_run
+    subdir = "kmer" if config["db"]["kmer"] else ""
     if args.test:
         for path in args.query:
             target = path.parent.parent.parent.name
-            reference = ensemblgenomes.get_file("*.genome.fa.gz", target, "kmer")
+            reference = ensemblgenomes.get_file("*.genome.fa.gz", target, subdir)
             stem = str(path.parent).replace("/", "_")
             maf2cram(path, Path(stem + ".cram"), reference)
         return
@@ -50,7 +51,8 @@ def _run(queries: Iterable[Path], jobs: int):
 
 def mafs2cram(path: Path, jobs: int = 1):
     target_species = path.parent.name
-    reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species, "kmer")
+    subdir = "kmer" if config["db"]["kmer"] else ""
+    reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species, subdir)
     outdir = path / "cram"
     if not cli.dry_run:
         outdir.mkdir(0o755, exist_ok=True)

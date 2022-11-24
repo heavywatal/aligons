@@ -12,7 +12,7 @@ import shutil
 from pathlib import Path
 
 from ..db import ensemblgenomes, phylo
-from ..util import cli, fs, subp, ConfDict
+from ..util import cli, config, fs, subp, ConfDict
 
 _log = logging.getLogger(__name__)
 
@@ -145,8 +145,9 @@ def net_axt_maf(
     options: ConfDict = {},
 ):
     sing_maf = syntenic_net.parent / "sing.maf"
-    target_2bit = ensemblgenomes.get_file("*.genome.2bit", target, "kmer")
-    query_2bit = ensemblgenomes.get_file("*.genome.2bit", query, "kmer")
+    subdir = "kmer" if config["db"]["kmer"] else ""
+    target_2bit = ensemblgenomes.get_file("*.genome.2bit", target, subdir)
+    query_2bit = ensemblgenomes.get_file("*.genome.2bit", query, subdir)
     target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
     query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
     is_to_run = fs.is_outdated(sing_maf, [syntenic_net, pre_chain])
