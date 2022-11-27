@@ -107,7 +107,7 @@ class JBrowseConfig:
         species = self.multiple_dir.name
         self.add_assembly(species)
         self.add_track_gff(species)
-        clades = [x.name for x in self.multiple_dir.iterdir()]
+        clades = [x.name for x in self.multiple_dir.iterdir() if "-" not in x.name]
         clades = phylo.sorted_by_len_newicks(clades, reverse=True)
         for clade in clades:
             wig = self.multiple_dir / clade / "phastcons.bw"
@@ -198,7 +198,10 @@ class JBrowseConfig:
         args.extend(["--target", self.target])
         args.extend(["--name", f"New {self.target.name} session"])
         args.extend(["--view", "LinearGenomeView"])
-        rex = re.compile(r"_inProm|_CE_genome-wide|SV_all-qin")  # redundant subsets
+        patt = r"_inProm|_CE_genome-wide"  # redundant subsets
+        patt += r"|_H\dK\d"
+        patt += r"|SV_all-qin"
+        rex = re.compile(patt)
         tracks = [x for x in self.tracks if not rex.search(x)]
         args.extend(["--tracks", ",".join(tracks)])
         jbrowse(args)
