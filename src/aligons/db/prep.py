@@ -11,15 +11,12 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
-    parser = cli.logging_argparser()
-    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser = cli.ArgumentParser()
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("-C", "--compara", choices=ensemblgenomes.species_names())
     parser.add_argument("-c", "--clade", default="bep")
     args = parser.parse_args(argv or None)
-    cli.dry_run = args.dry_run
-    cli.logging_config(args.loglevel)
     if args.compara:
         with ensemblgenomes.FTPensemblgenomes() as ftp:
             dirs = ftp.download_maf(args.compara)

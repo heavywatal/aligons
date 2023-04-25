@@ -12,8 +12,7 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] = []):
     available_species = ensemblgenomes.species_names()
-    parser = cli.logging_argparser()
-    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser = cli.ArgumentParser()
     parser.add_argument("-N", "--check-args", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-c", "--config", type=Path)
@@ -23,8 +22,6 @@ def main(argv: list[str] = []):
     parser.add_argument("target", choices=available_species)
     parser.add_argument("clade", choices=phylo.newicks.keys())
     args = parser.parse_args(argv or None)
-    cli.logging_config(args.loglevel)
-    cli.dry_run = args.dry_run
     if args.config:
         read_config(args.config)
     if args.check_args:

@@ -12,13 +12,10 @@ HOST = "plantregmap.gao-lab.org"
 
 
 def main(argv: list[str] | None = None):
-    parser = cli.logging_argparser()
-    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("species", nargs="?", default=".")
     args = parser.parse_args(argv or None)
-    cli.logging_config(args.loglevel)
-    cli.dry_run = args.dry_run
     if args.download:
         for query in iter_download_queries():
             print(download(query))

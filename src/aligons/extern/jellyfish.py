@@ -18,12 +18,9 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    parser = cli.logging_argparser()
-    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser = cli.ArgumentParser()
     parser.add_argument("species", type=str)
     args = parser.parse_args(argv or None)
-    cli.logging_config(args.loglevel)
-    cli.dry_run = args.dry_run
     outdir = run(args.species)
     print(outdir)
 

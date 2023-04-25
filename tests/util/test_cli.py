@@ -5,20 +5,20 @@ from aligons.util import cli
 
 
 def test_argparser():
-    parser = cli.logging_argparser("vdq")
-    assert parser.parse_args([]).loglevel == 0
-    assert parser.parse_args(["-v"]).loglevel == 1
-    assert parser.parse_args(["-vv"]).loglevel == 2
-    assert parser.parse_args(["-d"]).loglevel == logging.DEBUG
-    assert parser.parse_args(["-q"]).loglevel == logging.ERROR
+    parser = cli.ArgumentParser("vdq")
+    assert parser.parse_args([]).verbosity == 0
+    assert parser.parse_args(["-v"]).verbosity == 1
+    assert parser.parse_args(["-vv"]).verbosity == 2
+    assert parser.parse_args(["-q"]).verbosity == -1
 
 
 def test_from_verbosity():
     # pyright: reportPrivateUsage=false
-    assert cli._from_verbosity(0) == logging.WARNING
-    assert cli._from_verbosity(1) == logging.INFO
-    assert cli._from_verbosity(2) == logging.DEBUG
-    assert cli._from_verbosity(42) == logging.NOTSET
+    assert cli._verbosity_to_level.get(-1) == logging.ERROR
+    assert cli._verbosity_to_level.get(0) == logging.WARNING
+    assert cli._verbosity_to_level.get(1) == logging.INFO
+    assert cli._verbosity_to_level.get(2) == logging.DEBUG
+    assert cli._verbosity_to_level.get(42, logging.NOTSET) == logging.NOTSET
 
 
 def test_logging_config(caplog: pytest.LogCaptureFixture):

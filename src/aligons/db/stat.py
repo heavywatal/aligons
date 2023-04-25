@@ -8,13 +8,10 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
-    parser = cli.logging_argparser()
-    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser = cli.ArgumentParser()
     parser.add_argument("-l", "--long", action="store_true")
     parser.add_argument("-c", "--clade", default="angiospermae")
     args = parser.parse_args(argv or None)
-    cli.dry_run = args.dry_run
-    cli.logging_config(args.loglevel)
     newick = phylo.newicks[args.clade]
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangulate(phylo.render_tips(root)):

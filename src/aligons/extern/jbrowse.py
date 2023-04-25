@@ -25,16 +25,13 @@ env_version = os.environ["JBROWSE_VERSION"]
 
 
 def main(argv: list[str] = []):
-    parser = cli.logging_argparser()
-    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser = cli.ArgumentParser()
     parser.add_argument("-a", "--admin", action="store_true")
     parser.add_argument("-u", "--upgrade", action="store_true")
     parser.add_argument("-d", "--deploy", action="store_true")
     parser.add_argument("-o", "--outdir", type=Path, default=Path("."))
     parser.add_argument("indir", type=Path)  # multiple/oryza_sativa/
     args = parser.parse_args(argv or None)
-    cli.logging_config(args.loglevel)
-    cli.dry_run = args.dry_run
     jb = JBrowse(args.outdir)
     if args.admin:
         jb.admin_server()

@@ -14,10 +14,9 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
-    parser = cli.logging_argparser()
+    parser = cli.ArgumentParser()
     parser.add_argument("path", nargs="+", type=Path)
     args = parser.parse_args(argv or None)
-    cli.logging_config(args.loglevel)
     for x in sorted_naturally(args.path):
         print(x)
 

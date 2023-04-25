@@ -12,14 +12,13 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    parser = cli.logging_argparser()
+    parser = cli.ArgumentParser()
     parser.add_argument("-n", "--name", action="store_true")
     parser.add_argument("-s", "--short", action="store_true")
     parser.add_argument("-i", "--inner", action="store_true")
     parser.add_argument("-g", "--graph", action="count")
     parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
-    cli.logging_config(args.loglevel)
     if args.inner or args.graph:
         trees = newicks_with_inner
     else:

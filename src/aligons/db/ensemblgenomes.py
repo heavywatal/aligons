@@ -18,8 +18,7 @@ PREFIX = LOCAL_DB_ROOT / f"release-{VERSION}"
 
 
 def main(argv: list[str] | None = None):
-    parser = cli.logging_argparser()
-    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser = cli.ArgumentParser()
     parser.add_argument("-V", "--versions", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
     parser.add_argument("-f", "--files", action="store_true")
@@ -27,8 +26,6 @@ def main(argv: list[str] | None = None):
     parser.add_argument("--name", action="store_true")
     parser.add_argument("species", nargs="*")
     args = parser.parse_args(argv or None)
-    cli.logging_config(args.loglevel)
-    cli.dry_run = args.dry_run
     if args.versions:
         for x in sorted(list_versions()):
             print(x)

@@ -17,14 +17,11 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] = []):
-    parser = cli.logging_argparser()
-    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser = cli.ArgumentParser()
     parser.add_argument("-t", "--test", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("query", nargs="*", type=Path)  # pairwise/{target}/{query}
     args = parser.parse_args(argv or None)
-    cli.logging_config(args.loglevel)
-    cli.dry_run = args.dry_run
     subdir = "kmer" if config["db"]["kmer"] else ""
     if args.test:
         for path in args.query:
