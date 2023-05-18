@@ -3,10 +3,7 @@ import os.path
 from pathlib import Path
 from typing import Any, TypeAlias
 
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
+import tomllib
 
 ConfDict: TypeAlias = dict[str, Any]
 
