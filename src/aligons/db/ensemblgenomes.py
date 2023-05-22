@@ -4,7 +4,7 @@ import functools
 import logging
 import os
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from ftplib import FTP
 from pathlib import Path
 
@@ -75,8 +75,8 @@ def make_newicks():
     asterids = f"({_core_asterids},actinidia_chinensis)asterids"
     eudicots = f"({asterids},arabidopsis_thaliana)eudicots"
 
-    angiospermae = f"({eudicots},{monocot})angiospermae"  # noqa: F841
-    # pyright: reportUnusedVariable=false
+    angiospermae = f"({eudicots},{monocot})angiospermae"
+    assert "oryza_sativa" in angiospermae
     return {k: v + ";" for k, v in locals().items() if not k.startswith("_")}
 
 
@@ -221,7 +221,9 @@ class FTPensemblgenomes(FTP):
         _log.info(f"os.chdir({self.orig_wd})")
         os.chdir(self.orig_wd)
         _log.info("ftp.quit()")
-        super().quit()
+        resp = super().quit()
+        _log.info(resp)
+        return resp
 
     def lazy_init(self):
         if self.sock is not None:
@@ -287,7 +289,9 @@ class FTPensemblgenomes(FTP):
                 names = fin.read().rstrip().splitlines()
             lst = [str(Path(dir) / x) for x in names]
         else:
-            lst = self.nlst(dir)
+            self.lazy_init()
+            _log.info(f"ftp.nlst({dir})")
+            lst = self.nlst(dir)  # ensembl does not support mlsd
             cache.parent.mkdir(0o755, parents=True, exist_ok=True)
             with cache.open("w") as fout:
                 fout.write("\n".join([Path(x).name for x in lst]) + "\n")
@@ -299,23 +303,13 @@ class FTPensemblgenomes(FTP):
             outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
             with open(outfile, "wb") as fout:
                 cmd = f"RETR {path}"
+                self.lazy_init()
+                _log.info(f"ftp.retrbinary({cmd})")
                 _log.info(self.retrbinary(cmd, fout.write))
         common = Path(str(outfile).replace("primary_assembly", "chromosome"))
         if not common.exists():
             common.symlink_to(outfile)
         return common
-
-    # pyright: reportIncompatibleMethodOverride=false
-    def nlst(self, dir: str):  # ensembl does not support mlsd
-        self.lazy_init()
-        _log.info(f"ftp.nlst({dir})")
-        return super().nlst(dir)
-
-    # pyright: reportIncompatibleMethodOverride=false
-    def retrbinary(self, cmd: str, callback: Callable[[bytes], int]):
-        self.lazy_init()
-        _log.info(f"ftp.retrbinary({cmd})")
-        return super().retrbinary(cmd, callback)
 
 
 def rsync(relpath: str, options: str = ""):
