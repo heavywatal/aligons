@@ -13,7 +13,7 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] = []):
     parser = cli.ArgumentParser()
-    parser.add_argument("-n", "--name", action="store_true")
+    parser.add_argument("-N", "--name", action="store_true")
     parser.add_argument("-s", "--short", action="store_true")
     parser.add_argument("-i", "--inner", action="store_true")
     parser.add_argument("-g", "--graph", action="count")
