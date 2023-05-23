@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from ..extern import htslib, jellyfish, kent
-from ..util import cli, fs
+from ..util import cli, fs, read_config
 from . import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
@@ -13,10 +13,13 @@ _log = logging.getLogger(__name__)
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
+    parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("-C", "--compara", choices=ensemblgenomes.species_names())
-    parser.add_argument("-c", "--clade", default="bep")
+    parser.add_argument("--compara", choices=ensemblgenomes.species_names())
+    parser.add_argument("-C", "--clade", default="bep")
     args = parser.parse_args(argv or None)
+    if args.config:
+        read_config(args.config)
     if args.compara:
         with ensemblgenomes.FTPensemblgenomes() as ftp:
             dirs = ftp.download_maf(args.compara)
