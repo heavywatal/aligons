@@ -1,5 +1,4 @@
 import importlib.resources as resources
-import os.path
 from pathlib import Path
 from typing import Any, TypeAlias
 
@@ -22,11 +21,5 @@ def update_nested(x: ConfDict, other: ConfDict):
     return x
 
 
-def _expand_path(s: str):
-    return Path(os.path.expandvars(s)).expanduser()
-
-
 with resources.files("aligons.data").joinpath("config.toml").open("rb") as fin:
     config: ConfDict = tomllib.load(fin)
-
-config["db"]["root"] = _expand_path(config["db"]["root"])

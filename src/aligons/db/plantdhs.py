@@ -6,8 +6,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+from .. import db
 from ..extern import htslib
-from ..util import cli, config, fs, subp
+from ..util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ def download_page():
 
 
 def local_db_root():
-    return config["db"]["root"] / "plantdhs"
+    return db.path("plantdhs")
 
 
 if __name__ == "__main__":

@@ -14,8 +14,9 @@ import re
 from pathlib import Path
 from typing import Any, TypeAlias
 
+from .. import db
 from ..db import ensemblgenomes, phylo, plantdhs, plantregmap, stat
-from ..util import cli, config, fs, subp
+from ..util import cli, fs, subp
 
 StrPath: TypeAlias = str | Path
 
@@ -126,10 +127,10 @@ class JBrowseConfig:
         self.set_default_session()
 
     def add_papers_data(self):
-        dir = config["db"]["root"] / "papers"
+        dir = db.path("papers")
         for path in fs.sorted_naturally(dir.glob("*.bed.gz")):
             self.add_track(path, "papers", id=path.with_suffix("").stem)
-        suzuemon = config["db"]["root"] / "suzuemon"
+        suzuemon = db.path("suzuemon")
         if (f := suzuemon / "sv_with_DEG.bed.gz").exists():
             self.add_track(f, "papers", id="SV_DEG-qin2021", subdir="suzuemon")
         if (f := suzuemon / "SV.bed.gz").exists():

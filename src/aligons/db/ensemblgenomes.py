@@ -8,6 +8,7 @@ from collections.abc import Iterable
 from ftplib import FTP
 from pathlib import Path
 
+from .. import db
 from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -323,7 +324,7 @@ def prefix():
 
 
 def local_db_root():
-    return config["db"]["root"] / "ensemblgenomes/plants"
+    return db.path("ensemblgenomes/plants")
 
 
 def version():

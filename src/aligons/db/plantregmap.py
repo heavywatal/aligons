@@ -4,7 +4,8 @@ import logging
 import re
 import urllib.request
 
-from ..util import cli, config, fs, subp
+from .. import db
+from ..util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 HOST = "plantregmap.gao-lab.org"
@@ -79,7 +80,7 @@ def download_php():
 
 
 def local_db_root():
-    return config["db"]["root"] / "plantregmap"
+    return db.path("plantregmap")
 
 
 if __name__ == "__main__":
