@@ -286,7 +286,8 @@ class FTPensemblgenomes(FTP):
         if substr:
             matched = [x for x in matched if substr in x]
         assert matched
-        return matched + ["CHECKSUMS", "README"]
+        misc = [x for x in nlst if re.search("CHECKSUMS$|README$", x)]
+        return matched + misc
 
     def nlst_cache(self, dir: str):
         cache = prefix() / dir / ".ftp_nlst_cache"
