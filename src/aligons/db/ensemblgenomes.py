@@ -9,6 +9,7 @@ from ftplib import FTP
 from pathlib import Path
 
 from .. import db
+from ..extern import htslib, seqkit
 from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -243,7 +244,8 @@ class FTPensemblgenomes(FTP):
         outdir = prefix() / relpath
         nlst = self.nlst_cache(relpath)
         for x in self.remove_duplicates(nlst, "_sm."):
-            print(self.retrieve(x))
+            print(outfile := self.retrieve(x))
+            post_retrieval(outfile)
         fs.checksums(outdir / "CHECKSUMS")
         return outdir
 
@@ -252,7 +254,8 @@ class FTPensemblgenomes(FTP):
         outdir = prefix() / relpath
         nlst = self.nlst_cache(relpath)
         for x in self.remove_duplicates(nlst):
-            print(self.retrieve(x))
+            print(outfile := self.retrieve(x))
+            post_retrieval(outfile)
         fs.checksums(outdir / "CHECKSUMS")
         return outdir
 
@@ -314,11 +317,35 @@ class FTPensemblgenomes(FTP):
                 self.lazy_init()
                 _log.info(f"ftp.retrbinary({cmd})")
                 _log.info(self.retrbinary(cmd, fout.write))
-        common = Path(str(outfile).replace("primary_assembly", "chromosome"))
-        if "primary_assembly" in str(outfile):
-            if outfile.exists() and not common.exists():
-                common.symlink_to(outfile)
-        return common
+        return outfile
+
+
+def post_retrieval(outfile: Path):
+    if "primary_assembly" in outfile.name:
+        link = Path(str(outfile).replace("primary_assembly", "chromosome"))
+        if outfile.exists() and not link.exists():
+            link.symlink_to(outfile)
+    elif "toplevel" in outfile.name:
+        if outfile.name.endswith(".fa.gz"):
+            split_toplevel_fa(outfile)
+        elif outfile.name.endswith(".gff3.gz"):
+            pass  # TODO
+
+
+def split_toplevel_fa(path: Path):
+    workdir = seqkit.split(path)
+    pattern = re.compile(r"toplevel\.part_([\w.]+)\.fasta.gz$")
+    for fasta in workdir.glob("*.fasta"):
+        htslib.bgzip(fasta)
+    outfiles: list[Path] = []
+    for gz in workdir.glob("*.fasta.gz"):
+        name = pattern.sub(r"chromosome.\1.fa.gz", gz.name)
+        assert "chromosome" in name
+        link = path.parent / name
+        outfiles.append(link)
+        if fs.is_outdated(link):
+            link.symlink_to(gz)
+    return outfiles
 
 
 def rsync(relpath: str, options: str = ""):
