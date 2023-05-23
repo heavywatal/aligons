@@ -239,45 +239,54 @@ class FTPensemblgenomes(FTP):
         os.chdir(prefix())  # for RETR only
 
     def download_fasta(self, species: str):
-        pattern = r"/CHECKSUMS|/README"
-        pattern += r"|_sm\.chromosome\..+\.fa\.gz$"
-        pattern += r"|_sm\.primary_assembly\..+\.fa\.gz$"
-        dir = self.download(f"fasta/{species}/dna", pattern)
-        fs.checksums(dir / "CHECKSUMS")
-        return dir
+        relpath = f"fasta/{species}/dna"
+        outdir = prefix() / relpath
+        nlst = self.nlst_cache(relpath)
+        for x in self.remove_duplicates(nlst, "_sm."):
+            print(self.retrieve(x))
+        fs.checksums(outdir / "CHECKSUMS")
+        return outdir
 
     def download_gff3(self, species: str):
-        pattern = r"/CHECKSUMS|/README"
-        pattern += r"|\.chromosome\..+\.gff3\.gz$"
-        pattern += r"|\.primary_assembly\..+\.gff3\.gz$"
-        dir = self.download(f"gff3/{species}", pattern)
-        fs.checksums(dir / "CHECKSUMS")
-        return dir
+        relpath = f"gff3/{species}"
+        outdir = prefix() / relpath
+        nlst = self.nlst_cache(relpath)
+        for x in self.remove_duplicates(nlst):
+            print(self.retrieve(x))
+        fs.checksums(outdir / "CHECKSUMS")
+        return outdir
 
     def download_maf(self, species: str):
-        dir = "maf/ensembl-compara/pairwise_alignments"
+        relpath = "maf/ensembl-compara/pairwise_alignments"
+        outdir = prefix() / relpath
+        nlst = self.nlst_cache(relpath)
         sp = shorten(species)
-        path = self.download(dir, f"/{sp}_")
-        _log.debug(f"{path=}")
+        for x in nlst:
+            if f"/{sp}_" in x:
+                print(self.retrieve(x))
+        _log.debug(f"{outdir=}")
         dirs: list[Path] = []
-        for targz in path.glob("*.tar.gz"):
+        for targz in outdir.glob("*.tar.gz"):
             expanded = prefix() / targz.with_suffix("").with_suffix("")
-            tar = ["tar", "xzf", targz, "-C", path]
+            tar = ["tar", "xzf", targz, "-C", outdir]
             subp.run_if(fs.is_outdated(expanded / "README.maf"), tar)
             # TODO: MD5SUM
             dirs.append(expanded.resolve())
         return dirs
 
-    def download(self, dir: str, pattern: str):
-        for x in self.nlst_search(dir, pattern):
-            print(self.retrieve(x))
-        return prefix() / dir
-
-    def nlst_search(self, dir: str, pattern: str):
-        rex = re.compile(pattern)
-        for x in self.nlst_cache(dir):
-            if rex.search(x):
-                yield x
+    def remove_duplicates(self, nlst: list[str], substr: str = ""):
+        matched = [x for x in nlst if "chromosome" in x]
+        if not matched:
+            matched = [x for x in nlst if "primary_assembly" in x]
+        if not matched:
+            matched = [x for x in nlst if "toplevel" in x]
+        if not matched:
+            matched = [x for x in nlst if f"{version()}.gff3" in x]
+        matched = [x for x in matched if "musa_acuminata_v2" not in x]  # v52
+        if substr:
+            matched = [x for x in matched if substr in x]
+        assert matched
+        return matched + ["CHECKSUMS", "README"]
 
     def nlst_cache(self, dir: str):
         cache = prefix() / dir / ".ftp_nlst_cache"
