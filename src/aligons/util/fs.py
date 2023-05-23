@@ -57,6 +57,8 @@ def try_zeropad(s: str):
 
 
 def checksums(file: Path):
+    if cli.dry_run:
+        return
     with confu.ThreadPoolExecutor() as pool:
         with file.open("rt") as fin:
             lines = fin.readlines()
