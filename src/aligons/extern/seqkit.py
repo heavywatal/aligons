@@ -17,11 +17,11 @@ def main(argv: list[str] = []):
 
 def split(path: Path):
     """https://bioinf.shenwei.me/seqkit/usage/#split
-    dir/seq.fa.gz -> dir/.seqkit/seq.part_{id}.fasta
+    dir/seq.fa.gz -> dir/.seqkit/seq.part_{id}.fasta.gz
     """
     outdir = path.parent / ".seqkit"
     args: subp.Args = ["seqkit", "split"]
-    args.extend(["-2", "-i", "-O", outdir, path])
+    args.extend(["-2", "-i", "-e", ".gz", "-O", outdir, path])
     subp.run_if(fs.is_outdated(outdir, path), args)
     return outdir
 

@@ -9,7 +9,7 @@ from ftplib import FTP
 from pathlib import Path
 
 from .. import db
-from ..extern import htslib, seqkit
+from ..extern import seqkit
 from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -335,8 +335,6 @@ def post_retrieval(outfile: Path):
 def split_toplevel_fa(path: Path):
     workdir = seqkit.split(path)
     pattern = re.compile(r"toplevel\.part_([\w.]+)\.fasta.gz$")
-    for fasta in workdir.glob("*.fasta"):
-        htslib.bgzip(fasta)
     outfiles: list[Path] = []
     for gz in workdir.glob("*.fasta.gz"):
         name = pattern.sub(r"chromosome.\1.fa.gz", gz.name)
