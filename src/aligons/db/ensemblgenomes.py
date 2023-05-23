@@ -11,10 +11,6 @@ from pathlib import Path
 from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
-VERSION = int(os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"]))
-assert VERSION > 0
-LOCAL_DB_ROOT = config["db"]["root"] / "ensemblgenomes/plants"
-PREFIX = LOCAL_DB_ROOT / f"release-{VERSION}"
 
 
 def main(argv: list[str] | None = None):
@@ -55,8 +51,8 @@ def make_newicks():
     bep = f"({ehrhartoideae},{pooideae})bep"
     pacmad = f"({andropogoneae},{paniceae})pacmad"
     poaceae = f"({bep},{pacmad})poaceae"
-    monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"  # noqa: F841
-    if VERSION > 50:
+    monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"
+    if version() > 50:
         monocot = f"({poaceae},dioscorea_rotundata)monocot"
 
     _solanum = "(solanum_lycopersicum,solanum_tuberosum)"
@@ -64,11 +60,11 @@ def make_newicks():
     _convolvulaceae = "ipomoea_triloba"
     solanales = f"({solanaceae},{_convolvulaceae})solanales"
     _lamiales = "olea_europaea_sylvestris"
-    if VERSION > 51:
+    if version() > 51:
         _lamiales = f"({_lamiales},sesamum_indicum)"
     lamiids = f"(({solanales},coffea_canephora),{_lamiales})lamiids"
     _asteraceae = "helianthus_annuus"
-    if VERSION > 52:
+    if version() > 52:
         _asteraceae = f"({_asteraceae},lactuca_sativa)"
     _companulids = f"({_asteraceae},daucus_carota)"
     _core_asterids = f"({lamiids},{_companulids})"
@@ -81,8 +77,8 @@ def make_newicks():
 
 
 def list_versions():
-    _log.debug(f"{LOCAL_DB_ROOT=}")
-    return LOCAL_DB_ROOT.glob("release-*")
+    _log.debug(f"{local_db_root()=}")
+    return local_db_root().glob("release-*")
 
 
 @functools.cache
@@ -98,7 +94,7 @@ def species_names(format: str = "fasta"):
 
 
 def species_dirs(format: str = "fasta", species: list[str] = []):
-    assert (root := PREFIX / format).exists(), root
+    assert (root := prefix() / format).exists(), root
     requests = set(species)
     for path in root.iterdir():
         if not path.is_dir():
@@ -233,12 +229,13 @@ class FTPensemblgenomes(FTP):
         _log.info(self.connect(host))
         _log.debug("ftp.login()")
         _log.info(self.login())
-        path = f"/pub/plants/release-{VERSION}"
+        path = f"/pub/plants/release-{version()}"
         _log.info(f"ftp.cwd({path})")
         _log.info(self.cwd(path))
-        _log.info(f"os.chdir({PREFIX})")
+        _log.info(f"os.chdir({prefix()})")
         self.orig_wd = os.getcwd()
-        os.chdir(PREFIX)  # for RETR only
+        prefix().mkdir(0o755, parents=True, exist_ok=True)
+        os.chdir(prefix())  # for RETR only
 
     def download_fasta(self, species: str):
         pattern = r"/CHECKSUMS|/README"
@@ -263,7 +260,7 @@ class FTPensemblgenomes(FTP):
         _log.debug(f"{path=}")
         dirs: list[Path] = []
         for targz in path.glob("*.tar.gz"):
-            expanded = PREFIX / targz.with_suffix("").with_suffix("")
+            expanded = prefix() / targz.with_suffix("").with_suffix("")
             tar = ["tar", "xzf", targz, "-C", path]
             subp.run_if(fs.is_outdated(expanded / "README.maf"), tar)
             # TODO: MD5SUM
@@ -273,7 +270,7 @@ class FTPensemblgenomes(FTP):
     def download(self, dir: str, pattern: str):
         for x in self.nlst_search(dir, pattern):
             print(self.retrieve(x))
-        return PREFIX / dir
+        return prefix() / dir
 
     def nlst_search(self, dir: str, pattern: str):
         rex = re.compile(pattern)
@@ -282,7 +279,7 @@ class FTPensemblgenomes(FTP):
                 yield x
 
     def nlst_cache(self, dir: str):
-        cache = PREFIX / dir / ".ftp_nlst_cache"
+        cache = prefix() / dir / ".ftp_nlst_cache"
         if cache.exists():
             _log.info(f"{cache=}")
             with cache.open("r") as fin:
@@ -298,7 +295,7 @@ class FTPensemblgenomes(FTP):
         return lst
 
     def retrieve(self, path: str):
-        outfile = PREFIX / path
+        outfile = prefix() / path
         if not outfile.exists() and not cli.dry_run:
             outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
             with open(outfile, "wb") as fout:
@@ -307,17 +304,30 @@ class FTPensemblgenomes(FTP):
                 _log.info(f"ftp.retrbinary({cmd})")
                 _log.info(self.retrbinary(cmd, fout.write))
         common = Path(str(outfile).replace("primary_assembly", "chromosome"))
-        if not common.exists():
-            common.symlink_to(outfile)
+        if "primary_assembly" in str(outfile):
+            if outfile.exists() and not common.exists():
+                common.symlink_to(outfile)
         return common
 
 
 def rsync(relpath: str, options: str = ""):
     server = "ftp.ensemblgenomes.org"
-    remote_prefix = f"rsync://{server}/all/pub/plants/release-{VERSION}"
+    remote_prefix = f"rsync://{server}/all/pub/plants/release-{version()}"
     src = f"{remote_prefix}/{relpath}/"
-    dst = PREFIX / relpath
+    dst = prefix() / relpath
     return subp.run(f"rsync -auv {options} {src} {dst}")
+
+
+def prefix():
+    return local_db_root() / f"release-{version()}"
+
+
+def local_db_root():
+    return config["db"]["root"] / "ensemblgenomes/plants"
+
+
+def version():
+    return int(os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"]))
 
 
 if __name__ == "__main__":

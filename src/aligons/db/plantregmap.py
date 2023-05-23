@@ -7,7 +7,6 @@ import urllib.request
 from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
-LOCAL_DB_ROOT = config["db"]["root"] / "plantregmap"
 HOST = "plantregmap.gao-lab.org"
 
 
@@ -24,7 +23,7 @@ def main(argv: list[str] | None = None):
 
 
 def rglob(pattern: str, species: str = "."):
-    for dir in LOCAL_DB_ROOT.iterdir():
+    for dir in local_db_root().iterdir():
         if re.search(species, dir.name, re.IGNORECASE):
             for x in dir.rglob(pattern):
                 yield x
@@ -32,7 +31,7 @@ def rglob(pattern: str, species: str = "."):
 
 def download(query: str):
     url = f"http://{HOST}/download_ftp.php?{query}"
-    path = LOCAL_DB_ROOT / query.split("/", 1)[1]
+    path = local_db_root() / query.split("/", 1)[1]
     if path.suffix in (".bed", ".gff", ".txt"):
         path = path.parent / (path.name + ".gz")
         cmd = f"wget -O- {url}"
@@ -65,7 +64,7 @@ def iter_download_queries_all():
 
 
 def download_php():
-    cache = LOCAL_DB_ROOT / "download.php.html"
+    cache = local_db_root() / "download.php.html"
     if cache.exists():
         with cache.open("r") as fin:
             content = fin.read()
@@ -77,6 +76,10 @@ def download_php():
         with cache.open("w") as fout:
             fout.write(content)
     return content
+
+
+def local_db_root():
+    return config["db"]["root"] / "plantregmap"
 
 
 if __name__ == "__main__":

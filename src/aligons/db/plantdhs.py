@@ -10,7 +10,6 @@ from ..extern import htslib
 from ..util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
-LOCAL_DB_ROOT: Path = config["db"]["root"] / "plantdhs"
 
 
 def main(argv: list[str] | None = None):
@@ -34,13 +33,13 @@ def main(argv: list[str] | None = None):
 
 
 def glob(pattern: str):
-    return LOCAL_DB_ROOT.glob(pattern)
+    return local_db_root().glob(pattern)
 
 
 def download(query: str):
     host = "bioinfor.yzu.edu.cn"
     url = f"https://{host}/download/plantdhs/{query}"
-    path = LOCAL_DB_ROOT / query
+    path = local_db_root() / query
     cmd = f"wget {url} -O {path}"
     subp.run_if(fs.is_outdated(path), cmd, shell=True)
     return path
@@ -76,12 +75,12 @@ def iter_download_queries_all():
 
 
 def download_page():
-    cache = LOCAL_DB_ROOT / "download.html"
+    cache = local_db_root() / "download.html"
     if cache.exists():
         with cache.open("r") as fin:
             content = fin.read()
     else:
-        LOCAL_DB_ROOT.mkdir(0o755, exist_ok=True)
+        local_db_root().mkdir(0o755, exist_ok=True)
         host = "plantdhs.org"
         url = f"http://{host}/Download"
         _log.info(url)
@@ -90,6 +89,10 @@ def download_page():
         with cache.open("w") as fout:
             fout.write(content)
     return content
+
+
+def local_db_root():
+    return config["db"]["root"] / "plantdhs"
 
 
 if __name__ == "__main__":
