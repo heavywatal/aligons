@@ -55,8 +55,6 @@ def make_newicks():
     pacmad = f"({andropogoneae},{paniceae})pacmad"
     poaceae = f"({bep},{pacmad})poaceae"
     monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"
-    if version() > 50:
-        monocot = f"({poaceae},dioscorea_rotundata)monocot"
 
     _solanum = "(solanum_lycopersicum,solanum_tuberosum)"
     solanaceae = f"(({_solanum},capsicum_annuum),nicotiana_attenuata)solanaceae"
