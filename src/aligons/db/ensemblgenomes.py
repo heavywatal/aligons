@@ -9,6 +9,7 @@ from ftplib import FTP
 from pathlib import Path
 
 from .. import db
+from ..db import tools
 from ..extern import seqkit
 from ..util import cli, config, fs, subp
 
@@ -329,7 +330,7 @@ def post_retrieval(outfile: Path):
         if outfile.name.endswith(".fa.gz"):
             split_toplevel_fa(outfile)
         elif outfile.name.endswith(".gff3.gz"):
-            pass  # TODO
+            tools.split_gff(outfile)
 
 
 def split_toplevel_fa(path: Path):

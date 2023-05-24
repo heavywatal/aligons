@@ -18,6 +18,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
   "numpy",
+  "polars",
   "tomli-w"
 ]
 
