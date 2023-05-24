@@ -282,7 +282,7 @@ def make_display(track: dict[str, Any]):
             "color": clade_color.get(track["configuration"], "#888888"),
             "constraints": {"max": 1, "min": 0},
         }
-        if not track["configuration"] in clade_color:
+        if track["configuration"] not in clade_color:
             del item["constraints"]
     elif track["type"] == "AlignmentsTrack":
         item = {

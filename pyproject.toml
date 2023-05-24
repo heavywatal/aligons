@@ -25,9 +25,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "black",
-  "pyproject-flake8",
   "pytest",
   "pytest-cov",
+  "ruff",
 ]
 
 [project.urls]
@@ -36,8 +36,8 @@ source = "https://github.com/heavywatal/aligons"
 [tool.pyright]
 typeCheckingMode = "strict"
 
-[tool.flake8]
-max-line-length = 88
+[tool.ruff]
+select = ["E", "F", "W", "I"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

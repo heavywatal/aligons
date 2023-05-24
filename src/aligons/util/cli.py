@@ -1,6 +1,6 @@
 import argparse
 import logging
-from typing import Sequence, Any
+from typing import Any, Sequence
 
 dry_run = False
 

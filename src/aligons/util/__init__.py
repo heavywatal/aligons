@@ -1,8 +1,7 @@
 import importlib.resources as resources
+import tomllib
 from pathlib import Path
 from typing import Any, TypeAlias
-
-import tomllib
 
 ConfDict: TypeAlias = dict[str, Any]
 

@@ -12,7 +12,7 @@ import shutil
 from pathlib import Path
 
 from ..db import ensemblgenomes, phylo
-from ..util import cli, config, fs, subp, ConfDict
+from ..util import ConfDict, cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
 
