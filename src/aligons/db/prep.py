@@ -51,11 +51,12 @@ def download(species: list[str], jobs: int):
             pool.submit(index_fasta, fasta_dir)
             gff3_dir = ftp.download_gff3(sp)
             pool.submit(index_gff3, gff3_dir)
-    # for sp in species:
-    #     options = "--include *_sm.chromosome.*.fa.gz --exclude *.gz"
-    #     ensemblgenomes.rsync(f"fasta/{sp}/dna", options)
-    #     options = "--include *.chromosome.*.gff3.gz --exclude *.gz"
-    #     ensemblgenomes.rsync(f"gff3/{sp}", options)
+    if False:  # ensemble does not support rsync
+        for sp in species:
+            options = "--include *_sm.chromosome.*.fa.gz --exclude *.gz"
+            ensemblgenomes.rsync(f"fasta/{sp}/dna", options)
+            options = "--include *.chromosome.*.gff3.gz --exclude *.gz"
+            ensemblgenomes.rsync(f"gff3/{sp}", options)
 
 
 def index(species: list[str], jobs: int):
@@ -63,8 +64,6 @@ def index(species: list[str], jobs: int):
         pool.map(index_fasta, ensemblgenomes.species_dirs("fasta", species))
         pool.map(index_gff3, ensemblgenomes.species_dirs("gff3", species))
         pool.map(softmask, ensemblgenomes.species_dirs("fasta", species))
-    # for path in ensemblgenomes.species_dirs("fasta", species):
-    #     softmask(path)
 
 
 def softmask(species: Path):

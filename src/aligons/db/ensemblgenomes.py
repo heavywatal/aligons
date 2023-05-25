@@ -194,15 +194,14 @@ def readlines_compara_maf(file: Path):
     s aaa.1
     s bbb.1
     """
-    lines: list[str] = []
     with file.open("r") as fin:
         for line in fin:
             if line.startswith(("#", "a#")):
                 continue
             if line.startswith(" score"):
-                line = "a" + line
-            lines.append(line)
-    return lines
+                yield "a" + line
+            else:
+                yield line
 
 
 class FTPensemblgenomes(FTP):

@@ -47,7 +47,7 @@ def run(path_clade: Path, jobs: int):
                 print(wig)
 
 
-def phastCons(
+def phastCons(  # noqa: N802
     path: Path, cons_mod: Path, noncons_mod: Path, options: ConfDict = empty_options
 ):
     maf = str(path / "multiz.maf")
@@ -122,7 +122,7 @@ def msa_view_ss(codons_ss: Path):
     return outfile
 
 
-def phyloFit(ss: Path, tree: str, *, conserved: bool):
+def phyloFit(ss: Path, tree: str, *, conserved: bool):  # noqa: N802
     if conserved:
         out_root = str(ss.parent / "codons")
         outfiles = [Path(f"{out_root}.{i}.mod") for i in range(1, 4)]
@@ -139,7 +139,7 @@ def phyloFit(ss: Path, tree: str, *, conserved: bool):
     return outfiles
 
 
-def phyloBoot(mods: list[Path], outfile: Path):
+def phyloBoot(mods: list[Path], outfile: Path):  # noqa: N802
     read_mods = ",".join(str(x) for x in mods)
     subp.run_if(
         fs.is_outdated(outfile, mods),

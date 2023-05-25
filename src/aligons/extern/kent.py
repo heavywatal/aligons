@@ -51,12 +51,12 @@ def integrate_wigs(clade: Path):
     return outfile
 
 
-def bigWigInfo(path: Path):
+def bigWigInfo(path: Path):  # noqa: N802
     args = ["bigWigInfo", path]
     return subp.run(args, stdout=subp.PIPE, text=True).stdout
 
 
-def faToTwoBit(fa_gz: Path):
+def faToTwoBit(fa_gz: Path):  # noqa: N802
     outfile = fa_gz.with_suffix("").with_suffix(".2bit")
     if fs.is_outdated(outfile, fa_gz) and not cli.dry_run:
         with gzip.open(fa_gz, "rb") as fin:
@@ -69,7 +69,7 @@ def faToTwoBit(fa_gz: Path):
     return outfile
 
 
-def faSize(genome_fa_gz: Path):
+def faSize(genome_fa_gz: Path):  # noqa: N802
     if not genome_fa_gz.name.endswith("genome.fa.gz"):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
     outfile = genome_fa_gz.parent / "fasize.chrom.sizes"

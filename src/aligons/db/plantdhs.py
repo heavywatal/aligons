@@ -86,7 +86,7 @@ def download_page():
         host = "plantdhs.org"
         url = f"http://{host}/Download"
         _log.info(url)
-        response = urllib.request.urlopen(url)
+        response = urllib.request.urlopen(url)  # noqa: S310
         content = response.read().decode()
         with cache.open("w") as fout:
             fout.write(content)

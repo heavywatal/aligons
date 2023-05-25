@@ -37,7 +37,18 @@ source = "https://github.com/heavywatal/aligons"
 typeCheckingMode = "strict"
 
 [tool.ruff]
-select = ["F", "E", "W", "I", "UP", "B", "A", "C4", "RET"]
+select = ["ALL"]
+ignore = [
+  "D",    # docstring
+  "ANN",  # annotation
+  "T201", # print
+  "S101", # assert
+  "S603", # subprocess
+  "S604", # shell=True
+  "DTZ",  # timezone
+  "COM",  # trailing comma
+  "TD",   # todo
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

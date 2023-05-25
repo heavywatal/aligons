@@ -56,11 +56,13 @@ class ConfigLogging(argparse.Action):
 
     def __call__(
         self,
-        parser: argparse.ArgumentParser,
+        parser: argparse.ArgumentParser,  # noqa: ARG002
         namespace: argparse.Namespace,
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ):
+        assert not values
+        assert option_string
         value = getattr(namespace, self.dest, 0)
         setattr(namespace, self.dest, max(value + self.const, -2))
 

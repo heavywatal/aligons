@@ -6,12 +6,15 @@ from aligons.util import fs
 
 def test_is_outdated(tmp_path: Path):
     tmp_file = tmp_path / "newfile.txt"
-    assert fs.is_outdated(tmp_file) and not tmp_file.exists()
-    open(tmp_file, "w").close()
-    assert fs.is_outdated(tmp_file) and tmp_file.exists()
+    assert not tmp_file.exists()
+    assert fs.is_outdated(tmp_file)
+    tmp_file.open("w").close()
+    assert tmp_file.exists()
+    assert fs.is_outdated(tmp_file)
     this_file = Path(__file__)
     caches = list((this_file.parent / "__pycache__").iterdir())
-    assert fs.is_outdated(this_file, caches) and caches
+    assert caches
+    assert fs.is_outdated(this_file, caches)
     assert not fs.is_outdated(this_file)
 
 

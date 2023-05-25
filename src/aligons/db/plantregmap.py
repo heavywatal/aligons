@@ -72,7 +72,7 @@ def download_php():
     else:
         url = f"http://{HOST}/download.php"
         _log.info(url)
-        response = urllib.request.urlopen(url)
+        response = urllib.request.urlopen(url)  # noqa: S310
         content = response.read().decode()
         with cache.open("w") as fout:
             fout.write(content)

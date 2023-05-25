@@ -57,13 +57,13 @@ class JBrowse:
 
     def deploy(self, target: Path):
         _log.debug(f"{target=}")
-        jbrowse_XYZ = target.parent.name
-        vNN = target.parent.parent.name
-        relpath = Path(vNN, target.name)
-        dst = self.document_root / self.prefix / jbrowse_XYZ / relpath
-        self.create(jbrowse_XYZ.split("-")[1])
+        jbrowse_xyz = target.parent.name
+        vnn = target.parent.parent.name
+        relpath = Path(vnn, target.name)
+        dst = self.document_root / self.prefix / jbrowse_xyz / relpath
+        self.create(jbrowse_xyz.split("-")[1])
         _log.info(f"{dst} -> {target}")
-        slug = self.prefix / jbrowse_XYZ
+        slug = self.prefix / jbrowse_xyz
         url = f"/{slug}/?config={relpath}/config.json"
         if not cli.dry_run:
             if not dst.exists():
@@ -94,8 +94,8 @@ class JBrowseConfig:
         self.jb = JBrowse(outdir)
         self.multiple_dir = multialign_species
         species_name = self.multiple_dir.name
-        vNN_dir = multialign_species.parent.parent
-        self.pairwise_dir = vNN_dir / "pairwise" / species_name
+        vnn_dir = multialign_species.parent.parent
+        self.pairwise_dir = vnn_dir / "pairwise" / species_name
         self.target = self.jb.root / species_name
         self.tracks: list[str] = []
         _log.info(f"{self.target}")
@@ -322,9 +322,9 @@ def iter_targets(path: Path):
     for config_json in path.rglob("config.json"):
         if "test_data" in str(config_json):
             continue
-        config_json = config_json.resolve()
-        if config_json.parent.parent.name.startswith("jbrowse-"):
-            yield config_json.parent.resolve()
+        abs_config_json = config_json.resolve()
+        if abs_config_json.parent.parent.name.startswith("jbrowse-"):
+            yield abs_config_json.parent
 
 
 def redirect_html(url: str):

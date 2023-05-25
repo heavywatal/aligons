@@ -10,32 +10,32 @@ newick_standard = """(
 )poaceae:0.5;"""
 
 
-@pytest.fixture
+@pytest.fixture()
 def newick():
     return phylo.remove_whitespace(newick_standard)
 
 
-@pytest.fixture
+@pytest.fixture()
 def newick_xlength(newick: str):
     return phylo.remove_lengths(newick)
 
 
-@pytest.fixture
+@pytest.fixture()
 def newick_popular(newick: str):  # mod
     return phylo.remove_inner_names(newick)
 
 
-@pytest.fixture
+@pytest.fixture()
 def newick_xlength_tips(newick_xlength: str):
     return phylo.remove_inner_names(newick_xlength)
 
 
-@pytest.fixture
+@pytest.fixture()
 def newick_short(newick: str):  # mod
     return phylo.shorten_names(newick)
 
 
-@pytest.fixture
+@pytest.fixture()
 def newick_xlength_short_tips(newick_xlength_tips: str):  # mod
     return phylo.shorten_names(newick_xlength_tips)
 
@@ -133,7 +133,7 @@ def test_newickize(newick: str):
     assert phylo.newickize(root) == newick
 
 
-def test_subtree(newick_xlength_short_tips: str):
+def test_subtree():
     tree = "((((A,B),(C,D)),(E,(F,G))),H);"
     subtree = "((A,C),E);"
     tips = phylo.extract_names(subtree)

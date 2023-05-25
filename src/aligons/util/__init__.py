@@ -24,5 +24,5 @@ def update_nested(x: dict[str, Any], other: dict[str, Any]):
 with resources.files("aligons.data").joinpath("config.toml").open("rb") as fin:
     _config_src: dict[str, Any] = tomllib.load(fin)
 
-config = MappingProxyType(_config_src)
-empty_options = MappingProxyType({})
+config = ConfDict(_config_src)
+empty_options = ConfDict({})

@@ -1,5 +1,5 @@
 import pytest
-from aligons.util import cli, subp
+from aligons.util import ConfDict, cli, empty_options, subp
 
 hello = "printf hello"
 
@@ -7,16 +7,18 @@ hello = "printf hello"
 @pytest.mark.parametrize("cmd", [hello, hello.split()])
 def test_run(cmd: str | list[str]):
     cli.dry_run = False
-    assert subp.run_if(False, cmd, stdout=subp.PIPE).stdout == b""
-    assert subp.run_if(True, cmd, stdout=subp.PIPE).stdout == b"hello"
+    assert subp.run_if(False, cmd, stdout=subp.PIPE).stdout == b""  # noqa: FBT003
+    assert subp.run_if(True, cmd, stdout=subp.PIPE).stdout == b"hello"  # noqa: FBT003
     assert subp.run(cmd, stdout=subp.PIPE).stdout == b"hello"
 
 
 @pytest.mark.parametrize("cmd", [hello, hello.split()])
 def test_popen(cmd: str | list[str]):
     cli.dry_run = False
-    assert subp.popen_if(False, cmd, stdout=subp.PIPE).communicate()[0] == b""
-    assert subp.popen_if(True, cmd, stdout=subp.PIPE).communicate()[0] == b"hello"
+    pf = subp.popen_if(False, cmd, stdout=subp.PIPE)  # noqa: FBT003
+    assert pf.communicate()[0] == b""
+    pt = subp.popen_if(True, cmd, stdout=subp.PIPE)  # noqa: FBT003
+    assert pt.communicate()[0] == b"hello"
     assert subp.popen(cmd, stdout=subp.PIPE).communicate()[0] == b"hello"
 
 
@@ -29,6 +31,6 @@ def test_optjoin():
         "false": False,
         "none": None,
     }
-    assert subp.optjoin(values) == " --key=value --zero=0 --one=1 --true"
-    assert subp.optjoin({"key": "value"}, "-") == " -key=value"
-    assert subp.optjoin({}) == ""
+    assert subp.optjoin(ConfDict(values)) == " --key=value --zero=0 --one=1 --true"
+    assert subp.optjoin(ConfDict({"key": "value"}), "-") == " -key=value"
+    assert not subp.optjoin(empty_options)

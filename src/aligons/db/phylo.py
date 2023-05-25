@@ -106,11 +106,11 @@ newicks = {k: remove_inner(v) for k, v in newicks_with_inner.items()}
 
 def print_graph(newick: str, graph: int = 0):
     root = parse_newick(newick)
-    if graph >= 4:
+    if graph >= 4:  # noqa: PLR2004
         gen = rectangulate(render_tips(root, []))
-    elif graph == 3:
+    elif graph == 3:  # noqa: PLR2004
         gen = elongate(render_tips(root, []))
-    elif graph == 2:
+    elif graph == 2:  # noqa: PLR2004
         gen = render_tips(root, [])
     else:
         gen = render_nodes(root, [])

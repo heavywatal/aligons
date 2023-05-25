@@ -31,10 +31,10 @@ def main(argv: list[str] | None = None):
     )
 
 
-def phastcons(
+def phastcons(  # noqa: PLR0913
     target: str, clade: str, tips: int, max_bp: float, jobs: int, *, compara: bool
 ):
-    if compara:
+    if compara:  # noqa: SIM108
         pairwise = Path("compara") / target
     else:
         pairwise = lastz.run(target, clade, jobs)
