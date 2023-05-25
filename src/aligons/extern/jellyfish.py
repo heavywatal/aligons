@@ -11,13 +11,13 @@ from pathlib import Path
 import numpy as np
 import tomli_w
 
-from ..db import ensemblgenomes
-from ..util import cli, config, fs, subp
+from aligons.db import ensemblgenomes
+from aligons.util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] = []):
+def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("species", type=str)
     args = parser.parse_args(argv or None)
@@ -73,7 +73,7 @@ def dump(jffile: Path):
     hard_mask = "N" * config["jellyfish"]["count"]["mer_len"]
     if is_to_run and not cli.dry_run:
         # append NNN to prevent dCNS from reverting n to N
-        with open(outfile, "a") as fout:
+        with outfile.open("a") as fout:
             fout.write(f">65535\n{hard_mask}\n")
     return outfile
 
@@ -94,9 +94,9 @@ def calc_threshold(histofile: Path):
         return 65535
     arr = np.loadtxt(histofile, delimiter=" ", dtype=int)
     y = arr[:, 1]
-    ddy = np.diff(np.diff(y))  # type: ignore
+    ddy = np.diff(np.diff(y))
     x = arr[: len(ddy), 0]
-    i = np.argmin(ddy**2 + x**2)  # type: ignore
+    i = np.argmin(ddy**2 + x**2)
     return int(arr[i, 0])
 
 
@@ -107,26 +107,26 @@ def log_config(histofile: Path, freq: int):
     opts["dCNS"] = {"freq": freq}
     _log.debug(tomli_w.dumps(opts))
     if fs.is_outdated(config_log, histofile) and not cli.dry_run:
-        with open(config_log, "wb") as fout:
+        with config_log.open("wb") as fout:
             tomli_w.dump(opts, fout)
 
 
-def mask_genome(input: Path, kmer_fa: Path, freq: int = 50):
+def mask_genome(infile: Path, kmer_fa: Path, freq: int = 50):
     """https://github.com/baoxingsong/dCNS"""
     dump_lower_count = config["jellyfish"]["dump"]["lower_count"]
     if freq < dump_lower_count:
         _log.warning(f"threshold frequency: {freq} < {dump_lower_count=}")
-    output = kmer_fa.parent / input.name
+    output = kmer_fa.parent / infile.name
     tmp_fa = output.with_suffix("")
     args: subp.Args = ["dCNS", "maskGenome", "-d"]
     args.extend(["-i", "/dev/stdin"])
     args.extend(["-o", tmp_fa])
     args.extend(["-k", kmer_fa])
     args.extend(["-f", str(freq)])
-    is_to_run = fs.is_outdated(output, [input, kmer_fa])
+    is_to_run = fs.is_outdated(output, [infile, kmer_fa])
     p = subp.popen_if(is_to_run, args, stdin=subp.PIPE)
     if is_to_run and not cli.dry_run:
-        with gzip.open(input, "rb") as fin:
+        with gzip.open(infile, "rb") as fin:
             p.communicate(fin.read())
     subp.run_if(is_to_run, ["gzip", "-f", tmp_fa])
     return output

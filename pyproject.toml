@@ -37,7 +37,7 @@ source = "https://github.com/heavywatal/aligons"
 typeCheckingMode = "strict"
 
 [tool.ruff]
-select = ["E", "F", "W", "I"]
+select = ["F", "E", "W", "I", "UP", "B", "A", "C4", "RET"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

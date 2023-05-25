@@ -4,7 +4,7 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from ..util import cli, fs, subp
+from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def create_genome_bgzip(path: Path):
 
 def concat_bgzip(infiles: list[Path], outfile: Path):
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
-        with open(outfile, "wb") as fout:
+        with outfile.open("wb") as fout:
             bgzip = subp.popen("bgzip -@2", stdin=subp.PIPE, stdout=fout)
             assert bgzip.stdin
             if ".gff" in outfile.name:
@@ -88,7 +88,7 @@ def tabix(bgz: Path):
 
 def sort_clean_chromosome_gff3(infile: Path):
     # TODO: jbrowse2 still needs billzt/gff3sort precision?
-    p1 = subp.popen(f"zgrep -v '^#' {str(infile)}", stdout=subp.PIPE, quiet=True)
+    p1 = subp.popen(f"zgrep -v '^#' {infile!s}", stdout=subp.PIPE, quiet=True)
     p2 = subp.popen(
         "grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=subp.PIPE, quiet=True
     )

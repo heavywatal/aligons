@@ -3,12 +3,12 @@
 import logging
 from pathlib import Path
 
-from ..util import cli, fs, subp
+from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] = []):
+def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("file", type=Path)
     args = parser.parse_args(argv or None)

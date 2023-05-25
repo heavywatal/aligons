@@ -6,7 +6,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import IO, Any, Final, TypeAlias
 
-from ..util import ConfDict
+from aligons.util import ConfDict
+
 from . import cli
 
 StrPath: TypeAlias = str | Path
@@ -23,15 +24,17 @@ _log = logging.getLogger(__name__)
 
 def popen(
     args: _CMD,
+    *,
     stdin: _FILE = None,
     stdout: _FILE = None,
     quiet: bool = False,
 ):
-    return popen_if(True, args, stdin=stdin, stdout=stdout, quiet=quiet)
+    return popen_if(True, args, stdin=stdin, stdout=stdout, quiet=quiet)  # noqa: FBT003
 
 
-def run(
+def run(  # noqa: PLR0913
     args: _CMD,
+    *,
     executable: StrPath | None = None,
     stdin: _FILE = None,
     stdout: _FILE = None,
@@ -42,7 +45,7 @@ def run(
     quiet: bool = False,
 ):
     return run_if(
-        True,
+        True,  # noqa: FBT003
         args,
         executable=executable,
         stdin=stdin,
@@ -56,8 +59,9 @@ def run(
 
 
 def popen_if(
-    cond: bool,
+    cond: bool,  # noqa: FBT001
     args: _CMD,
+    *,
     stdin: _FILE = None,
     stdout: _FILE = None,
     quiet: bool = False,
@@ -70,9 +74,10 @@ def popen_if(
     return subprocess.Popen(args, stdin=stdin, stdout=stdout)
 
 
-def run_if(
-    cond: bool,
+def run_if(  # noqa: PLR0913
+    cond: bool,  # noqa: FBT001
     args: _CMD,
+    *,
     executable: StrPath | None = None,
     stdin: _FILE = None,
     stdout: _FILE = None,
@@ -102,7 +107,7 @@ def run_if(
     )
 
 
-def prepare_args(args: _CMD, cond: bool = True):
+def prepare_args(args: _CMD, cond: bool):  # noqa: FBT001
     if isinstance(args, str):
         cmd = args.rstrip()
         args = shlex.split(cmd)
@@ -121,7 +126,6 @@ def optjoin(values: ConfDict, prefix: str = "--"):
 def optstr(key: str, value: Any, prefix: str = "--"):
     if value is None or value is False:
         return ""
-    elif value is True:
+    if value is True:
         return f" {prefix}{key}"
-    else:
-        return f" {prefix}{key}={value}"
+    return f" {prefix}{key}={value}"

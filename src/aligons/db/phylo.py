@@ -5,13 +5,14 @@ import re
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from typing import NamedTuple, TypeAlias
 
-from ..util import cli
+from aligons.util import cli
+
 from .ensemblgenomes import make_newicks, shorten
 
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] = []):
+def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-N", "--name", action="store_true")
     parser.add_argument("-s", "--short", action="store_true")
@@ -19,10 +20,7 @@ def main(argv: list[str] = []):
     parser.add_argument("-g", "--graph", action="count")
     parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
-    if args.inner or args.graph:
-        trees = newicks_with_inner
-    else:
-        trees = newicks
+    trees = newicks_with_inner if args.inner or args.graph else newicks
     if args.short:
         trees = {k: shorten_names(v) for k, v in trees.items()}
     if args.query:
@@ -51,7 +49,7 @@ def get_newick(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x):
     return tree
 
 
-def sorted_by_len_newicks(clades: list[str], reverse: bool = False):
+def sorted_by_len_newicks(clades: list[str], *, reverse: bool = False):
     return sorted(clades, key=lambda x: len(newicks[x]), reverse=reverse)
 
 
@@ -92,8 +90,7 @@ def get_subtree(newick: str, tips: Sequence[str]):
     def repl(mobj: re.Match[str]):
         if (s := mobj.group(0)) in tips:
             return s
-        else:
-            return ""
+        return ""
 
     filtered = re.sub(r"[\w_]+", repl, newick)
     while re.search(r"\(,\)", filtered):
@@ -110,13 +107,13 @@ newicks = {k: remove_inner(v) for k, v in newicks_with_inner.items()}
 def print_graph(newick: str, graph: int = 0):
     root = parse_newick(newick)
     if graph >= 4:
-        gen = rectangulate(render_tips(root))
+        gen = rectangulate(render_tips(root, []))
     elif graph == 3:
-        gen = elongate(render_tips(root))
+        gen = elongate(render_tips(root, []))
     elif graph == 2:
-        gen = render_tips(root)
+        gen = render_tips(root, [])
     else:
-        gen = render_nodes(root)
+        gen = render_nodes(root, [])
     for branch, label in gen:
         print(f"{branch} {label}")
 
@@ -158,17 +155,15 @@ def _newickize(node: Node) -> str:
     return ret
 
 
-def render_nodes(node: Node, columns: list[StrGen] = []) -> GraphGen:
+def render_nodes(node: Node, columns: list[StrGen]) -> GraphGen:
     for line in node.name.splitlines():
         prefix = "".join([next(gen) for gen in columns])
         yield (prefix, line)
-    for x in _iter_children(node, columns, render_nodes, NORMAL_BRICKS):
-        yield x
+    yield from _iter_children(node, columns, render_nodes, NORMAL_BRICKS)
 
 
-def render_tips(node: Node, columns: list[StrGen] = []) -> GraphGen:
-    for x in _iter_children(node, columns, render_tips, COMPACT_BRICKS):
-        yield x
+def render_tips(node: Node, columns: list[StrGen]) -> GraphGen:
+    yield from _iter_children(node, columns, render_tips, COMPACT_BRICKS)
     if not node.children:
         prefix = "".join([next(gen) for gen in columns])
         yield (prefix, node.name)
@@ -207,7 +202,7 @@ def parse_newick(newick: str):
         newick, nodes = _extract_tip_clade(newick, nodes)
     root = nodes.popitem()[1]
     assert not nodes
-    return root
+    return root  # noqa: RET504
 
 
 def _extract_tip_clade(tree: str, nodes: dict[str, Node]):

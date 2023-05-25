@@ -10,16 +10,17 @@ import gzip
 import logging
 import os
 from pathlib import Path
+from types import MappingProxyType
 
-from ..db import ensemblgenomes, phylo
-from ..util import ConfDict, cli, config, fs, read_config, subp
+from aligons.db import ensemblgenomes, phylo
+from aligons.util import ConfDict, cli, config, fs, read_config, subp
+
 from . import kent
 
 _log = logging.getLogger(__name__)
-_executor = confu.ThreadPoolExecutor()
 
 
-def main(argv: list[str] = []):
+def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-c", "--config", type=Path)
@@ -39,7 +40,7 @@ def run(target: str, clade: str, jobs: int):
 
 def _run(target: str, queries: list[str], jobs: int):
     queries = ensemblgenomes.sanitize_queries(target, queries)
-    _executor._max_workers = jobs
+    PairwiseAlignment.set_executor(jobs)
     futures: list[confu.Future[Path]] = []
     for query in queries:
         pa = PairwiseAlignment(target, query, config)
@@ -50,6 +51,12 @@ def _run(target: str, queries: list[str], jobs: int):
 
 
 class PairwiseAlignment:
+    _executor = confu.ThreadPoolExecutor()
+
+    @classmethod
+    def set_executor(cls, jobs: int):
+        cls._executor = confu.ThreadPoolExecutor(jobs)
+
     def __init__(self, target: str, query: str, options: ConfDict):
         self._target = target
         self._query = query
@@ -73,14 +80,15 @@ class PairwiseAlignment:
         flists: list[list[confu.Future[Path]]] = []
         for t in target_chromosomes:
             flists.append(
-                [_executor.submit(self.align_chr, t, q) for q in query_chromosomes]
+                [self._executor.submit(self.align_chr, t, q) for q in query_chromosomes]
             )
-        return [_executor.submit(self.wait_integrate, futures) for futures in flists]
+        return [
+            self._executor.submit(self.wait_integrate, futures) for futures in flists
+        ]
 
     def align_chr(self, t2bit: Path, q2bit: Path):
         axtgz = lastz(t2bit, q2bit, self._outdir, self._lastz_opts)
-        chain = kent.axt_chain(t2bit, q2bit, axtgz, self._axtch_opts)
-        return chain
+        return kent.axt_chain(t2bit, q2bit, axtgz, self._axtch_opts)
 
     def wait_integrate(self, futures: list[confu.Future[Path]]):
         return self.integrate([f.result() for f in futures])
@@ -90,13 +98,14 @@ class PairwiseAlignment:
         syntenic_net = kent.chain_net_syntenic(
             pre_chain, self._target_sizes, self._query_sizes, self._cn_opts
         )
-        sing_maf = kent.net_axt_maf(
+        return kent.net_axt_maf(
             syntenic_net, pre_chain, self._target, self._query, self._toaxt_opts
         )
-        return sing_maf
 
 
-def lastz(t2bit: Path, q2bit: Path, outdir: Path, options: ConfDict = {}):
+def lastz(
+    t2bit: Path, q2bit: Path, outdir: Path, options: ConfDict = MappingProxyType({})
+):
     target_label = t2bit.stem.rsplit("dna_sm.", 1)[1]
     query_label = q2bit.stem.rsplit("dna_sm.", 1)[1]
     subdir = outdir / target_label

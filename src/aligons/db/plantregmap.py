@@ -4,8 +4,8 @@ import logging
 import re
 import urllib.request
 
-from .. import db
-from ..util import cli, fs, subp
+from aligons import db
+from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 HOST = "plantregmap.gao-lab.org"
@@ -24,9 +24,9 @@ def main(argv: list[str] | None = None):
 
 
 def rglob(pattern: str, species: str = "."):
-    for dir in local_db_root().iterdir():
-        if re.search(species, dir.name, re.IGNORECASE):
-            for x in dir.rglob(pattern):
+    for species_dir in local_db_root().iterdir():
+        if re.search(species, species_dir.name, re.IGNORECASE):
+            for x in species_dir.rglob(pattern):
                 yield x
 
 

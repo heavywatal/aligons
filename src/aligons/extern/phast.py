@@ -15,13 +15,13 @@ import re
 import sys
 from pathlib import Path
 
-from ..db import ensemblgenomes, phylo
-from ..util import ConfDict, cli, config, fs, read_config, subp
+from aligons.db import ensemblgenomes, phylo
+from aligons.util import ConfDict, cli, config, empty_options, fs, read_config, subp
 
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] = []):
+def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
@@ -38,7 +38,7 @@ def main(argv: list[str] = []):
 
 def run(path_clade: Path, jobs: int):
     (cons_mod, noncons_mod) = prepare_mods(path_clade, jobs)
-    opts = config.get("phastCons", {})
+    opts = config.get("phastCons", empty_options)
     with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
         chrs = path_clade.glob("chromosome*")
         futures = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]
@@ -47,7 +47,9 @@ def run(path_clade: Path, jobs: int):
                 print(wig)
 
 
-def phastCons(path: Path, cons_mod: Path, noncons_mod: Path, options: ConfDict = {}):
+def phastCons(
+    path: Path, cons_mod: Path, noncons_mod: Path, options: ConfDict = empty_options
+):
     maf = str(path / "multiz.maf")
     seqname = path.name.split(".", 1)[1]  # remove "chromosome."
     cmd = "phastCons"
@@ -81,19 +83,19 @@ def prepare_mods(clade: Path, jobs: int):
 
 
 def make_cons_mod(maf: Path, gff: Path, tree: str):
-    codons_ss = msa_view_features(maf, gff, True)
-    codons_mods = phyloFit(codons_ss, tree, True)
+    codons_ss = msa_view_features(maf, gff, conserved=True)
+    codons_mods = phyloFit(codons_ss, tree, conserved=True)
     return most_conserved_mod(codons_mods)
 
 
 def make_noncons_mod(maf: Path, gff: Path, tree: str):
-    _4d_codons_ss = msa_view_features(maf, gff, False)
+    _4d_codons_ss = msa_view_features(maf, gff, conserved=False)
     _4d_sites_ss = msa_view_ss(_4d_codons_ss)
-    return phyloFit(_4d_sites_ss, tree, False)[0]
+    return phyloFit(_4d_sites_ss, tree, conserved=False)[0]
 
 
-def msa_view_features(maf: Path, gff: Path, conserved: bool):
-    cmd = f"msa_view {str(maf)} --in-format MAF --features <(gunzip -c {str(gff)})"
+def msa_view_features(maf: Path, gff: Path, *, conserved: bool):
+    cmd = f"msa_view {maf!s} --in-format MAF --features <(gunzip -c {gff!s})"
     if conserved:
         outfile = maf.parent / "codons.ss"
         cmd += " --catmap 'NCATS = 3; CDS 1-3' --out-format SS --unordered-ss"
@@ -105,22 +107,22 @@ def msa_view_features(maf: Path, gff: Path, conserved: bool):
     p = subp.run_if(
         is_to_run, cmd, stdout=subp.PIPE, shell=True, executable="/bin/bash"
     )
-    with open(devnull_if(not is_to_run, outfile), "wb") as fout:
+    with devnull_if(not is_to_run, outfile).open("wb") as fout:
         fout.write(p.stdout)
     return outfile
 
 
 def msa_view_ss(codons_ss: Path):
     outfile = codons_ss.parent / "4d-sites.ss"
-    s = f"msa_view {str(codons_ss)} --in-format SS --out-format SS --tuple-size 1"
+    s = f"msa_view {codons_ss!s} --in-format SS --out-format SS --tuple-size 1"
     is_to_run = fs.is_outdated(outfile, codons_ss)
     p = subp.run_if(is_to_run, s, stdout=subp.PIPE)
-    with open(devnull_if(not is_to_run, outfile), "wb") as fout:
+    with devnull_if(not is_to_run, outfile).open("wb") as fout:
         fout.write(p.stdout)
     return outfile
 
 
-def phyloFit(ss: Path, tree: str, conserved: bool):
+def phyloFit(ss: Path, tree: str, *, conserved: bool):
     if conserved:
         out_root = str(ss.parent / "codons")
         outfiles = [Path(f"{out_root}.{i}.mod") for i in range(1, 4)]
@@ -131,7 +133,7 @@ def phyloFit(ss: Path, tree: str, conserved: bool):
         option = ""
     cmd = (
         f"phyloFit --tree {tree} --msa-format SS {option}"
-        f" --out-root {out_root} {str(ss)}"
+        f" --out-root {out_root} {ss!s}"
     )
     subp.run_if(fs.is_outdated(outfiles[0], ss), cmd)
     return outfiles
@@ -152,7 +154,7 @@ def most_conserved_mod(mods: list[Path]):
     shortest_length = sys.float_info.max
     conserved = ""
     for mod in mods:
-        with open(mod, "r") as fin:
+        with mod.open() as fin:
             content = fin.read()
             lengths = phylo.extract_lengths(extract_tree(content))
             total = sum(lengths)
@@ -161,7 +163,7 @@ def most_conserved_mod(mods: list[Path]):
                 shortest_length = total
                 conserved = content
     _log.debug(f"{shortest_length=}")
-    with open(outfile, "w") as fout:
+    with outfile.open("w") as fout:
         fout.write(conserved)
     return outfile
 
@@ -207,7 +209,7 @@ def add_label_to_chr(infile: Path, outfile: Path, label: str):
             fout, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE
         )
         for row in reader:
-            if len(row) < 8 or row[0].startswith("#"):
+            if len(row) < 8 or row[0].startswith("#"):  # noqa: PLR2004
                 continue
             if row[2] == "CDS":
                 row[0] = label + row[0]
@@ -228,11 +230,10 @@ def clean(path: Path):
             file.unlink()
 
 
-def devnull_if(cond: bool, file: Path):
+def devnull_if(cond: bool, file: Path):  # noqa: FBT001
     if cond:
         return Path(os.devnull)
-    else:
-        return file
+    return file
 
 
 if __name__ == "__main__":

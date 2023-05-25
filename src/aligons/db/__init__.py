@@ -1,7 +1,7 @@
 import os.path
 from pathlib import Path
 
-from ..util import config
+from aligons.util import config
 
 
 def _expand_path(s: str):

@@ -3,8 +3,9 @@ import logging
 import os
 from pathlib import Path
 
-from ..extern import htslib, jellyfish, kent
-from ..util import cli, fs, read_config
+from aligons.extern import htslib, jellyfish, kent
+from aligons.util import cli, fs, read_config
+
 from . import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
@@ -25,8 +26,7 @@ def main(argv: list[str] | None = None):
             dirs = ftp.download_maf(args.compara)
         with confu.ThreadPoolExecutor(max_workers=args.jobs) as pool:
             futures = [
-                pool.submit(ensemblgenomes.consolidate_compara_mafs, dir)
-                for dir in dirs
+                pool.submit(ensemblgenomes.consolidate_compara_mafs, d) for d in dirs
             ]
             for f in confu.as_completed(futures):
                 print(f.result())
@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None):
         index(species, jobs=args.jobs)
 
 
-def download(species: list[str], jobs: int | None = os.cpu_count()):
+def download(species: list[str], jobs: int):
     assert species
     assert not (d := set(species) - set(ensemblgenomes.species_names_all())), d
     with (
@@ -47,10 +47,10 @@ def download(species: list[str], jobs: int | None = os.cpu_count()):
         ensemblgenomes.FTPensemblgenomes() as ftp,
     ):
         for sp in species:
-            dir = ftp.download_fasta(sp)
-            pool.submit(index_fasta, dir)
-            dir = ftp.download_gff3(sp)
-            pool.submit(index_gff3, dir)
+            fasta_dir = ftp.download_fasta(sp)
+            pool.submit(index_fasta, fasta_dir)
+            gff3_dir = ftp.download_gff3(sp)
+            pool.submit(index_gff3, gff3_dir)
     # for sp in species:
     #     options = "--include *_sm.chromosome.*.fa.gz --exclude *.gz"
     #     ensemblgenomes.rsync(f"fasta/{sp}/dna", options)
@@ -58,7 +58,7 @@ def download(species: list[str], jobs: int | None = os.cpu_count()):
     #     ensemblgenomes.rsync(f"gff3/{sp}", options)
 
 
-def index(species: list[str] = [], jobs: int | None = os.cpu_count()):
+def index(species: list[str], jobs: int):
     with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
         pool.map(index_fasta, ensemblgenomes.species_dirs("fasta", species))
         pool.map(index_gff3, ensemblgenomes.species_dirs("gff3", species))

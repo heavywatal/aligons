@@ -14,13 +14,13 @@ import shutil
 from collections.abc import Sequence
 from pathlib import Path
 
-from ..db import phylo
-from ..util import ConfDict, cli, config, fs, read_config, subp
+from aligons.db import phylo
+from aligons.util import ConfDict, cli, config, empty_options, fs, read_config, subp
 
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] = []):
+def main(argv: list[str] | None = None):
     nodes_all = phylo.extract_names(phylo.newicks_with_inner["angiospermae"])
     parser = cli.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
@@ -59,7 +59,7 @@ def run(indir: Path, query: Sequence[str], jobs: int):
     return outdir
 
 
-def multiz(path: Path, options: ConfDict = {}):
+def multiz(path: Path, options: ConfDict = empty_options):
     sing_mafs = list(path.glob("*.sing.maf"))
     tmpdir = path / "_tmp"
     outfile = path / "multiz.maf"
@@ -68,7 +68,7 @@ def multiz(path: Path, options: ConfDict = {}):
     is_to_run = fs.is_outdated(outfile, sing_mafs)
     if is_to_run and not cli.dry_run:
         tmpdir.mkdir(0o755, exist_ok=True)
-        with open(path / "roasted.sh", "wt") as fout:
+        with (path / "roasted.sh").open("w") as fout:
             fout.write(script)
     try:
         comp = subp.run_if(
@@ -83,7 +83,7 @@ def multiz(path: Path, options: ConfDict = {}):
         for line in perr.stdout.strip().splitlines():
             _log.error(f"{path.name}:{line}")
         _log.error(outfile)
-        raise perr
+        raise
     if is_to_run and not cli.dry_run:
         (tmpdir / outfile.name).replace(outfile)
         try:
@@ -99,7 +99,7 @@ def roast(
     sing_mafs: list[Path],
     tmpdir: str,
     outfile: str,
-    options: ConfDict = {},
+    options: ConfDict = empty_options,
 ):
     """Generate shell script to execute multiz"""
     tree = options["tree"]

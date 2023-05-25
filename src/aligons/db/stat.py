@@ -1,7 +1,8 @@
 import csv
 import logging
 
-from ..util import cli
+from aligons.util import cli
+
 from . import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     newick = phylo.newicks[args.clade]
     root = phylo.parse_newick(newick)
-    for pre, species in phylo.rectangulate(phylo.render_tips(root)):
+    for pre, species in phylo.rectangulate(phylo.render_tips(root, [])):
         if species not in ensemblgenomes.species_names():
             print(f"{pre} {species}")
             continue
@@ -30,10 +31,9 @@ def main(argv: list[str] | None = None):
 
 def chrom_sizes(species: str):
     path = ensemblgenomes.get_file("fasize.chrom.sizes", species)
-    with open(path, "rt") as fin:
+    with path.open() as fin:
         reader = csv.reader(fin, delimiter="\t")
-        rows = list(reader)
-    return rows
+        return list(reader)
 
 
 def fasize(species: str):

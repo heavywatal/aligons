@@ -5,13 +5,14 @@ import logging
 import os
 import re
 from collections.abc import Iterable
+from contextlib import suppress
 from ftplib import FTP
 from pathlib import Path
 
-from .. import db
-from ..db import tools
-from ..extern import seqkit
-from ..util import cli, config, fs, subp
+from aligons import db
+from aligons.db import tools
+from aligons.extern import seqkit
+from aligons.util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -29,10 +30,7 @@ def main(argv: list[str] | None = None):
         for x in sorted(list_versions()):
             print(x)
         return
-    if args.all and not args.files:
-        species = species_names_all()
-    else:
-        species = species_names()
+    species = species_names_all() if args.all and not args.files else species_names()
     if args.species:
         species = list(filter_by_shortname(species, args.species))
     if not args.files:
@@ -61,11 +59,11 @@ def make_newicks():
     _convolvulaceae = "ipomoea_triloba"
     solanales = f"({solanaceae},{_convolvulaceae})solanales"
     _lamiales = "olea_europaea_sylvestris"
-    if version() > 51:
+    if version() > 51:  # noqa: PLR2004
         _lamiales = f"({_lamiales},sesamum_indicum)"
     lamiids = f"(({solanales},coffea_canephora),{_lamiales})lamiids"
     _asteraceae = "helianthus_annuus"
-    if version() > 52:
+    if version() > 52:  # noqa: PLR2004
         _asteraceae = f"({_asteraceae},lactuca_sativa)"
     _companulids = f"({_asteraceae},daucus_carota)"
     _core_asterids = f"({lamiids},{_companulids})"
@@ -90,13 +88,13 @@ def species_names_all():
 
 
 @functools.cache
-def species_names(format: str = "fasta"):
-    return [x.name for x in species_dirs(format)]
+def species_names(fmt: str = "fasta"):
+    return [x.name for x in species_dirs(fmt)]
 
 
-def species_dirs(format: str = "fasta", species: list[str] = []):
-    assert (root := prefix() / format).exists(), root
-    requests = set(species)
+def species_dirs(fmt: str = "fasta", species: list[str] | None = None):
+    assert (root := prefix() / fmt).exists(), root
+    requests = set(species or [])
     for path in root.iterdir():
         if not path.is_dir():
             continue
@@ -113,7 +111,7 @@ def get_file(pattern: str, species: str, subdir: str = ""):
     return found[0]
 
 
-def glob(pattern: str, species: list[str] = [], subdir: str = ""):
+def glob(pattern: str, species: list[str], subdir: str = ""):
     for path in species_dirs("fasta", species):
         for x in fs.sorted_naturally((path / "dna" / subdir).glob(pattern)):
             yield x
@@ -140,10 +138,8 @@ def shorten(name: str):
 
 def sanitize_queries(target: str, queries: list[str]):
     queries = list(dict.fromkeys(queries))
-    try:
+    with suppress(ValueError):
         queries.remove(target)
-    except ValueError:
-        pass
     assert queries
     _log.debug(f"{queries=}")
     assert set(queries) <= set(species_names())
@@ -178,7 +174,7 @@ def consolidate_compara_mafs(indir: Path):
         lines: list[str] = ["##maf version=1 scoring=LASTZ_NET\n"]
         for maf in infiles:
             lines.extend(readlines_compara_maf(maf))
-        with open(sing_maf, "wb") as fout:
+        with sing_maf.open("wb") as fout:
             cmd = f"sed -e 's/{target}/{target_short}/' -e 's/{query}/{query_short}/'"
             sed = subp.popen(cmd, stdin=subp.PIPE, stdout=subp.PIPE)
             maff = subp.popen("mafFilter stdin", stdin=sed.stdout, stdout=fout)
@@ -199,11 +195,11 @@ def readlines_compara_maf(file: Path):
     s bbb.1
     """
     lines: list[str] = []
-    with open(file, "r") as fin:
+    with file.open("r") as fin:
         for line in fin:
-            if line.startswith("#") or line.startswith("a#"):
+            if line.startswith(("#", "a#")):
                 continue
-            elif line.startswith(" score"):
+            if line.startswith(" score"):
                 line = "a" + line
             lines.append(line)
     return lines
@@ -214,7 +210,7 @@ class FTPensemblgenomes(FTP):
         _log.info("FTP()")
         super().__init__()
 
-    def quit(self):
+    def quit(self):  # noqa: A003
         _log.info(f"os.chdir({self.orig_wd})")
         os.chdir(self.orig_wd)
         _log.info("ftp.quit()")
@@ -234,7 +230,7 @@ class FTPensemblgenomes(FTP):
         _log.info(f"ftp.cwd({path})")
         _log.info(self.cwd(path))
         _log.info(f"os.chdir({prefix()})")
-        self.orig_wd = os.getcwd()
+        self.orig_wd = Path.cwd()
         prefix().mkdir(0o755, parents=True, exist_ok=True)
         os.chdir(prefix())  # for RETR only
 
@@ -291,17 +287,17 @@ class FTPensemblgenomes(FTP):
         misc = [x for x in nlst if re.search("CHECKSUMS$|README$", x)]
         return matched + misc
 
-    def nlst_cache(self, dir: str):
-        cache = prefix() / dir / ".ftp_nlst_cache"
+    def nlst_cache(self, relpath: str):
+        cache = prefix() / relpath / ".ftp_nlst_cache"
         if cache.exists():
             _log.info(f"{cache=}")
             with cache.open("r") as fin:
                 names = fin.read().rstrip().splitlines()
-            lst = [str(Path(dir) / x) for x in names]
+            lst = [str(Path(relpath) / x) for x in names]
         else:
             self.lazy_init()
-            _log.info(f"ftp.nlst({dir})")
-            lst = self.nlst(dir)  # ensembl does not support mlsd
+            _log.info(f"ftp.nlst({relpath})")
+            lst = self.nlst(relpath)  # ensembl does not support mlsd
             cache.parent.mkdir(0o755, parents=True, exist_ok=True)
             with cache.open("w") as fout:
                 fout.write("\n".join([Path(x).name for x in lst]) + "\n")
@@ -311,7 +307,7 @@ class FTPensemblgenomes(FTP):
         outfile = prefix() / path
         if not outfile.exists() and not cli.dry_run:
             outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-            with open(outfile, "wb") as fout:
+            with outfile.open("wb") as fout:
                 cmd = f"RETR {path}"
                 self.lazy_init()
                 _log.info(f"ftp.retrbinary({cmd})")

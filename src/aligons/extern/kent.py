@@ -11,13 +11,13 @@ import os
 import shutil
 from pathlib import Path
 
-from ..db import ensemblgenomes, phylo
-from ..util import ConfDict, cli, config, fs, subp
+from aligons.db import ensemblgenomes, phylo
+from aligons.util import ConfDict, cli, config, empty_options, fs, subp
 
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] = []):
+def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("clade", type=Path)
@@ -74,7 +74,7 @@ def faSize(genome_fa_gz: Path):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
     outfile = genome_fa_gz.parent / "fasize.chrom.sizes"
     if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
-        with open(outfile, "wb") as fout:
+        with outfile.open("wb") as fout:
             subp.run(["faSize", "-detailed", genome_fa_gz], stdout=fout)
     return outfile
 
@@ -96,7 +96,7 @@ def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path, options: ConfDict):
 
 
 def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
-    parent = set(x.parent for x in chains)
+    parent = {x.parent for x in chains}
     subdir = parent.pop()
     assert not parent, "chains are in the same directory"
     pre_chain = subdir / "pre.chain.gz"
@@ -115,7 +115,10 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
 
 
 def chain_net_syntenic(
-    pre_chain: Path, target_sizes: Path, query_sizes: Path, options: ConfDict = {}
+    pre_chain: Path,
+    target_sizes: Path,
+    query_sizes: Path,
+    options: ConfDict = empty_options,
 ):
     syntenic_net = pre_chain.parent / "syntenic.net"
     is_to_run = fs.is_outdated(syntenic_net, pre_chain)
@@ -139,7 +142,7 @@ def net_axt_maf(
     pre_chain: Path,
     target: str,
     query: str,
-    options: ConfDict = {},
+    options: ConfDict = empty_options,
 ):
     sing_maf = syntenic_net.parent / "sing.maf"
     subdir = "kmer" if config["db"]["kmer"] else ""

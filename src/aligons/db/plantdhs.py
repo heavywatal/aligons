@@ -6,9 +6,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from .. import db
-from ..extern import htslib
-from ..util import cli, fs, subp
+from aligons import db
+from aligons.extern import htslib
+from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -22,13 +22,13 @@ def main(argv: list[str] | None = None):
         for query in iter_download_queries():
             file = download(query)
             _log.info(f"{file}")
-            if unzipped := unzip_if_is_zipfile(file):
-                if unzipped.suffix == ".gff":
-                    # TODO: sort
-                    bgz = htslib.bgzip(unzipped)
-                    _log.info(f"{bgz}")
-                    tabix = htslib.tabix(bgz)
-                    _log.info(f"{tabix}")
+            unzipped = unzip_if_is_zipfile(file)
+            if unzipped and unzipped.suffix == ".gff":
+                # TODO: sort
+                bgz = htslib.bgzip(unzipped)
+                _log.info(f"{bgz}")
+                tabix = htslib.tabix(bgz)
+                _log.info(f"{tabix}")
     for x in fs.sorted_naturally(glob(args.pattern)):
         print(x)
 
@@ -57,10 +57,11 @@ def unzip_if_is_zipfile(path: Path):
             if fs.is_outdated(outfile, path) and fs.is_outdated(gzipped, path):
                 fin.extract(members[0], path.parent)
         return outfile
-    elif path.name.endswith(".gff.gz"):
+    if path.name.endswith(".gff.gz"):
         tabix = path.with_suffix(path.suffix + ".csi")
         subp.run_if(fs.is_outdated(tabix, path), ["gunzip", path])
         return outfile
+    return None
 
 
 def iter_download_queries():

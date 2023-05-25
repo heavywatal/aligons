@@ -5,12 +5,12 @@ from pathlib import Path
 
 import polars as pl
 
-from ..util import cli, fs
+from aligons.util import cli, fs
 
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] = []):
+def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
@@ -18,7 +18,7 @@ def main(argv: list[str] = []):
 
 
 def split_gff(path: Path):
-    df = read_gff_body(path)
+    body = read_gff_body(path)
     stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
     _log.debug(f"{stem=}")
     for sequence_region in read_gff_sequence_region(path):
@@ -26,7 +26,7 @@ def split_gff(path: Path):
         seqid = mobj.group(1)
         outfile = path.parent / f"{stem}.chromosome.{seqid}.gff3.gz"
         print(outfile)
-        subdf = df.filter(pl.col("seqid") == seqid)
+        subdf = body.filter(pl.col("seqid") == seqid)
         assert subdf.height
         if cli.dry_run or not fs.is_outdated(outfile, path):
             continue
@@ -34,7 +34,6 @@ def split_gff(path: Path):
             fout.write("##gff-version 3\n")
             fout.write(sequence_region)
             fout.write(subdf.write_csv(has_header=False, separator="\t"))
-    return
 
 
 def read_gff_sequence_region(path: Path):

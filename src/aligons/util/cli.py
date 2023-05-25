@@ -1,6 +1,7 @@
 import argparse
 import logging
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 dry_run = False
 
@@ -24,11 +25,13 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument("-n", "--dry-run", action="store_true")
 
     def parse_args(
-        self, args: list[str] | None = None, namespace: argparse.Namespace | None = None
+        self,
+        args: Sequence[str] | None = None,
+        namespace: argparse.Namespace | None = None,
     ):
         res = super().parse_args(args, namespace)
         assert res is not None
-        global dry_run
+        global dry_run  # noqa: PLW0603
         dry_run = res.dry_run
         verbosity = res.verbosity
         level = _verbosity_to_level.get(verbosity, logging.NOTSET)
@@ -48,7 +51,8 @@ class ConfigLogging(argparse.Action):
         default: int = 0,
         **kwargs: Any,
     ):
-        super().__init__(option_strings, "verbosity", nargs=0, default=0, **kwargs)
+        dest = "verbosity"
+        super().__init__(option_strings, dest, nargs=nargs, default=default, **kwargs)
 
     def __call__(
         self,
@@ -61,8 +65,8 @@ class ConfigLogging(argparse.Action):
         setattr(namespace, self.dest, max(value + self.const, -2))
 
 
-class ConsoleHandler(logging.StreamHandler):  # type: ignore
-    def format(self, record: logging.LogRecord):
+class ConsoleHandler(logging.StreamHandler):  # type: ignore[reportMissingTypeArgument]
+    def format(self, record: logging.LogRecord):  # noqa: A003
         if record.levelno < logging.WARNING:
             return record.msg
         return super().format(record)

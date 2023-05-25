@@ -6,17 +6,17 @@ src: {vNN}/multiple/{species}/{clade}/phastcons.bw
 dst: {vNN}/{jbrowse_XYZ}/{species}/config.json
 dst: {document_root}/{jbrowse_XYZ}/{vNN}/{species} ->
 """
-import importlib.resources as resources
 import json
 import logging
 import os
 import re
+from importlib import resources
 from pathlib import Path
 from typing import Any, TypeAlias
 
-from .. import db
-from ..db import ensemblgenomes, phylo, plantdhs, plantregmap, stat
-from ..util import cli, fs, subp
+from aligons import db
+from aligons.db import ensemblgenomes, phylo, plantdhs, plantregmap, stat
+from aligons.util import cli, fs, subp
 
 StrPath: TypeAlias = str | Path
 
@@ -25,7 +25,7 @@ _load = "symlink"
 env_version = os.environ["JBROWSE_VERSION"]
 
 
-def main(argv: list[str] = []):
+def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-a", "--admin", action="store_true")
     parser.add_argument("-u", "--upgrade", action="store_true")
@@ -69,7 +69,7 @@ class JBrowse:
             if not dst.exists():
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 dst.symlink_to(target)
-            with open(target / "index.html", "w") as fout:
+            with (target / "index.html").open("w") as fout:
                 fout.write(redirect_html(url))
         print(f"http://localhost/{slug / relpath}/ -> {url}")
 
@@ -77,8 +77,9 @@ class JBrowse:
         root = self.document_root / self.prefix / f"jbrowse-{version}"
         args = ["create", root]
         args.append(f"--tag=v{version}")
-        jbrowse(args, not root.exists())
-        with open(root / "version.txt", "r") as fin:
+        if not root.exists():
+            jbrowse(args)
+        with (root / "version.txt").open() as fin:
             assert fin.read().strip() == version
 
     def admin_server(self):
@@ -99,7 +100,7 @@ class JBrowseConfig:
         self.tracks: list[str] = []
         _log.info(f"{self.target}")
 
-    def add(self, force: bool = False):
+    def add(self):
         self.jb.create()  # for preview and test
         self.target.mkdir(0o755, parents=True, exist_ok=True)
         species = self.multiple_dir.name
@@ -109,17 +110,17 @@ class JBrowseConfig:
         clades = phylo.sorted_by_len_newicks(clades, reverse=True)
         for clade in clades:
             wig = self.multiple_dir / clade / "phastcons.bw"
-            self.add_track(wig, "conservation", id=clade, subdir=clade)
+            self.add_track(wig, "conservation", trackid=clade, subdir=clade)
         for bed in self.multiple_dir.rglob("cns.bed.gz"):
             clade = bed.parent.name
-            self.add_track(bed, "conservation", id="CNS-" + clade, subdir=clade)
+            self.add_track(bed, "conservation", trackid="CNS-" + clade, subdir=clade)
         gen = self.pairwise_dir.rglob("genome.cram")
         crams = {cram.parent.parent.name: cram for cram in gen}
         for query in phylo.extract_tip_names(phylo.newicks[clades[0]]):
             if cram := crams.pop(query, None):
-                self.add_track(cram, "alignment", id=query, subdir=query)
+                self.add_track(cram, "alignment", trackid=query, subdir=query)
         for query, cram in crams.items():
-            self.add_track(cram, "alignment", id=query, subdir=query)
+            self.add_track(cram, "alignment", trackid=query, subdir=query)
         if self.target.name == "oryza_sativa":
             self.add_papers_data()
             self.add_plantdhs()
@@ -127,29 +128,28 @@ class JBrowseConfig:
         self.set_default_session()
 
     def add_papers_data(self):
-        dir = db.path("papers")
-        for path in fs.sorted_naturally(dir.glob("*.bed.gz")):
-            self.add_track(path, "papers", id=path.with_suffix("").stem)
+        for path in fs.sorted_naturally(db.path("papers").glob("*.bed.gz")):
+            self.add_track(path, "papers", trackid=path.with_suffix("").stem)
         suzuemon = db.path("suzuemon")
         if (f := suzuemon / "sv_with_DEG.bed.gz").exists():
-            self.add_track(f, "papers", id="SV_DEG-qin2021", subdir="suzuemon")
+            self.add_track(f, "papers", trackid="SV_DEG-qin2021", subdir="suzuemon")
         if (f := suzuemon / "SV.bed.gz").exists():
-            self.add_track(f, "papers", id="SV_all-qin2021", subdir="suzuemon")
+            self.add_track(f, "papers", trackid="SV_all-qin2021", subdir="suzuemon")
 
     def add_plantdhs(self):
         for path in fs.sorted_naturally(plantdhs.glob("Rice_*.bw")):
-            id = path.stem.removeprefix("Rice_")
-            self.add_track(path, "plantdhs", id=id)
+            trackid = path.stem.removeprefix("Rice_")
+            self.add_track(path, "plantdhs", trackid=trackid)
         for path in fs.sorted_naturally(plantdhs.glob("*.gff.gz")):
-            self.add_track(path, "plantdhs", id=path.stem)
+            self.add_track(path, "plantdhs", trackid=path.stem)
 
     def add_plantregmap(self, species: str):
         for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
-            id = re.sub(r"_[^_]+\.gff\.gz$", "", path.name)
-            self.add_track(path, "plantregmap", id=id)
+            trackid = re.sub(r"_[^_]+\.gff\.gz$", "", path.name)
+            self.add_track(path, "plantregmap", trackid=trackid)
         for path in fs.sorted_naturally(plantregmap.rglob("*.bed.gz", species)):
-            id = re.sub(r"(_normal)?\.bed\.gz$", "", path.name)
-            self.add_track(path, "plantregmap", id=id)
+            trackid = re.sub(r"(_normal)?\.bed\.gz$", "", path.name)
+            self.add_track(path, "plantregmap", trackid=trackid)
 
     def add_assembly(self, species: str):
         """--alias, --name, --displayName"""
@@ -158,32 +158,36 @@ class JBrowseConfig:
         args.extend(["--target", self.target])
         args.extend(["--load", _load])
         args.append(genome)
-        jbrowse(args, not (self.target / genome.name).exists())
+        if not (self.target / genome.name).exists():
+            jbrowse(args)
 
     def add_track_gff(self, species: str):
         gff = ensemblgenomes.get_file("*.genome.gff3.gz", species)
         ngff = gff.with_suffix("").with_suffix("").with_suffix(".name.gff3.gz")
         if ngff.exists():
             gff = ngff
-        self.add_track(gff, id=gff.parent.name + ".gff3")
+        self.add_track(gff, trackid=gff.parent.name + ".gff3")
         self.text_index()
 
-    def add_track(self, file: Path, category: str = "", id: str = "", subdir: str = ""):
+    def add_track(
+        self, file: Path, category: str = "", trackid: str = "", subdir: str = ""
+    ):
         """--description, --config"""
         args: subp.Args = ["add-track"]
         args.extend(["--target", self.target])
         args.extend(["--load", _load])
         if subdir:
             args.extend(["--subDir", subdir])
-        if id:
-            args.extend(["--trackId", id])
-            self.tracks.append(id)
+        if trackid:
+            args.extend(["--trackId", trackid])
+            self.tracks.append(trackid)
         if category:
             args.extend(["--category", category])
         if (csi := Path(str(file) + ".csi")).exists():
             args.extend(["--indexFile", csi])
         args.append(file)
-        jbrowse(args, not (self.target / subdir / file.name).exists())
+        if not (self.target / subdir / file.name).exists():
+            jbrowse(args)
 
     def text_index(self):
         """--attributes, --exclude, --file,  --perTrack, --tracks, --dryrun"""
@@ -207,7 +211,7 @@ class JBrowseConfig:
     def configure(self):
         chrom_sizes = {x[0]: x[1] for x in stat.chrom_sizes(self.target.name)}
         config_json = self.target / "config.json"
-        with open(config_json) as fin:
+        with config_json.open() as fin:
             cfg = json.load(fin)
         assembly = cfg["assemblies"][0]
         session = cfg["defaultSession"]
@@ -223,14 +227,14 @@ class JBrowseConfig:
                 "end": int(chrom_sizes[chrom]),
                 "reversed": False,
                 "assemblyName": assembly["name"],
-            }
+            },
         ]
         for track in view["tracks"]:
             track["displays"] = [make_display(track)]
         if refnamealiases := self.make_refnamealiases():
             assembly["refNameAliases"] = refnamealiases
         cfg["configuration"] = make_configuration()
-        with open(config_json, "w") as fout:
+        with config_json.open("w") as fout:
             json.dump(cfg, fout, indent=2)
 
     def make_refnamealiases(self):
@@ -238,7 +242,7 @@ class JBrowseConfig:
         filename = f"{species}.chromAlias.txt"
         if not resources.is_resource("aligons.data", filename):
             return None
-        with open(self.target / filename, "w") as fout:
+        with (self.target / filename).open("w") as fout:
             fout.write(resources.read_text("aligons.data", filename))
         return {
             "adapter": {
@@ -247,7 +251,7 @@ class JBrowseConfig:
                     "uri": filename,
                     "locationType": "UriLocation",
                 },
-            }
+            },
         }
 
 
@@ -289,7 +293,7 @@ def make_display(track: dict[str, Any]):
             "type": "LinearPileupDisplay",
             "height": 20,
         }
-    item["configuration"] = "-".join([track["configuration"], item["type"]])
+    item["configuration"] = "-".join([track["configuration"], str(item["type"])])
     return item
 
 
@@ -304,14 +308,14 @@ def make_theme():
             "secondary": {"main": "#009259"},
             "tertiary": {"main": "#8fc21f"},
             "quaternary": {"main": "#d9e000"},
-        }
+        },
     }
 
 
-def jbrowse(args: subp.Args, cond: bool = True):
+def jbrowse(args: subp.Args):
     cmd: subp.Args = ["jbrowse"]
     cmd.extend(args)
-    subp.run_if(cond, cmd)
+    subp.run(cmd)
 
 
 def iter_targets(path: Path):
