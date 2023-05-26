@@ -2,10 +2,11 @@
 """
 import logging
 import re
-import urllib.request
 
 from aligons import db
-from aligons.util import cli, fs, subp
+from aligons.util import cli, fs
+
+from . import tools
 
 _log = logging.getLogger(__name__)
 HOST = "plantregmap.gao-lab.org"
@@ -32,24 +33,12 @@ def rglob(pattern: str, species: str = "."):
 
 def download(query: str):
     url = f"http://{HOST}/download_ftp.php?{query}"
-    path = local_db_root() / query.split("/", 1)[1]
-    if path.suffix in (".bed", ".gff", ".txt"):
-        path = path.parent / (path.name + ".gz")
-        cmd = f"wget -O- {url}"
-    elif path.name.endswith(".gtf.gz"):
-        path = path.with_suffix("").with_suffix(".gff.gz")
-        cmd = f"wget -O- {url}"
-        cmd += " | gunzip -c"
-    else:
-        cmd = f"wget -O {path} {url}"
-    if path.with_suffix("").suffix in (".bed", ".gff"):
-        cmd += f" | bgzip -@2 -c >{path}"
-        cmd += f"; tabix --csi {path}"
-    elif path.with_suffix("").suffix in (".txt"):
-        cmd += f" | gzip -c >{path}"
-    path.parent.mkdir(0o755, parents=True, exist_ok=True)
-    subp.run_if(not path.exists(), cmd, shell=True)
-    return path
+    outfile = local_db_root() / query.split("/", 1)[1]
+    if outfile.suffix in (".bed", ".gff", ".txt"):
+        outfile = outfile.parent / (outfile.name + ".gz")
+    elif outfile.name.endswith(".gtf.gz"):
+        outfile = outfile.with_suffix("").with_suffix(".gff.gz")
+    return tools.retrieve_bgzip(url, outfile)
 
 
 def iter_download_queries():
@@ -65,18 +54,9 @@ def iter_download_queries_all():
 
 
 def download_php():
+    url = f"http://{HOST}/download.php"
     cache = local_db_root() / "download.php.html"
-    if cache.exists():
-        with cache.open("r") as fin:
-            content = fin.read()
-    else:
-        url = f"http://{HOST}/download.php"
-        _log.info(url)
-        response = urllib.request.urlopen(url)  # noqa: S310
-        content = response.read().decode()
-        with cache.open("w") as fout:
-            fout.write(content)
-    return content
+    return tools.retrieve_cache(url, cache).decode()
 
 
 def local_db_root():

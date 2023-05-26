@@ -37,6 +37,7 @@ def run(  # noqa: PLR0913
     *,
     executable: StrPath | None = None,
     stdin: _FILE = None,
+    input: bytes | None = None,  # noqa: A002
     stdout: _FILE = None,
     stderr: _FILE = None,
     shell: bool = False,
@@ -49,6 +50,7 @@ def run(  # noqa: PLR0913
         args,
         executable=executable,
         stdin=stdin,
+        input=input,
         stdout=stdout,
         stderr=stderr,
         shell=shell,
@@ -80,6 +82,7 @@ def run_if(  # noqa: PLR0913
     *,
     executable: StrPath | None = None,
     stdin: _FILE = None,
+    input: bytes | None = None,  # noqa: A002
     stdout: _FILE = None,
     stderr: _FILE = None,
     shell: bool = False,
@@ -98,6 +101,7 @@ def run_if(  # noqa: PLR0913
         args,
         executable=executable,
         stdin=stdin,
+        input=input,
         stdout=stdout,
         stderr=stderr,
         shell=shell,

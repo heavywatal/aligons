@@ -68,6 +68,10 @@ def bgzip(path: Path):
     return outfile
 
 
+def bgzip_compress(data: bytes) -> bytes:
+    return subp.run(["bgzip", "-@2"], input=data, stdout=subp.PIPE).stdout
+
+
 def faidx(bgz: Path):
     """https://www.htslib.org/doc/samtools-faidx.html"""
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
@@ -84,6 +88,16 @@ def tabix(bgz: Path):
     if fs.is_outdated(outfile, bgz):
         subp.run(["tabix", "--csi", bgz])
     return outfile
+
+
+def to_be_bgzipped(filename: str):
+    ext = (".fa", ".fas", ".fasta", ".fna", ".gff", ".gff3", ".gtf", ".bed")
+    return filename.removesuffix(".gz").removesuffix(".zip").endswith(ext)
+
+
+def to_be_tabixed(filename: str):
+    ext = (".gff", ".gff3", ".gtf", ".bed")
+    return filename.removesuffix(".gz").removesuffix(".zip").endswith(ext)
 
 
 def sort_clean_chromosome_gff3(infile: Path):
