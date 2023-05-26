@@ -21,7 +21,11 @@ def update_nested(x: dict[str, Any], other: dict[str, Any]):
     return x
 
 
-with resources.files("aligons.data").joinpath("config.toml").open("rb") as fin:
+def resources_data(child: str = ""):
+    return resources.files("aligons.data").joinpath(child)
+
+
+with resources_data("config.toml").open("rb") as fin:
     _config_src: dict[str, Any] = tomllib.load(fin)
 
 config = ConfDict(_config_src)

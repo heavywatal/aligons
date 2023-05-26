@@ -10,13 +10,12 @@ import json
 import logging
 import os
 import re
-from importlib import resources
 from pathlib import Path
 from typing import Any, TypeAlias
 
 from aligons import db
 from aligons.db import ensemblgenomes, phylo, plantdhs, plantregmap, stat
-from aligons.util import cli, fs, subp
+from aligons.util import cli, fs, resources_data, subp
 
 StrPath: TypeAlias = str | Path
 
@@ -240,10 +239,11 @@ class JBrowseConfig:
     def make_refnamealiases(self):
         species = self.target.name
         filename = f"{species}.chromAlias.txt"
-        if not resources.is_resource("aligons.data", filename):
+        resources_alias = resources_data(filename)
+        if not resources_alias.is_file():
             return None
         with (self.target / filename).open("w") as fout:
-            fout.write(resources.read_text("aligons.data", filename))
+            fout.write(resources_alias.read_text())
         return {
             "adapter": {
                 "type": "RefNameAliasAdapter",
