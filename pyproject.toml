@@ -38,6 +38,7 @@ source = "https://github.com/heavywatal/aligons"
 typeCheckingMode = "strict"
 
 [tool.ruff]
+target-version = "py311"
 select = ["ALL"]
 ignore = [
   "D",    # docstring
