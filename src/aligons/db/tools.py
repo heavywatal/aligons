@@ -29,6 +29,8 @@ def retrieve_bgzip(url: str, outfile: Path):
             content = response.read()
         if url.endswith(".zip") and outfile.suffix != ".zip":
             content = zip_decompress(content)
+        if ".gff" in outfile.name:
+            content = sort_gff(content)
         if htslib.to_be_bgzipped(outfile.name):
             assert outfile.suffix == ".gz"
             if url.endswith(".gz"):
@@ -70,7 +72,7 @@ def split_gff(path: Path):
         seqid = mobj.group(1)
         outfile = path.parent / f"{stem}.chromosome.{seqid}.gff3.gz"
         print(outfile)
-        subdf = body.filter(pl.col("seqid") == seqid)
+        subdf = body.filter(pl.col("seqid") == seqid).sort(["seqid", "start"])
         assert subdf.height
         if cli.dry_run or not fs.is_outdated(outfile, path):
             continue
@@ -94,9 +96,28 @@ def read_gff_sequence_region(path: Path):
     return lines
 
 
-def read_gff_body(path: Path):
+def sort_gff(content: bytes):
+    return extract_gff_header(content) + sort_gff_body(content)
+
+
+def extract_gff_header(content: bytes):
+    assert (m := re.match(rb"##gff.+?(?=^[^#])", content, re.M | re.S))
+    return m.group(0)
+
+
+def sort_gff_body(content: bytes):
+    bio = io.BytesIO()
+    (
+        read_gff_body(content)
+        .sort(["seqid", "start"])
+        .write_csv(bio, has_header=False, separator="\t")
+    )
+    return bio.getvalue()
+
+
+def read_gff_body(source: Path | str | bytes):
     return pl.read_csv(
-        path,
+        source,
         separator="\t",
         comment_char="#",
         has_header=False,
