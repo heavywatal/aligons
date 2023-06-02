@@ -1,0 +1,83 @@
+[[dataset]]
+species = "solanum_lycopersicum"
+version = "ITAG4.00"
+label = "tomato"
+clade = "Solanum"
+sequences = ["Solanum_lycopersicum/assembly/build_4.00/S_lycopersicum_chromosomes.4.00.fa.gz"]
+annotation = "Solanum_lycopersicum/annotation/ITAG4.1_release/ITAG4.1_gene_models.gff"
+
+[[dataset]]
+species = "solanum_pennellii"
+version = "2.0"
+label = "wild-tomato"
+clade = "Solanum"
+sequences = ["Solanum_pennellii/Spenn.fasta"]
+annotation = "Solanum_pennellii/spenn_v2.0_gene_models_annot.gff"
+
+[[dataset]]
+species = "solanum_tuberosum"
+version = "3.4"
+label = "potato"
+clade = "Solanum"
+sequences = ["Solanum_tuberosum/assembly/PGSC_DM_v3/PGSC_DM_v3_superscaffolds.fasta.zip"]
+annotation = "Solanum_tuberosum/annotation/PGSC_3.4/PGSC_DM_v3.4_gene.gff.zip"
+
+[[dataset]]
+species = "solanum_melongena"
+version = "4.1"
+label = "eggplant"
+clade = "Solanum"
+sequences = ["Solanum_melongena_V4.1/Eggplant_V4.1.fa"]
+annotation = "Solanum_melongena_V4.1/Eggplant_V4.1_function_IPR_final.sorted.gff.gz"
+
+[[dataset]]
+species = "capsicum_annuum"
+version = "1.55"
+label = "pepper"
+clade = "Solanaceae"
+sequences = ["Capsicum_annuum/C.annuum_cvCM334/assemblies/Pepper_1.55.fasta.gz"]
+annotation = "Capsicum_annuum/C.annuum_cvCM334/annotation/Pepper_1.55.gene_models.gff3"
+
+[[dataset]]
+species = "nicotiana_attenuata"
+version = "2"
+label = "tobacco"
+clade = "Solanaceae"
+sequences = ["Nicotiana_attenuata/NIATTr2.chr.fa"]
+annotation = "Nicotiana_attenuata/NIATTr2.an5.gff"
+
+[[dataset]]
+species = "petunia_axillaris"
+version = "1.6.2"
+label = "petunia"
+clade = "Solanaceae"
+sequences = ["Petunia_axillaris/assembly/Petunia_axillaris_v1.6.2_genome.fasta"]
+annotation = "Petunia_axillaris/Peaxi162annotation_v4.gff"
+
+[[dataset]]
+species = "coffea_canephora"
+clade = "Lamiids"
+label = "coffee"
+sequences = [
+  "Coffea_canephora/assembly/chr0.fna.gz",
+  "Coffea_canephora/assembly/chr1.fna.gz",
+  "Coffea_canephora/assembly/chr2.fna.gz",
+  "Coffea_canephora/assembly/chr3.fna.gz",
+  "Coffea_canephora/assembly/chr4.fna.gz",
+  "Coffea_canephora/assembly/chr5.fna.gz",
+  "Coffea_canephora/assembly/chr6.fna.gz",
+  "Coffea_canephora/assembly/chr7.fna.gz",
+  "Coffea_canephora/assembly/chr8.fna.gz",
+  "Coffea_canephora/assembly/chr9.fna.gz",
+  "Coffea_canephora/assembly/chr10.fna.gz",
+  "Coffea_canephora/assembly/chr11.fna.gz",
+]
+annotation = "Coffea_canephora/annotations/coffea_canephora.gff3.gz"
+
+[[dataset]]
+species = "arabidopsis_thaliana"
+version = "TAIR10"
+label = "arabidopsis"
+clade = "Eudicots"
+sequences = ["Arabidopsis_thaliana/assembly/TAIR10/TAIR10_genome.fas"]
+annotation = "Arabidopsis_thaliana/annotation/TAIR10/TAIR10_GFF3_genes.gff"
