@@ -1,4 +1,4 @@
-"""Multiple genome alignment
+"""Multiple genome alignment.
 
 src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 lnk: ./multiple/{target}/{clade}/{chromosome}/{target}.{query}.sing.maf
@@ -101,7 +101,7 @@ def roast(
     outfile: str,
     options: ConfDict = empty_options,
 ):
-    """Generate shell script to execute multiz"""
+    """Generate shell script to execute multiz."""
     tree = options["tree"]
     tree = phylo.shorten_names(tree).replace(",", " ").rstrip(";")
     radius = options.get("R", 30)

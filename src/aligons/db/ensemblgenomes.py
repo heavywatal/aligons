@@ -1,5 +1,4 @@
-"""https://plants.ensembl.org/
-"""
+"""https://plants.ensembl.org/."""
 import functools
 import logging
 import os
@@ -129,7 +128,7 @@ def filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
 
 
 def shorten(name: str):
-    """Oryza_sativa -> osat"""
+    """Oryza_sativa -> osat."""
     if name.lower() == "olea_europaea_sylvestris":
         return "oesy"
     split = name.lower().split("_")
@@ -187,7 +186,7 @@ def consolidate_compara_mafs(indir: Path):
 
 
 def readlines_compara_maf(file: Path):
-    """maf files of ensembl compara have broken "a" lines
+    """MAF files of ensembl compara have broken "a" lines.
 
     a# id: 0000000
      score=9999

@@ -1,4 +1,4 @@
-"""Soft-mask fasta sequences based on kmer frequencies
+"""Soft-mask fasta sequences based on kmer frequencies.
 
 src: {ensemblgenomes.prefix}/fasta/{species}/dna/*.fa.gz
 dst: {ensemblgenomes.prefix}/fasta/{species}/dna/kmer/*.fa.gz
@@ -112,7 +112,7 @@ def log_config(histofile: Path, freq: int):
 
 
 def mask_genome(infile: Path, kmer_fa: Path, freq: int = 50):
-    """https://github.com/baoxingsong/dCNS"""
+    """https://github.com/baoxingsong/dCNS."""
     dump_lower_count = config["jellyfish"]["dump"]["lower_count"]
     if freq < dump_lower_count:
         _log.warning(f"threshold frequency: {freq} < {dump_lower_count=}")

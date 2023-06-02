@@ -1,4 +1,5 @@
-"""
+"""https://jbrowse.org.
+
 src: {ensemblgenomes.prefix}/fasta/{species}/dna/*.fa.gz
 src: {ensemblgenomes.prefix}/gff3/{species}/*.chr.gff3.gz
 src: {vNN}/pairwise/{species}/{query}/cram/genome.cram
@@ -151,7 +152,7 @@ class JBrowseConfig:
             self.add_track(path, "plantregmap", trackid=trackid)
 
     def add_assembly(self, species: str):
-        """--alias, --name, --displayName"""
+        # --alias, --name, --displayName
         genome = ensemblgenomes.get_file("*.genome.fa.gz", species)
         args: subp.Args = ["add-assembly"]
         args.extend(["--target", self.target])
@@ -171,7 +172,7 @@ class JBrowseConfig:
     def add_track(
         self, file: Path, category: str = "", trackid: str = "", subdir: str = ""
     ):
-        """--description, --config"""
+        # --description, --config
         args: subp.Args = ["add-track"]
         args.extend(["--target", self.target])
         args.extend(["--load", _load])
@@ -189,7 +190,7 @@ class JBrowseConfig:
             jbrowse(args)
 
     def text_index(self):
-        """--attributes, --exclude, --file,  --perTrack, --tracks, --dryrun"""
+        # --attributes, --exclude, --file,  --perTrack, --tracks, --dryrun
         args: subp.Args = ["text-index"]
         args.extend(["--target", self.target])
         jbrowse(args)

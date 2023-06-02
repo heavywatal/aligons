@@ -41,7 +41,9 @@ typeCheckingMode = "strict"
 target-version = "py311"
 select = ["ALL"]
 ignore = [
-  "D",    # docstring
+  "D1",   # missing docstring
+  "D203", # incompatible
+  "D213", # incompatible
   "ANN",  # annotation
   "T201", # print
   "S101", # assert

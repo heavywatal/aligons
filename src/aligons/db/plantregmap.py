@@ -1,5 +1,4 @@
-"""http://plantregmap.gao-lab.org/
-"""
+"""http://plantregmap.gao-lab.org/."""
 import logging
 import re
 

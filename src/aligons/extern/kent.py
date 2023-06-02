@@ -1,4 +1,4 @@
-"""Integrate chromosome wigs into a genome-wide bigwig
+"""Integrate chromosome wigs into a genome-wide bigwig.
 
 src: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
 dst: ./multiple/{target}/{clade}/phastcons.bw

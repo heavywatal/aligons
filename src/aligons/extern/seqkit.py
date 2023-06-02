@@ -1,5 +1,4 @@
-"""https://bioinf.shenwei.me/seqkit
-"""
+"""https://bioinf.shenwei.me/seqkit."""
 import logging
 from pathlib import Path
 
@@ -16,7 +15,8 @@ def main(argv: list[str] | None = None):
 
 
 def split(path: Path):
-    """https://bioinf.shenwei.me/seqkit/usage/#split
+    """https://bioinf.shenwei.me/seqkit/usage/#split.
+
     dir/seq.fa.gz -> dir/.seqkit/seq.part_{id}.fasta.gz
     """
     outdir = path.parent / ".seqkit"

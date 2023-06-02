@@ -61,7 +61,7 @@ def collect_gff3_header(infiles: Iterable[Path]):
 
 
 def bgzip(path: Path):
-    """https://www.htslib.org/doc/bgzip.html"""
+    """https://www.htslib.org/doc/bgzip.html."""
     outfile = path.with_suffix(path.suffix + ".gz")
     if fs.is_outdated(outfile, path):
         subp.run(["bgzip", "-@2", path])
@@ -73,7 +73,7 @@ def bgzip_compress(data: bytes) -> bytes:
 
 
 def faidx(bgz: Path):
-    """https://www.htslib.org/doc/samtools-faidx.html"""
+    """https://www.htslib.org/doc/samtools-faidx.html."""
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
     if fs.is_outdated(outfile, bgz):
         subp.run(["samtools", "faidx", bgz])
@@ -81,8 +81,9 @@ def faidx(bgz: Path):
 
 
 def tabix(bgz: Path):
-    """https://www.htslib.org/doc/tabix.html
-    Use .csi instead of .tbi for chromosomes >512 Mbp e.g., atau, hvul
+    """https://www.htslib.org/doc/tabix.html.
+
+    Use .csi instead of .tbi for chromosomes >512 Mbp e.g., atau, hvul.
     """
     outfile = bgz.with_suffix(bgz.suffix + ".csi")
     if fs.is_outdated(outfile, bgz):

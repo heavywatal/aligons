@@ -1,5 +1,4 @@
-"""http://plantdhs.org
-"""
+"""http://plantdhs.org."""
 import logging
 import re
 

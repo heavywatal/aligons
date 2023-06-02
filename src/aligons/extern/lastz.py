@@ -1,4 +1,4 @@
-"""Pairwise genome alignment
+"""Pairwise genome alignment.
 
 src: {ensemblgenomes.prefix}/fasta/{species}/*.fa.gz
 dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf

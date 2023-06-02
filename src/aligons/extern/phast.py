@@ -1,4 +1,4 @@
-"""Phylogenetic Analysis with Space/Time Models
+"""Phylogenetic Analysis with Space/Time Models.
 
 src: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
 dst: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
@@ -178,7 +178,8 @@ def path_labeled_gff3(species: str, chromosome: str):
 
 
 def prepare_labeled_gff3(species: str):
-    """
+    """Deploy labeled copies of GFF3.
+
     src: {ensemblgenomes.prefix}/gff3/{species}/*.{chromosome}.gff3.gz
     dst: ./gff3/{species}/labeled-{chromosome}.gff3.gz
     """
@@ -193,7 +194,7 @@ def prepare_labeled_gff3(species: str):
 
 
 def add_label_to_chr(infile: Path, outfile: Path, label: str):
-    """Modify GFF3 for msa_view
+    """Modify GFF3 for msa_view.
 
     - Add species name to chromosome name, e.g., osat.1, zmay.2
     - Extract CDS
