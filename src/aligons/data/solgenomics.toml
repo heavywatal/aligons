@@ -16,11 +16,11 @@ annotation = "Solanum_pennellii/spenn_v2.0_gene_models_annot.gff"
 
 [[dataset]]
 species = "solanum_tuberosum"
-version = "3.4"
+version = "4.03"
 label = "potato"
 clade = "Solanum"
-sequences = ["Solanum_tuberosum/assembly/PGSC_DM_v3/PGSC_DM_v3_superscaffolds.fasta.zip"]
-annotation = "Solanum_tuberosum/annotation/PGSC_3.4/PGSC_DM_v3.4_gene.gff.zip"
+sequences = ["Solanum_tuberosum/assembly/PGSC_DM_v4.03/PGSC_DM_v4.03_pseudomolecules.fasta.zip"]
+annotation = "Solanum_tuberosum/annotation/PGSC_4.03/PGSC_DM_V403_genes.gff.zip"
 
 [[dataset]]
 species = "solanum_melongena"
