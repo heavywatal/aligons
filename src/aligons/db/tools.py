@@ -4,10 +4,12 @@ import logging
 import re
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 from zipfile import ZipFile
 
 import polars as pl
 
+from aligons import db
 from aligons.extern import htslib
 from aligons.util import cli, fs
 
@@ -24,18 +26,17 @@ def main(argv: list[str] | None = None):
 def retrieve_bgzip(url: str, outfile: Path):
     _log.info(url)
     if not cli.dry_run and fs.is_outdated(outfile):
-        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-        with urllib.request.urlopen(url) as response:  # noqa: S310
-            content = response.read()
+        content = retrieve_cache(url)
         if url.endswith(".zip") and outfile.suffix != ".zip":
             content = zip_decompress(content)
-        if ".gff" in outfile.name:
-            content = sort_gff(content)
         if htslib.to_be_bgzipped(outfile.name):
             assert outfile.suffix == ".gz"
             if url.endswith(".gz"):
                 content = gzip.decompress(content)
+            if ".gff" in outfile.name:
+                content = sort_gff(content)
             content = htslib.bgzip_compress(content)
+        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         with outfile.open("wb") as fout:
             fout.write(content)
         if htslib.to_be_tabixed(outfile.name):
@@ -43,7 +44,10 @@ def retrieve_bgzip(url: str, outfile: Path):
     return outfile
 
 
-def retrieve_cache(url: str, cache: Path) -> bytes:
+def retrieve_cache(url: str, cache: Path | None = None) -> bytes:
+    if cache is None:
+        urlp = urlparse(url)
+        cache = db.path("_cache") / (urlp.netloc + urlp.path)
     if cache.exists():
         with cache.open("rb") as fin:
             return fin.read()
