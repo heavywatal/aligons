@@ -105,7 +105,7 @@ def sort_gff(content: bytes):
 
 
 def extract_gff_header(content: bytes):
-    if (m := re.match(rb"##gff-version.+?(?=^[^#])", content, re.M | re.S)):
+    if m := re.match(rb"##gff-version.+?(?=^[^#])", content, re.M | re.S):
         return m.group(0)
     _log.warning("invalid GFF format without ##gff-version")
     return b"##gff-version 3\n"
