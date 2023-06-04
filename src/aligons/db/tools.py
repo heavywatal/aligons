@@ -122,6 +122,8 @@ def sort_gff_body(content: bytes):
 
 
 def read_gff_body(source: Path | str | bytes):
+    if isinstance(source, bytes):
+        source = re.sub(rb"\n\n+", rb"\n", source)
     return pl.read_csv(
         source,
         separator="\t",
