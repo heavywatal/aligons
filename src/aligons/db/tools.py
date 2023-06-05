@@ -39,8 +39,10 @@ def retrieve_bgzip(url: str, outfile: Path):
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         with outfile.open("wb") as fout:
             fout.write(content)
-        if htslib.to_be_tabixed(outfile.name):
-            htslib.tabix(outfile)
+    if htslib.to_be_tabixed(outfile.name):
+        htslib.tabix(outfile)
+    elif htslib.to_be_faidxed(outfile.name):
+        htslib.faidx(outfile)
     return outfile
 
 

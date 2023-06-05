@@ -92,7 +92,11 @@ def tabix(bgz: Path):
 
 
 def to_be_bgzipped(filename: str):
-    ext = (".fa", ".fas", ".fasta", ".fna", ".gff", ".gff3", ".gtf", ".bed")
+    return to_be_faidxed(filename) or to_be_tabixed(filename)
+
+
+def to_be_faidxed(filename: str):
+    ext = (".fa", ".fas", ".fasta", ".fna")
     return filename.removesuffix(".gz").removesuffix(".zip").endswith(ext)
 
 
