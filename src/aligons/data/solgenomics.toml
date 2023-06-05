@@ -49,6 +49,7 @@ annotation = "Nicotiana_attenuata/NIATTr2.an5.gff"
 [[dataset]]
 species = "petunia_axillaris"
 version = "1.6.2"
+draft = true
 label = "petunia"
 clade = "Solanaceae"
 sequences = ["Petunia_axillaris/assembly/Petunia_axillaris_v1.6.2_genome.fasta"]

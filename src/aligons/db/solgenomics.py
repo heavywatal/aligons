@@ -21,6 +21,7 @@ _log = logging.getLogger(__name__)
 class DataSet(TypedDict):
     species: str
     version: str
+    draft: bool
     label: str
     clade: str
     sequences: list[str]
@@ -65,6 +66,8 @@ def iter_dataset() -> Generator[DataSet, None, None]:
     with resources_data("solgenomics.toml").open("rb") as fin:
         meta = tomllib.load(fin)
     for dic in meta["dataset"]:
+        if dic.get("draft", False):
+            continue
         yield DataSet(dic)
 
 
