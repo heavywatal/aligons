@@ -24,7 +24,6 @@ _log = logging.getLogger(__name__)
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
-    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("clade", type=Path)  # multiple/{target}/{clade}
     args = parser.parse_args(argv or None)
@@ -33,18 +32,18 @@ def main(argv: list[str] | None = None):
     if args.clean:
         clean(args.clade)
         return
-    run(args.clade, args.jobs)
+    run(args.clade)
 
 
-def run(path_clade: Path, jobs: int):
-    (cons_mod, noncons_mod) = prepare_mods(path_clade, jobs)
+def run(path_clade: Path):
+    (cons_mod, noncons_mod) = prepare_mods(path_clade)
     opts = config.get("phastCons", empty_options)
-    with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
-        chrs = path_clade.glob("chromosome*")
-        futures = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]
-        for future in confu.as_completed(futures):
-            if (wig := future.result()).exists():
-                print(wig)
+    pool = cli.ThreadPool()
+    chrs = path_clade.glob("chromosome*")
+    futures = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]
+    for future in confu.as_completed(futures):
+        if (wig := future.result()).exists():
+            print(wig)
 
 
 def phastCons(  # noqa: N802
@@ -63,7 +62,7 @@ def phastCons(  # noqa: N802
     return wig
 
 
-def prepare_mods(clade: Path, jobs: int):
+def prepare_mods(clade: Path):
     target = clade.parent.name
     prepare_labeled_gff3(target)
     cons_mod = clade / "cons.mod"
@@ -71,12 +70,12 @@ def prepare_mods(clade: Path, jobs: int):
     tree = phylo.get_newick(clade.name.split("-"), phylo.shorten_names)
     cfutures: list[confu.Future[Path]] = []
     nfutures: list[confu.Future[Path]] = []
-    with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
-        for chromosome in clade.glob("chromosome*"):
-            maf = chromosome / "multiz.maf"
-            gff = path_labeled_gff3(target, chromosome.name)
-            cfutures.append(pool.submit(make_cons_mod, maf, gff, tree))
-            nfutures.append(pool.submit(make_noncons_mod, maf, gff, tree))
+    pool = cli.ThreadPool()
+    for chromosome in clade.glob("chromosome*"):
+        maf = chromosome / "multiz.maf"
+        gff = path_labeled_gff3(target, chromosome.name)
+        cfutures.append(pool.submit(make_cons_mod, maf, gff, tree))
+        nfutures.append(pool.submit(make_noncons_mod, maf, gff, tree))
     phyloBoot([f.result() for f in cfutures], cons_mod)
     phyloBoot([f.result() for f in nfutures], noncons_mod)
     return (cons_mod, noncons_mod)

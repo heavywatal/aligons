@@ -7,7 +7,6 @@ https://github.com/ucscGenomeBrowser/kent
 """
 import gzip
 import logging
-import os
 import shutil
 from pathlib import Path
 
@@ -19,7 +18,6 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
-    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("clade", type=Path)
     args = parser.parse_args(argv or None)
     run(args.clade)

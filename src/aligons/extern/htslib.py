@@ -72,6 +72,15 @@ def bgzip_compress(data: bytes) -> bytes:
     return subp.run(["bgzip", "-@2"], input=data, stdout=subp.PIPE).stdout
 
 
+def index(bgz: Path):
+    if to_be_tabixed(bgz.name):
+        return tabix(bgz)
+    if to_be_faidxed(bgz.name):
+        return faidx(bgz)
+    msg = f"Cannot htslib.index {bgz}"
+    raise ValueError(msg)
+
+
 def faidx(bgz: Path):
     """https://www.htslib.org/doc/samtools-faidx.html."""
     outfile = bgz.with_suffix(bgz.suffix + ".fai")

@@ -8,7 +8,6 @@ https://lastz.github.io/lastz/
 import concurrent.futures as confu
 import gzip
 import logging
-import os
 from pathlib import Path
 from types import MappingProxyType
 
@@ -22,25 +21,23 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
-    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("target", choices=ensemblgenomes.species_names())
     parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
     if args.config:
         read_config(args.config)
-    _run(args.target, args.query, args.jobs)
+    _run(args.target, args.query)
 
 
-def run(target: str, clade: str, jobs: int):
+def run(target: str, clade: str):
     tree = phylo.newicks[clade]
-    _run(target, phylo.extract_names(tree), jobs)
+    _run(target, phylo.extract_names(tree))
     return Path("pairwise") / target
 
 
-def _run(target: str, queries: list[str], jobs: int):
+def _run(target: str, queries: list[str]):
     queries = ensemblgenomes.sanitize_queries(target, queries)
-    PairwiseAlignment.set_executor(jobs)
     futures: list[confu.Future[Path]] = []
     for query in queries:
         pa = PairwiseAlignment(target, query, config)
@@ -51,12 +48,6 @@ def _run(target: str, queries: list[str], jobs: int):
 
 
 class PairwiseAlignment:
-    _executor = confu.ThreadPoolExecutor()
-
-    @classmethod
-    def set_executor(cls, jobs: int):
-        cls._executor = confu.ThreadPoolExecutor(jobs)
-
     def __init__(self, target: str, query: str, options: ConfDict):
         self._target = target
         self._query = query
@@ -69,6 +60,7 @@ class PairwiseAlignment:
         self._toaxt_opts: ConfDict = options["netToAxt"]
 
     def run(self):
+        pool = cli.ThreadPool()
         if not cli.dry_run:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
         patt = "*.chromosome.*.2bit"
@@ -80,11 +72,9 @@ class PairwiseAlignment:
         flists: list[list[confu.Future[Path]]] = []
         for t in target_chromosomes:
             flists.append(
-                [self._executor.submit(self.align_chr, t, q) for q in query_chromosomes]
+                [pool.submit(self.align_chr, t, q) for q in query_chromosomes]
             )
-        return [
-            self._executor.submit(self.wait_integrate, futures) for futures in flists
-        ]
+        return [pool.submit(self.wait_integrate, futures) for futures in flists]
 
     def align_chr(self, t2bit: Path, q2bit: Path):
         axtgz = lastz(t2bit, q2bit, self._outdir, self._lastz_opts)

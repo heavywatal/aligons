@@ -1,6 +1,5 @@
 import concurrent.futures as confu
 import logging
-import os
 from pathlib import Path
 
 from aligons.extern import htslib, jellyfish, kent
@@ -13,7 +12,6 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
-    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("--compara", choices=ensemblgenomes.species_names())
@@ -24,33 +22,33 @@ def main(argv: list[str] | None = None):
     if args.compara:
         with ensemblgenomes.FTPensemblgenomes() as ftp:
             dirs = ftp.download_maf(args.compara)
-        with confu.ThreadPoolExecutor(max_workers=args.jobs) as pool:
-            futures = [
-                pool.submit(ensemblgenomes.consolidate_compara_mafs, d) for d in dirs
-            ]
-            for f in confu.as_completed(futures):
-                print(f.result())
+        pool = cli.ThreadPool()
+        futures = [
+            pool.submit(ensemblgenomes.consolidate_compara_mafs, d) for d in dirs
+        ]
+        for f in confu.as_completed(futures):
+            print(f.result())
         return
     tree = phylo.newicks[args.clade]
     species = phylo.extract_names(tree)
     if args.download:
-        download(species, jobs=args.jobs)
+        download(species)
     else:
-        index(species, jobs=args.jobs)
+        index(species)
 
 
-def download(species: list[str], jobs: int):
+def download(species: list[str]):
     assert species
     assert not (d := set(species) - set(ensemblgenomes.species_names_all())), d
-    with (
-        confu.ThreadPoolExecutor(max_workers=jobs) as pool,
-        ensemblgenomes.FTPensemblgenomes() as ftp,
-    ):
+    with ensemblgenomes.FTPensemblgenomes() as ftp:
+        pool = cli.ThreadPool()
+        futures: list[confu.Future[Path]] = []
         for sp in species:
             fasta_dir = ftp.download_fasta(sp)
-            pool.submit(index_fasta, fasta_dir)
+            futures.append(pool.submit(index_fasta, fasta_dir))
             gff3_dir = ftp.download_gff3(sp)
-            pool.submit(index_gff3, gff3_dir)
+            futures.append(pool.submit(index_gff3, gff3_dir))
+        confu.wait(futures)
     if False:  # ensemble does not support rsync
         for sp in species:
             options = "--include *_sm.chromosome.*.fa.gz --exclude *.gz"
@@ -59,11 +57,16 @@ def download(species: list[str], jobs: int):
             ensemblgenomes.rsync(f"gff3/{sp}", options)
 
 
-def index(species: list[str], jobs: int):
-    with confu.ThreadPoolExecutor(max_workers=jobs) as pool:
-        pool.map(index_fasta, ensemblgenomes.species_dirs("fasta", species))
-        pool.map(index_gff3, ensemblgenomes.species_dirs("gff3", species))
-        pool.map(softmask, ensemblgenomes.species_dirs("fasta", species))
+def index(species: list[str]):
+    pool = cli.ThreadPool()
+    futures: list[confu.Future[Path]] = []
+    for sp_dir in ensemblgenomes.species_dirs("fasta", species):
+        futures.append(pool.submit(index_fasta, sp_dir))
+    for sp_dir in ensemblgenomes.species_dirs("gff3", species):
+        futures.append(pool.submit(index_gff3, sp_dir))
+    for sp_dir in ensemblgenomes.species_dirs("fasta", species):
+        futures.append(pool.submit(softmask, sp_dir))
+    confu.wait(futures)
 
 
 def softmask(species: Path):

@@ -3,6 +3,7 @@
 {local_db_root}/fasta/{species}/dna/{stem}.chromosome.{chr}.fa.gz
 {local_db_root}/gff3/{species}/{stem}.gff3.gz
 """
+import concurrent.futures as confu
 import logging
 import re
 import tomllib
@@ -11,11 +12,13 @@ from pathlib import Path
 from typing import TypedDict
 
 from aligons import db
+from aligons.extern import htslib
 from aligons.util import cli, resources_data
 
 from . import tools
 
 _log = logging.getLogger(__name__)
+_futures: list[confu.Future[Path]] = []
 
 
 class DataSet(TypedDict):
@@ -37,6 +40,8 @@ def main(argv: list[str] | None = None):
             download(entry)
         else:
             print(entry)
+    for future in confu.as_completed(_futures):
+        print(future.result())
 
 
 def download(entry: DataSet):
@@ -50,16 +55,18 @@ def download(entry: DataSet):
             relpath = f"fasta/{sp}/dna/{stem}.chromosome.{chromo}.fa.gz"
         else:
             relpath = f"fasta/{sp}/dna/{stem}.fa.gz"
-        print(retrieve(query_fa, relpath))
+        print(_retrieve_bgzip_index(query_fa, relpath))
     query_gff: str = entry["annotation"]
     relpath = f"gff3/{sp}/{stem}.gff3.gz"
-    print(retrieve(query_gff, relpath))
+    print(_retrieve_bgzip_index(query_gff, relpath))
 
 
-def retrieve(query: str, relpath: str):
+def _retrieve_bgzip_index(query: str, relpath: str):
     outfile = local_db_root() / relpath
     url = f"https://solgenomics.net/ftp/genomes/{query}"
-    return tools.retrieve_bgzip(url, outfile)
+    bgz = tools.retrieve_bgzip(url, outfile)
+    _futures.append(cli.ThreadPool().submit(htslib.index, bgz))
+    return bgz
 
 
 def iter_dataset() -> Generator[DataSet, None, None]:

@@ -24,7 +24,6 @@ def main(argv: list[str] | None = None):
     nodes_all = phylo.extract_names(phylo.newicks_with_inner["angiospermae"])
     parser = cli.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
-    parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
     parser.add_argument("query", choices=nodes_all)
@@ -34,10 +33,10 @@ def main(argv: list[str] | None = None):
     if args.clean:
         clean(Path("multiple") / args.indir.name)
         return
-    run(args.indir, args.query, args.jobs)
+    run(args.indir, args.query)
 
 
-def run(indir: Path, query: Sequence[str], jobs: int):
+def run(indir: Path, query: Sequence[str]):
     target = indir.name
     assert target in query
     tree = phylo.get_newick(query)
@@ -51,8 +50,8 @@ def run(indir: Path, query: Sequence[str], jobs: int):
     chromodirs = outdir.glob("chromosome.*")
     multiz_opts = config["multiz"]
     multiz_opts["tree"] = tree
-    with confu.ThreadPoolExecutor(max_workers=jobs) as executor:
-        futures = [executor.submit(multiz, p, multiz_opts) for p in chromodirs]
+    pool = cli.ThreadPool()
+    futures = [pool.submit(multiz, p, multiz_opts) for p in chromodirs]
     for future in confu.as_completed(futures):
         if (multiz_maf := future.result()).exists():
             print(multiz_maf)
