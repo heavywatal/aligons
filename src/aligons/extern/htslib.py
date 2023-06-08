@@ -45,6 +45,7 @@ def concat_bgzip(infiles: list[Path], outfile: Path):
                         bgzip.stdin.write(fin.read())
                         bgzip.stdin.flush()
             bgzip.communicate()
+    _log.info(f"{outfile}")
     return outfile
 
 
@@ -64,8 +65,7 @@ def collect_gff3_header(infiles: Iterable[Path]):
 def bgzip(path: Path):
     """https://www.htslib.org/doc/bgzip.html."""
     outfile = path.with_suffix(path.suffix + ".gz")
-    if fs.is_outdated(outfile, path):
-        subp.run(["bgzip", "-@2", path])
+    subp.run_if(fs.is_outdated(outfile, path), ["bgzip", "-@2", path])
     return outfile
 
 
@@ -73,13 +73,14 @@ def bgzip_compress(data: bytes) -> bytes:
     return subp.run(["bgzip", "-@2"], input=data, stdout=subp.PIPE).stdout
 
 
-def index(bgz: Path):
+def try_index(bgz: Path | cli.FuturePath) -> Path:
+    if isinstance(bgz, confu.Future):
+        bgz = bgz.result()
     if to_be_tabixed(bgz.name):
         return tabix(bgz)
     if to_be_faidxed(bgz.name):
         return faidx(bgz)
-    msg = f"Cannot htslib.index {bgz}"
-    raise ValueError(msg)
+    return bgz
 
 
 def faidx(bgz: Path | cli.FuturePath):
@@ -87,8 +88,8 @@ def faidx(bgz: Path | cli.FuturePath):
     if isinstance(bgz, confu.Future):
         bgz = bgz.result()
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
-    if fs.is_outdated(outfile, bgz):
-        subp.run(["samtools", "faidx", bgz])
+    subp.run_if(fs.is_outdated(outfile, bgz), ["samtools", "faidx", bgz])
+    _log.info(f"{outfile}")
     return outfile
 
 
@@ -100,8 +101,8 @@ def tabix(bgz: Path | cli.FuturePath):
     if isinstance(bgz, confu.Future):
         bgz = bgz.result()
     outfile = bgz.with_suffix(bgz.suffix + ".csi")
-    if fs.is_outdated(outfile, bgz):
-        subp.run(["tabix", "--csi", bgz])
+    subp.run_if(fs.is_outdated(outfile, bgz), ["tabix", "--csi", bgz])
+    _log.info(f"{outfile}")
     return outfile
 
 

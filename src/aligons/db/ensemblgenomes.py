@@ -237,7 +237,7 @@ class FTPensemblgenomes(FTP):
         outdir = prefix() / relpath
         nlst = self.nlst_cache(relpath)
         for x in self.remove_duplicates(nlst, "_sm."):
-            print(outfile := self.retrieve(x))
+            outfile = self.retrieve(x)
             post_retrieval(outfile)
         fs.checksums(outdir / "CHECKSUMS")
         return outdir
@@ -247,7 +247,7 @@ class FTPensemblgenomes(FTP):
         outdir = prefix() / relpath
         nlst = self.nlst_cache(relpath)
         for x in self.remove_duplicates(nlst):
-            print(outfile := self.retrieve(x))
+            outfile = self.retrieve(x)
             post_retrieval(outfile)
         fs.checksums(outdir / "CHECKSUMS")
         return outdir
@@ -259,7 +259,7 @@ class FTPensemblgenomes(FTP):
         sp = shorten(species)
         for x in nlst:
             if f"/{sp}_" in x:
-                print(self.retrieve(x))
+                self.retrieve(x)
         _log.debug(f"{outdir=}")
         dirs: list[Path] = []
         for targz in outdir.glob("*.tar.gz"):
@@ -310,6 +310,7 @@ class FTPensemblgenomes(FTP):
                 self.lazy_init()
                 _log.info(f"ftp.retrbinary({cmd})")
                 _log.info(self.retrbinary(cmd, fout.write))
+        _log.info(f"{outfile}")
         return outfile
 
 

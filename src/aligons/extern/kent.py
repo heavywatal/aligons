@@ -56,14 +56,7 @@ def bigWigInfo(path: Path):  # noqa: N802
 
 def faToTwoBit(fa_gz: Path):  # noqa: N802
     outfile = fa_gz.with_suffix("").with_suffix(".2bit")
-    if fs.is_outdated(outfile, fa_gz) and not cli.dry_run:
-        with gzip.open(fa_gz, "rb") as fin:
-            args = ["faToTwoBit", "stdin", outfile]
-            p = subp.popen(args, stdin=subp.PIPE)
-            assert p.stdin
-            shutil.copyfileobj(fin, p.stdin)
-            p.stdin.close()
-        p.communicate()
+    subp.run_if(fs.is_outdated(outfile, fa_gz), ["faToTwoBit", fa_gz, outfile])
     return outfile
 
 
@@ -74,6 +67,7 @@ def faSize(genome_fa_gz: Path):  # noqa: N802
     if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
         with outfile.open("wb") as fout:
             subp.run(["faSize", "-detailed", genome_fa_gz], stdout=fout)
+    _log.info(f"{outfile}")
     return outfile
 
 

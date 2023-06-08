@@ -79,12 +79,11 @@ def index_fasta(path: Path):  # fasta/{species} or fasta/{species}/dna/kmer
     if (path / "dna").exists():
         path /= "dna"
     for chromosome in fs.sorted_naturally(path.glob(r"*.chromosome.*.fa.gz")):
-        _log.info(str(kent.faToTwoBit(chromosome)))
+        kent.faToTwoBit(chromosome)
     genome = htslib.create_genome_bgzip(path)
-    _log.info(str(genome))
-    _log.info(str(htslib.faidx(genome)))
-    _log.info(str(kent.faToTwoBit(genome)))
-    _log.info(str(kent.faSize(genome)))
+    htslib.faidx(genome)
+    kent.faToTwoBit(genome)
+    kent.faSize(genome)
     print(path)
     return genome
 
@@ -92,8 +91,7 @@ def index_fasta(path: Path):  # fasta/{species} or fasta/{species}/dna/kmer
 def index_gff3(path: Path):  # gff3/{species}
     """Create bgzipped and indexed genome.gff3."""
     genome = htslib.create_genome_bgzip(path)
-    _log.info(str(genome))
-    _log.info(str(htslib.tabix(genome)))
+    htslib.tabix(genome)
     print(path)
     return genome
 

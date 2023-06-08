@@ -1,8 +1,10 @@
 """http://plantdhs.org."""
+import concurrent.futures as confu
 import logging
 import re
 
 from aligons import db
+from aligons.extern import htslib
 from aligons.util import cli, fs
 
 from . import tools
@@ -18,9 +20,8 @@ def main(argv: list[str] | None = None):
     if args.download:
         futures: list[cli.FuturePath] = []
         for query in iter_download_queries():
-            futures.append(download(query))
-        for f in futures:
-            print(f.result())
+            futures.append(retrieve_deploy(query))
+        confu.wait(futures)
     for x in fs.sorted_naturally(glob(args.pattern)):
         print(x)
 
@@ -29,12 +30,13 @@ def glob(pattern: str):
     return local_db_root().glob(pattern)
 
 
-def download(query: str):
+def retrieve_deploy(query: str):
     url = f"https://bioinfor.yzu.edu.cn/download/plantdhs/{query}"
     outfile = local_db_root() / query
     if outfile.name.endswith(".gff.zip"):
         outfile = outfile.with_suffix(".gz")
-    return tools.retrieve_compress(url, outfile)
+    future = tools.retrieve_compress(url, outfile)
+    return cli.thread_submit(htslib.try_index, future)
 
 
 def iter_download_queries():
