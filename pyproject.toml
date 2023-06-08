@@ -52,6 +52,7 @@ ignore = [
   "DTZ",  # timezone
   "COM",  # trailing comma
   "TD",   # todo
+  "FIX",   # todo
 ]
 
 [tool.pytest.ini_options]
