@@ -60,10 +60,8 @@ def retrieve_deploy(entry: DataSet):
         fa_gz = cli.thread_submit(tools.cat, ft_chroms, abs_fa_gz)
     else:
         fa_gz = _retrieve_bgzip(sequences[0], rel_fa_gz)
-    _futures.append(fa_gz)
     _futures.append(cli.thread_submit(htslib.faidx, fa_gz))
     gff3_gz = _retrieve_bgzip(query_gff, f"gff3/{sp}/{stem}.gff3.gz")
-    _futures.append(gff3_gz)
     _futures.append(cli.thread_submit(htslib.tabix, gff3_gz))
 
 

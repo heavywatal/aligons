@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None):
 
 
 def retrieve_compress(url: str, outfile: Path) -> cli.FuturePath:
-    content = retrieve_cache(url)
+    content = retrieve_cache(url) if fs.is_outdated(outfile) else b""
     return cli.thread_submit(compress, content, outfile)
 
 
@@ -169,6 +169,7 @@ def cat(infiles: list[Path] | list[cli.FuturePath], outfile: Path):
                 with f.open("rb") as fin:
                     fout.write(fin.read())
                     fout.flush()
+    _log.info(f"{outfile}")
     return outfile
 
 
