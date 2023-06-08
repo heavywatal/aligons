@@ -16,9 +16,11 @@ def main(argv: list[str] | None = None):
     parser.add_argument("pattern", nargs="?", default="*")
     args = parser.parse_args(argv or None)
     if args.download:
+        futures: list[cli.FuturePath] = []
         for query in iter_download_queries():
-            file = download(query)
-            _log.info(f"{file}")
+            futures.append(download(query))
+        for f in futures:
+            print(f.result())
     for x in fs.sorted_naturally(glob(args.pattern)):
         print(x)
 

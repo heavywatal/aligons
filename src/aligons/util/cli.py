@@ -2,8 +2,11 @@ import argparse
 import concurrent.futures as confu
 import logging
 import os
-from collections.abc import Sequence
-from typing import Any
+from collections.abc import Callable, Sequence
+from pathlib import Path
+from typing import Any, TypeAlias
+
+FuturePath: TypeAlias = confu.Future[Path]
 
 dry_run = False
 
@@ -88,6 +91,10 @@ class ThreadPool:
             maxw = cls._instance._max_workers  # noqa: SLF001
             _log.warning(f"max_workers = {maxw}; ignored {max_workers}")
         return cls._instance
+
+
+def thread_submit(fn: Callable[..., Any], /, *args: Any, **kwargs: Any):
+    return ThreadPool().submit(fn, *args, **kwargs)
 
 
 def main(argv: list[str] | None = None):

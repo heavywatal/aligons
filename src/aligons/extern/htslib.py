@@ -1,3 +1,4 @@
+import concurrent.futures as confu
 import gzip
 import logging
 import re
@@ -81,19 +82,23 @@ def index(bgz: Path):
     raise ValueError(msg)
 
 
-def faidx(bgz: Path):
+def faidx(bgz: Path | cli.FuturePath):
     """https://www.htslib.org/doc/samtools-faidx.html."""
+    if isinstance(bgz, confu.Future):
+        bgz = bgz.result()
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
     if fs.is_outdated(outfile, bgz):
         subp.run(["samtools", "faidx", bgz])
     return outfile
 
 
-def tabix(bgz: Path):
+def tabix(bgz: Path | cli.FuturePath):
     """https://www.htslib.org/doc/tabix.html.
 
     Use .csi instead of .tbi for chromosomes >512 Mbp e.g., atau, hvul.
     """
+    if isinstance(bgz, confu.Future):
+        bgz = bgz.result()
     outfile = bgz.with_suffix(bgz.suffix + ".csi")
     if fs.is_outdated(outfile, bgz):
         subp.run(["tabix", "--csi", bgz])

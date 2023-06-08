@@ -3,7 +3,6 @@
 {local_db_root}/fasta/{species}/dna/{stem}.chromosome.{chr}.fa.gz
 {local_db_root}/gff3/{species}/{stem}.gff3.gz
 """
-import concurrent.futures as confu
 import logging
 import re
 import tomllib
@@ -18,7 +17,7 @@ from aligons.util import cli, resources_data
 from . import tools
 
 _log = logging.getLogger(__name__)
-_futures: list[confu.Future[Path]] = []
+_futures: list[cli.FuturePath] = []
 
 
 class DataSet(TypedDict):
@@ -40,7 +39,7 @@ def main(argv: list[str] | None = None):
             retrieve_deploy(entry)
         else:
             print(entry)
-    for future in confu.as_completed(_futures):
+    for future in _futures:
         print(future.result())
 
 
@@ -51,20 +50,21 @@ def retrieve_deploy(entry: DataSet):
     sequences = entry["sequences"]
     rel_fa_gz = f"fasta/{sp}/dna/{stem}.dna.toplevel.fa.gz"
     if len(sequences) > 1:
-        chromosomes: list[Path] = []
+        ft_chroms: list[cli.FuturePath] = []
         for query_fa in sequences:
             assert (mobj := re.search(r"([^.]+)", Path(query_fa).stem))
             seqid = mobj.group(1)
             tmppath = f"fasta/{sp}/dna/{stem}.dna.chromosome.{seqid}.fa.gz"
-            chromosomes.append(_retrieve_bgzip(query_fa, tmppath))
-        fa_gz = tools.cat(chromosomes, local_db_root() / rel_fa_gz)
+            ft_chroms.append(_retrieve_bgzip(query_fa, tmppath))
+        abs_fa_gz = local_db_root() / rel_fa_gz
+        fa_gz = cli.thread_submit(tools.cat, ft_chroms, abs_fa_gz)
     else:
         fa_gz = _retrieve_bgzip(sequences[0], rel_fa_gz)
-    print(fa_gz)
-    _futures.append(cli.ThreadPool().submit(htslib.faidx, fa_gz))
+    _futures.append(fa_gz)
+    _futures.append(cli.thread_submit(htslib.faidx, fa_gz))
     gff3_gz = _retrieve_bgzip(query_gff, f"gff3/{sp}/{stem}.gff3.gz")
-    print(gff3_gz)
-    _futures.append(cli.ThreadPool().submit(htslib.tabix, gff3_gz))
+    _futures.append(gff3_gz)
+    _futures.append(cli.thread_submit(htslib.tabix, gff3_gz))
 
 
 def _retrieve_bgzip(query: str, relpath: str):

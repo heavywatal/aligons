@@ -1,3 +1,4 @@
+import concurrent.futures as confu
 import gzip
 import io
 import logging
@@ -23,7 +24,12 @@ def main(argv: list[str] | None = None):
     split_gff(args.infile)
 
 
-def retrieve_compress(url: str, outfile: Path):
+def retrieve_compress(url: str, outfile: Path) -> cli.FuturePath:
+    content = retrieve_cache(url)
+    return cli.thread_submit(compress, content, outfile)
+
+
+def compress(content: bytes, outfile: Path) -> Path:
     """Uncompress/compress depending on file names.
 
     - .gff |> uncompress |> sort |> bgzip
@@ -32,36 +38,38 @@ def retrieve_compress(url: str, outfile: Path):
     - .zip |> uncompress
     - gzip if outfile has new .gz
     """
-    _log.info(url)
     if not cli.dry_run and fs.is_outdated(outfile):
-        content = retrieve_cache(url)
-        if url.endswith(".zip"):
+        if is_zip(content):
             assert outfile.suffix != ".zip"
             content = zip_decompress(content)
         if htslib.to_be_bgzipped(outfile.name):
             assert outfile.suffix == ".gz"
-            if url.endswith(".gz"):
+            if is_gz(content):
                 content = gzip.decompress(content)
             if ".gff" in outfile.name:
                 content = sort_gff(content)
             content = htslib.bgzip_compress(content)
-        elif outfile.suffix == ".gz" and not url.endswith(".gz"):
+        elif outfile.suffix == ".gz" and not is_gz(content):
             content = gzip.compress(content)
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         with outfile.open("wb") as fout:
             fout.write(content)
+    _log.info(f"{outfile}")
     return outfile
 
 
 def retrieve_cache(url: str, cache: Path | None = None) -> bytes:
+    _log.debug(url)
     if cache is None:
         urlp = urlparse(url)
         cache = db.path("_cache") / (urlp.netloc + urlp.path)
+    _log.debug(f"{cache}")
+    if cli.dry_run:
+        return b""
     if cache.exists():
         with cache.open("rb") as fin:
             return fin.read()
     cache.parent.mkdir(0o755, parents=True, exist_ok=True)
-    _log.info(url)
     response = urllib.request.urlopen(url)  # noqa: S310
     content = response.read()
     with cache.open("wb") as fout:
@@ -153,7 +161,8 @@ def read_gff_body(source: Path | str | bytes):
     )
 
 
-def cat(infiles: list[Path], outfile: Path):
+def cat(infiles: list[Path] | list[cli.FuturePath], outfile: Path):
+    infiles = [f.result() if isinstance(f, confu.Future) else f for f in infiles]
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         with outfile.open("wb") as fout:
             for f in infiles:
@@ -161,6 +170,14 @@ def cat(infiles: list[Path], outfile: Path):
                     fout.write(fin.read())
                     fout.flush()
     return outfile
+
+
+def is_gz(content: bytes):
+    return content.startswith(b"\x1f\x8b")
+
+
+def is_zip(content: bytes):
+    return content.startswith(b"\x50\x4b")
 
 
 if __name__ == "__main__":
