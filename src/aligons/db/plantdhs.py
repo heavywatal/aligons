@@ -32,7 +32,7 @@ def download(query: str):
     outfile = local_db_root() / query
     if outfile.name.endswith(".gff.zip"):
         outfile = outfile.with_suffix(".gz")
-    return tools.retrieve_bgzip(url, outfile)
+    return tools.retrieve_compress(url, outfile)
 
 
 def iter_download_queries():

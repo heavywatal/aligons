@@ -37,36 +37,40 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     for entry in iter_dataset():
         if args.download:
-            download(entry)
+            retrieve_deploy(entry)
         else:
             print(entry)
     for future in confu.as_completed(_futures):
         print(future.result())
 
 
-def download(entry: DataSet):
+def retrieve_deploy(entry: DataSet):
     sp = entry["species"]
     stem = f"{sp}_{ver}" if (ver := entry.get("version", None)) else sp
+    query_gff = entry["annotation"]
     sequences = entry["sequences"]
-    for query_fa in sequences:
-        if len(sequences) > 1:
-            assert (mobj := re.search(r"chr([^.]+)", Path(query_fa).stem))
-            chromo = mobj.group(1)
-            relpath = f"fasta/{sp}/dna/{stem}.chromosome.{chromo}.fa.gz"
-        else:
-            relpath = f"fasta/{sp}/dna/{stem}.fa.gz"
-        print(_retrieve_bgzip_index(query_fa, relpath))
-    query_gff: str = entry["annotation"]
-    relpath = f"gff3/{sp}/{stem}.gff3.gz"
-    print(_retrieve_bgzip_index(query_gff, relpath))
+    rel_fa_gz = f"fasta/{sp}/dna/{stem}.dna.toplevel.fa.gz"
+    if len(sequences) > 1:
+        chromosomes: list[Path] = []
+        for query_fa in sequences:
+            assert (mobj := re.search(r"([^.]+)", Path(query_fa).stem))
+            seqid = mobj.group(1)
+            tmppath = f"fasta/{sp}/dna/{stem}.dna.chromosome.{seqid}.fa.gz"
+            chromosomes.append(_retrieve_bgzip(query_fa, tmppath))
+        fa_gz = tools.cat(chromosomes, local_db_root() / rel_fa_gz)
+    else:
+        fa_gz = _retrieve_bgzip(sequences[0], rel_fa_gz)
+    print(fa_gz)
+    _futures.append(cli.ThreadPool().submit(htslib.faidx, fa_gz))
+    gff3_gz = _retrieve_bgzip(query_gff, f"gff3/{sp}/{stem}.gff3.gz")
+    print(gff3_gz)
+    _futures.append(cli.ThreadPool().submit(htslib.tabix, gff3_gz))
 
 
-def _retrieve_bgzip_index(query: str, relpath: str):
+def _retrieve_bgzip(query: str, relpath: str):
     outfile = local_db_root() / relpath
     url = f"https://solgenomics.net/ftp/genomes/{query}"
-    bgz = tools.retrieve_bgzip(url, outfile)
-    _futures.append(cli.ThreadPool().submit(htslib.index, bgz))
-    return bgz
+    return tools.retrieve_compress(url, outfile)
 
 
 def iter_dataset() -> Generator[DataSet, None, None]:

@@ -37,7 +37,7 @@ def download(query: str):
         outfile = outfile.parent / (outfile.name + ".gz")
     elif outfile.name.endswith(".gtf.gz"):
         outfile = outfile.with_suffix("").with_suffix(".gff.gz")
-    return tools.retrieve_bgzip(url, outfile)
+    return tools.retrieve_compress(url, outfile)
 
 
 def iter_download_queries():

@@ -23,11 +23,20 @@ def main(argv: list[str] | None = None):
     split_gff(args.infile)
 
 
-def retrieve_bgzip(url: str, outfile: Path):
+def retrieve_compress(url: str, outfile: Path):
+    """Uncompress/compress depending on file names.
+
+    - .gff |> uncompress |> sort |> bgzip
+    - .bed |> uncompress |> bgzip
+    - .fa |> uncompress |> bgzip
+    - .zip |> uncompress
+    - gzip if outfile has new .gz
+    """
     _log.info(url)
     if not cli.dry_run and fs.is_outdated(outfile):
         content = retrieve_cache(url)
-        if url.endswith(".zip") and outfile.suffix != ".zip":
+        if url.endswith(".zip"):
+            assert outfile.suffix != ".zip"
             content = zip_decompress(content)
         if htslib.to_be_bgzipped(outfile.name):
             assert outfile.suffix == ".gz"
@@ -36,6 +45,8 @@ def retrieve_bgzip(url: str, outfile: Path):
             if ".gff" in outfile.name:
                 content = sort_gff(content)
             content = htslib.bgzip_compress(content)
+        elif outfile.suffix == ".gz" and not url.endswith(".gz"):
+            content = gzip.compress(content)
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         with outfile.open("wb") as fout:
             fout.write(content)
@@ -140,6 +151,16 @@ def read_gff_body(source: Path | str | bytes):
             "attributes",
         ],
     )
+
+
+def cat(infiles: list[Path], outfile: Path):
+    if fs.is_outdated(outfile, infiles) and not cli.dry_run:
+        with outfile.open("wb") as fout:
+            for f in infiles:
+                with f.open("rb") as fin:
+                    fout.write(fin.read())
+                    fout.flush()
+    return outfile
 
 
 if __name__ == "__main__":
