@@ -1,5 +1,7 @@
 """https://bioinf.shenwei.me/seqkit."""
+import gzip
 import logging
+from collections.abc import Iterable
 from pathlib import Path
 
 from aligons.util import cli, fs, subp
@@ -24,6 +26,28 @@ def split(path: Path):
     args.extend(["-2", "-i", "-e", ".gz", "-O", outdir, path])
     subp.run_if(fs.is_outdated(outdir, path), args)
     return outdir
+
+
+def seq_line_width(infile: Path, width: int) -> bytes:
+    """https://bioinf.shenwei.me/seqkit/usage/#seq."""
+    args: subp.Args = ["seqkit", "seq", "--line-width", str(width), infile]
+    return subp.run(args, stdout=subp.PIPE).stdout
+
+
+def read_fasta_line_width(infile: Path):
+    if infile.suffix == ".gz":
+        with gzip.open(infile, "rt") as fin:
+            return _fasta_line_width(fin)
+    with infile.open("rt") as fin:
+        return _fasta_line_width(fin)
+
+
+def _fasta_line_width(lines: Iterable[str]):
+    for line in lines:
+        if not line.startswith(">"):
+            return len(line.rstrip())
+    _log.warning("invalid fasta")
+    return 60
 
 
 if __name__ == "__main__":
