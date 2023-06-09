@@ -16,13 +16,14 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
+    parser.add_argument("-S", "--species", default="rice")
     parser.add_argument("infile", type=Path, nargs="+")
     args = parser.parse_args(argv or None)
     for infile in args.infile:
-        run(infile)
+        run(infile, args.species)
 
 
-def run(infile: Path, outfile: Path | None = None) -> cli.FuturePath:
+def run(infile: Path, species: str, outfile: Path | None = None) -> cli.FuturePath:
     if outfile is None:
         patt = re.compile(r"\.dna\.")
         assert patt.search(infile.name)
@@ -30,7 +31,7 @@ def run(infile: Path, outfile: Path | None = None) -> cli.FuturePath:
     assert outfile.suffix == ".gz"
     fa = prepare(infile)
     fts: list[cli.FuturePath] = []
-    fts.append(cli.thread_submit(repeatmasker.repeatmasker, fa, "rice"))
+    fts.append(cli.thread_submit(repeatmasker.repeatmasker, fa, species))
     fts.append(cli.thread_submit(sdust.run, fa))
     fts.append(cli.thread_submit(trf.run, fa))
     with fa.open("rb") as fin:
@@ -49,3 +50,7 @@ def prepare(infile: Path):
         else:
             outfile.symlink_to(infile)
     return outfile
+
+
+if __name__ == "__main__":
+    main()
