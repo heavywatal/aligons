@@ -44,13 +44,12 @@ def compress(content: bytes, outfile: Path) -> Path:
             content = zip_decompress(content)
         if htslib.to_be_bgzipped(outfile.name):
             assert outfile.suffix == ".gz"
-            if is_gz(content):
-                content = gzip.decompress(content)
+            content = gzip_decompress(content)
             if ".gff" in outfile.name:
                 content = sort_gff(content)
             content = htslib.bgzip_compress(content)
-        elif outfile.suffix == ".gz" and not is_gz(content):
-            content = gzip.compress(content)
+        elif outfile.suffix == ".gz":
+            content = gzip_compress(content)
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         with outfile.open("wb") as fout:
             fout.write(content)
@@ -171,6 +170,18 @@ def cat(infiles: list[Path] | list[cli.FuturePath], outfile: Path):
                     fout.flush()
     _log.info(f"{outfile}")
     return outfile
+
+
+def gzip_compress(content: bytes):
+    if not is_gz(content):
+        content = gzip.compress(content)
+    return content
+
+
+def gzip_decompress(content: bytes):
+    if is_gz(content):
+        content = gzip.decompress(content)
+    return content
 
 
 def is_gz(content: bytes):
