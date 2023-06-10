@@ -3,7 +3,6 @@
 {local_db_root}/fasta/{species}/dna/{stem}.chromosome.{chr}.fa.gz
 {local_db_root}/gff3/{species}/{stem}.gff3.gz
 """
-import concurrent.futures as confu
 import logging
 import re
 import tomllib
@@ -40,7 +39,7 @@ def main(argv: list[str] | None = None):
             retrieve_deploy(entry)
         else:
             print(entry)
-    confu.wait(_futures)
+    cli.wait_raise(_futures)
 
 
 def retrieve_deploy(entry: DataSet):

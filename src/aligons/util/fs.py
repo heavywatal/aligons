@@ -27,7 +27,8 @@ def is_outdated(product: Path, source: list[Path] | Path | None = None):
     if product.stat().st_size == 0:
         return True
     if isinstance(source, list):
-        source = newest(source)
+        source = [x for x in source if x.exists()]
+        source = newest(source) if source else None
     if source and source.exists() and product.stat().st_ctime < source.stat().st_ctime:
         return True
     return False

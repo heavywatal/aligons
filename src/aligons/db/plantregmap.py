@@ -1,5 +1,4 @@
 """http://plantregmap.gao-lab.org/."""
-import concurrent.futures as confu
 import logging
 import re
 
@@ -18,11 +17,8 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("species", nargs="?", default=".")
     args = parser.parse_args(argv or None)
-    futures: list[cli.FuturePath] = []
     if args.download:
-        for query in iter_download_queries():
-            futures.append(retrieve_deploy(query))
-        confu.wait(futures)
+        cli.wait_raise(retrieve_deploy(q) for q in iter_download_queries())
     for x in fs.sorted_naturally(rglob("*.*", args.species)):
         print(x)
 

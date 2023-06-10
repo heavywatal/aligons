@@ -1,27 +1,12 @@
 import concurrent.futures as confu
 import gzip
 import logging
-import re
 from collections.abc import Iterable
 from pathlib import Path
 
 from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
-
-
-def create_genome_bgzip(path: Path):
-    """Combine chromosome files and bgzip it."""
-    if (ext := path.parent.name) != "gff3":
-        ext = "fa"
-    files = fs.sorted_naturally(path.glob(rf"*.chromosome.*.{ext}.gz"))
-    assert files
-    _log.debug(str(files))
-    name = files[0].name
-    (outname, count) = re.subn(rf"\.chromosome\..+\.{ext}", rf".genome.{ext}", name)
-    assert count == 1
-    outfile = path / outname
-    return concat_bgzip(files, outfile)
 
 
 def concat_bgzip(infiles: list[Path], outfile: Path):

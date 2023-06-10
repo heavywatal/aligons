@@ -6,7 +6,6 @@ dst: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
 
 https://github.com/multiz/multiz
 """
-import concurrent.futures as confu
 import itertools
 import logging
 import os
@@ -51,10 +50,7 @@ def run(indir: Path, query: Sequence[str]):
     multiz_opts = config["multiz"]
     multiz_opts["tree"] = tree
     pool = cli.ThreadPool()
-    futures = [pool.submit(multiz, p, multiz_opts) for p in chromodirs]
-    for future in confu.as_completed(futures):
-        if (multiz_maf := future.result()).exists():
-            print(multiz_maf)
+    cli.wait_raise(pool.submit(multiz, p, multiz_opts) for p in chromodirs)
     return outdir
 
 
@@ -91,6 +87,8 @@ def multiz(path: Path, options: ConfDict = empty_options):
             _log.warning(str(err))
     if out := comp.stdout.strip():
         _log.info(out)
+    if outfile.exists():
+        print(outfile)
     return outfile
 
 

@@ -1,5 +1,4 @@
 """http://plantdhs.org."""
-import concurrent.futures as confu
 import logging
 import re
 
@@ -18,10 +17,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("pattern", nargs="?", default="*")
     args = parser.parse_args(argv or None)
     if args.download:
-        futures: list[cli.FuturePath] = []
-        for query in iter_download_queries():
-            futures.append(retrieve_deploy(query))
-        confu.wait(futures)
+        cli.wait_raise(retrieve_deploy(q) for q in iter_download_queries())
     for x in fs.sorted_naturally(glob(args.pattern)):
         print(x)
 

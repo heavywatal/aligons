@@ -32,7 +32,7 @@ def phastcons(target: str, clade: str, tips: int, max_bp: float, *, compara: boo
         pairwise = Path("compara") / target
     else:
         pairwise = lastz.run(target, clade)
-    mafs2cram.run(pairwise, clade, wait=False)
+    fts = mafs2cram.run(pairwise, clade)
     lst_species = phylo.extract_tip_names(phylo.newicks[clade])
     lst_species = list(filter(lambda x: test_fasize(x, max_bp), lst_species))
     n = tips or len(lst_species)
@@ -43,6 +43,7 @@ def phastcons(target: str, clade: str, tips: int, max_bp: float, *, compara: boo
         multiple = multiz.run(pairwise, species)
         phast.run(multiple)
         kent.run(multiple)
+    cli.wait_raise(fts)
 
 
 def test_fasize(species: str, max_bp: float):

@@ -31,6 +31,7 @@ def wait_maskfasta(
             fi = maskfasta(fi, bed, soft=soft)
         with fo.open("wb") as fout:
             fout.write(htslib.bgzip_compress(fi))
+    _log.info(f"{fo}")
     return fo
 
 

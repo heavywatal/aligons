@@ -5,7 +5,6 @@ dst: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
 
 http://compgen.cshl.edu/phast/
 """
-import concurrent.futures as confu
 import csv
 import gzip
 import itertools
@@ -40,10 +39,8 @@ def run(path_clade: Path):
     opts = config.get("phastCons", empty_options)
     pool = cli.ThreadPool()
     chrs = path_clade.glob("chromosome*")
-    futures = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]
-    for future in confu.as_completed(futures):
-        if (wig := future.result()).exists():
-            print(wig)
+    fts = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]
+    cli.wait_raise(fts)
 
 
 def phastCons(  # noqa: N802
@@ -59,6 +56,8 @@ def phastCons(  # noqa: N802
     p = subp.run_if(is_to_run, cmd, stdout=subp.PIPE)
     with gzip.open(devnull_if(not is_to_run, wig), "wb") as fout:
         fout.write(p.stdout)
+    if wig.exists():
+        print(wig)
     return wig
 
 
@@ -68,8 +67,8 @@ def prepare_mods(clade: Path):
     cons_mod = clade / "cons.mod"
     noncons_mod = clade / "noncons.mod"
     tree = phylo.get_newick(clade.name.split("-"), phylo.shorten_names)
-    cfutures: list[confu.Future[Path]] = []
-    nfutures: list[confu.Future[Path]] = []
+    cfutures: list[cli.FuturePath] = []
+    nfutures: list[cli.FuturePath] = []
     pool = cli.ThreadPool()
     for chromosome in clade.glob("chromosome*"):
         maf = chromosome / "multiz.maf"

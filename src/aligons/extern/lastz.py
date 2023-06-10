@@ -42,9 +42,7 @@ def _run(target: str, queries: list[str]):
     for query in queries:
         pa = PairwiseAlignment(target, query, config)
         futures.extend(pa.run())
-    for future in confu.as_completed(futures):
-        if (sing_maf := future.result()).exists():
-            print(sing_maf)
+    cli.wait_raise(futures)
 
 
 class PairwiseAlignment:
@@ -88,9 +86,12 @@ class PairwiseAlignment:
         syntenic_net = kent.chain_net_syntenic(
             pre_chain, self._target_sizes, self._query_sizes, self._cn_opts
         )
-        return kent.net_axt_maf(
+        sing_maf = kent.net_axt_maf(
             syntenic_net, pre_chain, self._target, self._query, self._toaxt_opts
         )
+        if sing_maf.exists():
+            print(sing_maf)
+        return sing_maf
 
 
 def lastz(

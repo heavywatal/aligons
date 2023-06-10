@@ -6,7 +6,6 @@ dst: ./pairwise/{target}/{query}/cram/genome.cram
 import concurrent.futures as confu
 import logging
 import re
-from collections.abc import Iterable
 from pathlib import Path
 
 from aligons.db import ensemblgenomes, phylo
@@ -28,22 +27,14 @@ def main(argv: list[str] | None = None):
             stem = str(path.parent).replace("/", "_")
             maf2cram(path, Path(stem + ".cram"), reference)
         return
-    _run(args.query, wait=False)
+    cli.wait_raise([mafs2cram(path) for path in args.query])
 
 
-def run(target: Path, clade: str, *, wait: bool):
+def run(target: Path, clade: str):
     tree = phylo.newicks[clade]
     tips = phylo.extract_names(tree)
     query_names = ensemblgenomes.sanitize_queries(target.name, tips)
-    _run([target / q for q in query_names], wait=wait)
-
-
-def _run(queries: Iterable[Path], *, wait: bool):
-    futures: list[confu.Future[Path]] = []
-    for path in queries:
-        futures.append(mafs2cram(path))
-    if wait:
-        confu.wait(futures)
+    return [mafs2cram(target / q) for q in query_names]
 
 
 def mafs2cram(path: Path):
@@ -66,11 +57,7 @@ def mafs2cram(path: Path):
 
 
 def merge_crams(futures: list[confu.Future[Path]]):
-    crams: list[Path] = []
-    for future in futures:
-        cram = future.result()
-        _log.info(f"{cram}")
-        crams.append(cram)
+    crams: list[Path] = [f.result() for f in futures]
     outdir = crams[0].parent
     outfile = outdir / "genome.cram"
     is_to_run = bool(crams) and fs.is_outdated(outfile, crams)
@@ -90,6 +77,7 @@ def maf2cram(infile: Path, outfile: Path, reference: Path):
     content = sanitize_cram(is_to_run, reference, stdout)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {outfile!s}"
     subp.popen_if(is_to_run, cmd, stdin=subp.PIPE).communicate(content)
+    _log.info(f"{outfile}")
     return outfile
 
 

@@ -19,8 +19,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-S", "--species", default="rice")
     parser.add_argument("infile", type=Path, nargs="+")
     args = parser.parse_args(argv or None)
-    for infile in args.infile:
-        run(infile, args.species)
+    cli.wait_raise(run(x, args.species) for x in args.infile)
 
 
 def run(infile: Path, species: str, outfile: Path | None = None) -> cli.FuturePath:
@@ -34,8 +33,11 @@ def run(infile: Path, species: str, outfile: Path | None = None) -> cli.FuturePa
     fts.append(cli.thread_submit(repeatmasker.repeatmasker, fa, species))
     fts.append(cli.thread_submit(sdust.run, fa))
     fts.append(cli.thread_submit(trf.run, fa))
-    with fa.open("rb") as fin:
-        fi = fin.read()
+    if fs.is_outdated(outfile, infile) and not cli.dry_run:
+        with fa.open("rb") as fin:
+            fi = fin.read()
+    else:
+        fi = b""
     return cli.thread_submit(bedtools.wait_maskfasta, fi, fts, outfile)
 
 

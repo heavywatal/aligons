@@ -27,10 +27,11 @@ def main(argv: list[str] | None = None):
 
 def run(infile: Path) -> Path:
     dat = trf(infile)
-    bed = dat_to_bed(dat)
     outfile = infile.with_suffix(infile.suffix + ".trf.bed.gz")
-    with outfile.open("wb") as fout:
-        fout.write(htslib.bgzip_compress(bed.encode()))
+    if fs.is_outdated(outfile, [infile, dat]) and not cli.dry_run:
+        bed = dat_to_bed(dat)
+        with outfile.open("wb") as fout:
+            fout.write(htslib.bgzip_compress(bed.encode()))
     return outfile
 
 

@@ -2,7 +2,7 @@ import argparse
 import concurrent.futures as confu
 import logging
 import os
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from typing import Any, TypeAlias
 
@@ -95,6 +95,11 @@ class ThreadPool:
 
 def thread_submit(fn: Callable[..., Any], /, *args: Any, **kwargs: Any):
     return ThreadPool().submit(fn, *args, **kwargs)
+
+
+def wait_raise(futures: Iterable[confu.Future[Any]]):
+    for f in confu.as_completed(futures):
+        f.result()
 
 
 def main(argv: list[str] | None = None):

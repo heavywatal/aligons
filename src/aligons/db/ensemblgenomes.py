@@ -182,6 +182,7 @@ def consolidate_compara_mafs(indir: Path):
             sed.stdout.close()
             sed.communicate("".join(lines).encode())
             maff.communicate()
+    _log.info(f"{outdir}")
     return outdir
 
 
