@@ -3,14 +3,16 @@
 https://tandem.bu.edu/trf/home
 
 src: {basename}.fa
-dat: {basename}.fa.2.5.7.80.10.40.500.dat
+dat: {basename}.fa.2.5.7.80.10.40.500.dat.gz
 out: {basename}.fa.trf.bed.gz
 """
+import gzip
 import logging
 from pathlib import Path
 
 import polars as pl
 
+from aligons.db import tools
 from aligons.extern import htslib
 from aligons.util import cli, fs, subp
 
@@ -21,8 +23,8 @@ def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("infile", type=Path, nargs="+")
     args = parser.parse_args(argv or None)
-    for infile in args.infile:
-        cli.thread_submit(run, infile)
+    fts = [cli.thread_submit(run, f) for f in args.infile]
+    cli.wait_raise(fts)
 
 
 def run(infile: Path) -> Path:
@@ -36,6 +38,19 @@ def run(infile: Path) -> Path:
 
 
 def trf(infile: Path):
+    """Be careful of messy and dirty output from trf.
+
+    - without `-ngs`
+      - returns non-zero even when it is "Done" successsfully.
+      - writes ./{infile}.{params}.dat including verbose header.
+    - with `-ngs`
+      - returns 0 if successful.
+      - writes to stdout in a different format.
+        - no header; concise sequence info with leading @.
+        - has two extra columns with DNAs, which bloats the file ~50%.
+
+    https://github.com/Benson-Genomics-Lab/TRF/tree/master/src
+    """
     assert infile.suffix != ".gz"
     param_defaults = {
         "match": 2,
@@ -47,19 +62,33 @@ def trf(infile: Path):
         "maxperiod": 500,
     }
     params = [str(x) for x in param_defaults.values()]
-    dat = infile.parent / ".".join([infile.name, *params, "dat"])
+    dat = infile.parent / ".".join([infile.name, *params, "dat.gz"])
     args: subp.Args = ["trf", infile]
     args.extend(params)
     args.extend(["-d", "-h", "-l", "10"])
-    subp.run_if(fs.is_outdated(dat, infile), args)
+    is_to_run = fs.is_outdated(dat, infile) and not cli.dry_run
+    p = subp.run_if(is_to_run, args, check=False)
+    if is_to_run:
+        pwd_dat = Path(dat.name.removesuffix(".gz"))
+        _log.info(f"trf returned {p.returncode}; wrote {pwd_dat}")
+        with pwd_dat.open("rb") as fin, gzip.open(dat, "wb") as fout:
+            fout.write(fin.read())
+        pwd_dat.unlink()
     _log.info(f"{dat}")
     return dat
 
 
 def dat_to_bed(infile: Path) -> str:
-    seqid = read_dat_seqid(infile)
-    bed_df = (
-        read_dat_body(infile)
+    with infile.open("rb") as fin:
+        content = tools.gzip_decompress(fin.read())
+    blocks = content.split(b"\n\nSequence: ")[1:]
+    return "".join([_block_to_bed(x) for x in blocks])
+
+
+def _block_to_bed(block: bytes) -> str:
+    seqid = block.split(b" ", 1)[0].decode().strip()
+    return (
+        _read_dat_body(block)
         .with_columns(
             pl.lit(seqid).alias("seqid"),
             pl.lit(".").alias("name"),
@@ -67,16 +96,16 @@ def dat_to_bed(infile: Path) -> str:
         )
         .select(["seqid", "start", "end", "name", "score", "strand"])
         .sort("start")
+        .write_csv(separator="\t", has_header=False)
     )
-    return bed_df.write_csv(separator="\t", has_header=False)
 
 
-def read_dat_body(infile: Path):
+def _read_dat_body(source: Path | str | bytes):
     return pl.read_csv(
-        infile,
+        source,
         has_header=False,
         separator=" ",
-        skip_rows=15,
+        skip_rows=7,
         new_columns=[
             "start",
             "end",
@@ -95,15 +124,6 @@ def read_dat_body(infile: Path):
             "seq2",
         ],
     )
-
-
-def read_dat_seqid(infile: Path):
-    with infile.open("rt") as fin:
-        for line in fin:
-            if line.startswith("Sequence:"):
-                return line.removeprefix("Sequence: ").split(" ", 1)[0]
-    _log.warning("Sequence ID not found")
-    return ""
 
 
 if __name__ == "__main__":

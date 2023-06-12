@@ -89,6 +89,7 @@ def run_if(  # noqa: PLR0913
     cwd: Path | None = None,
     text: bool | None = None,
     quiet: bool = False,
+    check: bool = True,
 ):  # kwargs hinders type inference of output type [str | bytes]
     (args, cmd) = prepare_args(args, cond)
     if quiet:
@@ -107,7 +108,7 @@ def run_if(  # noqa: PLR0913
         shell=shell,
         cwd=cwd,
         text=text,
-        check=True,
+        check=check,
     )
 
 
