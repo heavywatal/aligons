@@ -8,6 +8,7 @@ out: {basename}.fa.trf.bed.gz
 """
 import gzip
 import logging
+import re
 from pathlib import Path
 
 import polars as pl
@@ -34,6 +35,7 @@ def run(infile: Path) -> Path:
         bed = dat_to_bed(dat)
         with outfile.open("wb") as fout:
             fout.write(htslib.bgzip_compress(bed.encode()))
+    _log.info(f"{outfile}")
     return outfile
 
 
@@ -86,7 +88,9 @@ def dat_to_bed(infile: Path) -> str:
 
 
 def _block_to_bed(block: bytes) -> str:
-    seqid = block.split(b" ", 1)[0].decode().strip()
+    assert (mobj := re.search(rb"\S+", block))
+    seqid = mobj.group(0).decode()
+    _log.debug(seqid)
     return (
         _read_dat_body(block)
         .with_columns(
