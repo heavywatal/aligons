@@ -5,14 +5,13 @@
 """
 import logging
 import re
-import tomllib
 from collections.abc import Generator
 from pathlib import Path
 from typing import TypedDict
 
 from aligons import db
 from aligons.extern import htslib
-from aligons.util import cli, resources_data
+from aligons.util import cli, resources_data, tomllib
 
 from . import tools
 
