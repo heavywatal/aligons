@@ -10,7 +10,7 @@ from pathlib import Path
 
 from aligons import db
 from aligons.db import tools
-from aligons.extern import seqkit
+from aligons.extern import htslib
 from aligons.util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -327,18 +327,9 @@ def post_retrieval(outfile: Path):
             tools.split_gff(outfile)
 
 
-def split_toplevel_fa(path: Path):
-    workdir = seqkit.split(path)
-    pattern = re.compile(r"toplevel\.part_([\w.]+)\.fasta.gz$")
-    outfiles: list[Path] = []
-    for gz in workdir.glob("*.fasta.gz"):
-        name = pattern.sub(r"chromosome.\1.fa.gz", gz.name)
-        assert "chromosome" in name
-        link = path.parent / name
-        outfiles.append(link)
-        if fs.is_outdated(link):
-            link.symlink_to(gz)
-    return outfiles
+def split_toplevel_fa(fa_gz: Path):
+    fmt = "{stem}.{seqid}.fa.gz"
+    return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
 
 
 def rsync(relpath: str, options: str = ""):

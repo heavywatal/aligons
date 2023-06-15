@@ -1,12 +1,57 @@
 import concurrent.futures as confu
 import gzip
 import logging
+import re
 from collections.abc import Iterable
 from pathlib import Path
 
 from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
+
+
+def main(argv: list[str] | None = None):
+    parser = cli.ArgumentParser()
+    parser.add_argument("-O", "--outdir", type=Path)
+    parser.add_argument("infile", type=Path)
+    args = parser.parse_args(argv or None)
+    split_fa_gz(args.infile, outdir=args.outdir)
+
+
+def split_fa_gz(
+    bgz: Path,
+    fmt: str = "{stem}.part_{seqid}.fa.gz",
+    sub: tuple[str, str] = ("", ""),
+    outdir: Path | None = None,
+) -> list[Path]:
+    if outdir is None:
+        outdir = bgz.parent
+    elif not cli.dry_run:
+        outdir.mkdir(0o755, parents=True, exist_ok=True)
+    stem = bgz.with_suffix("").stem
+    if sub[0]:
+        stem = re.sub(sub[0], sub[1], stem)
+    fai = faidx(bgz)
+    with fai.open("rt") as fin:
+        seqids = [line.split()[0] for line in fin]
+    fts: list[cli.FuturePath] = []
+    for seqid in seqids:
+        outfile = outdir / fmt.format(stem=stem, seqid=seqid)
+        fts.append(cli.thread_submit(faidx_query, bgz, seqid, outfile))
+    return [f.result() for f in fts]
+
+
+def faidx_query(bgz: Path, region: str, outfile: Path):
+    args: subp.Args = ["samtools", "faidx", bgz, region]
+    p = subp.run_if(fs.is_outdated(outfile, bgz), args, stdout=subp.PIPE)
+    if p.stdout:
+        content = p.stdout
+        if outfile.suffix == ".gz":
+            content = bgzip_compress(content)
+        with outfile.open("wb") as fout:
+            fout.write(content)
+    _log.info(f"{outfile}")
+    return outfile
 
 
 def concat_bgzip(infiles: list[Path], outfile: Path):
@@ -117,3 +162,7 @@ def sort_clean_chromosome_gff3(infile: Path):
     if p2.stdout:
         p2.stdout.close()
     return p3
+
+
+if __name__ == "__main__":
+    main()
