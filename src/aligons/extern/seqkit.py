@@ -16,14 +16,16 @@ def main(argv: list[str] | None = None):
     split(args.file)
 
 
-def split(path: Path):
+def split(path: Path, *, compress: bool = True):
     """https://bioinf.shenwei.me/seqkit/usage/#split.
 
-    dir/seq.fa.gz -> dir/.seqkit/seq.part_{id}.fasta.gz
+    dir/seq.fa.gz -> dir/_work/seq.part_{id}.fasta.gz
     """
-    outdir = path.parent / ".seqkit"
-    args: subp.Args = ["seqkit", "split"]
-    args.extend(["-2", "-i", "-e", ".gz", "-O", outdir, path])
+    outdir = path.parent / "_work"
+    args: subp.Args = ["seqkit", "split", "--by-id", "-2"]
+    if compress:
+        args.extend(["-e", ".gz"])
+    args.extend(["-O", outdir, path])
     subp.run_if(fs.is_outdated(outdir, path), args)
     return outdir
 
