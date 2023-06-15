@@ -48,7 +48,8 @@ def main(argv: list[str] | None = None):
             infile = ft.result()
             assert (mobj := re.match("[^_]+_[^_]+", infile.name))
             species = mobj.group(0)
-            fts.append(mask.run(ft.result(), species))
+            genus = species.split("_")[0]
+            fts.append(mask.run(ft.result(), genus))
         cli.wait_raise(fts)
 
 
