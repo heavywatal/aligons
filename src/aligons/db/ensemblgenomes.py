@@ -329,7 +329,8 @@ def post_retrieval(outfile: Path):
 
 def split_toplevel_fa(fa_gz: Path):
     fmt = "{stem}.{seqid}.fa.gz"
-    return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
+    fts = htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
+    return [f.result() for f in fts]
 
 
 def rsync(relpath: str, options: str = ""):

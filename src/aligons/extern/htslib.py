@@ -15,7 +15,8 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-O", "--outdir", type=Path)
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
-    split_fa_gz(args.infile, outdir=args.outdir)
+    fts = split_fa_gz(args.infile, outdir=args.outdir)
+    cli.wait_raise(fts)
 
 
 def split_fa_gz(
@@ -23,7 +24,7 @@ def split_fa_gz(
     fmt: str = "{stem}.part_{seqid}.fa.gz",
     sub: tuple[str, str] = ("", ""),
     outdir: Path | None = None,
-) -> list[Path]:
+) -> list[cli.FuturePath]:
     if outdir is None:
         outdir = bgz.parent
     elif not cli.dry_run:
@@ -38,7 +39,7 @@ def split_fa_gz(
     for seqid in seqids:
         outfile = outdir / fmt.format(stem=stem, seqid=seqid)
         fts.append(cli.thread_submit(faidx_query, bgz, seqid, outfile))
-    return [f.result() for f in fts]
+    return fts
 
 
 def faidx_query(bgz: Path, region: str, outfile: Path):
