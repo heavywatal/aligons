@@ -26,6 +26,7 @@ def wait_maskfasta(
 ) -> Path:
     assert fo.suffix == ".gz"
     beds = [f.result() for f in fts]
+    assert all(f.exists() for f in beds)
     if fs.is_outdated(fo, beds):
         for bed in beds:
             fi = maskfasta(fi, bed, soft=soft)
