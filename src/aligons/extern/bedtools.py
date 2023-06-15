@@ -26,10 +26,10 @@ def wait_maskfasta(
 ) -> Path:
     assert fo.suffix == ".gz"
     beds = [f.result() for f in fts]
-    assert all(f.exists() for f in beds)
-    if fs.is_outdated(fo, beds):
+    if fs.is_outdated(fo, beds) or cli.dry_run:
         for bed in beds:
             fi = maskfasta(fi, bed, soft=soft)
+    if fs.is_outdated(fo, beds) and not cli.dry_run:
         with fo.open("wb") as fout:
             fout.write(htslib.bgzip_compress(fi))
     _log.info(f"{fo}")
@@ -38,6 +38,7 @@ def wait_maskfasta(
 
 def maskfasta(fi: bytes, bed: Path, *, soft: bool = True) -> bytes:
     """https://bedtools.readthedocs.io/en/latest/content/tools/maskfasta.html."""
+    assert bed.exists() or cli.dry_run
     args: subp.Args = ["bedtools", "maskfasta", "-fullHeader"]
     if soft:
         args.append("-soft")

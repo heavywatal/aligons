@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None):
 
 
 def split_toplevel_fa():
-    pattern = "*.toplevel.fa.gz"
+    pattern = "*.dna.toplevel.fa.gz"
     for fa_gz in local_db_root().rglob(pattern):
         _futures.extend(_split_toplevel_fa(fa_gz))
 
