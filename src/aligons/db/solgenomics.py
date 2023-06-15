@@ -3,6 +3,7 @@
 {local_db_root}/fasta/{species}/dna/{stem}.chromosome.{chr}.fa.gz
 {local_db_root}/gff3/{species}/{stem}.gff3.gz
 """
+import concurrent.futures as confu
 import logging
 import re
 from collections.abc import Generator
@@ -10,6 +11,7 @@ from pathlib import Path
 from typing import TypedDict
 
 from aligons import db
+from aligons.db import mask
 from aligons.extern import htslib
 from aligons.util import cli, resources_data, tomllib
 
@@ -31,14 +33,35 @@ class DataSet(TypedDict):
 
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
+    parser.add_argument("-M", "--mask", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
     args = parser.parse_args(argv or None)
     for entry in iter_dataset():
         if args.download:
             retrieve_deploy(entry)
-        else:
-            print(entry)
     cli.wait_raise(_futures)
+    _futures.clear()
+    if args.mask:
+        split_toplevel_fa()
+        fts: list[cli.FuturePath] = []
+        for ft in confu.as_completed(_futures):
+            infile = ft.result()
+            assert (mobj := re.match("[^_]+_[^_]+", infile.name))
+            species = mobj.group(0)
+            fts.append(mask.run(ft.result(), species))
+        cli.wait_raise(fts)
+
+
+def split_toplevel_fa():
+    pattern = "*.toplevel.fa.gz"
+    for fa_gz in local_db_root().rglob(pattern):
+        _futures.extend(_split_toplevel_fa(fa_gz))
+
+
+def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:
+    fmt = "{stem}.{seqid}.fa"
+    outdir = fa_gz.parent / "_work"
+    return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"), outdir)
 
 
 def retrieve_deploy(entry: DataSet):
