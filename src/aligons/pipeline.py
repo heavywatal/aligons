@@ -2,7 +2,7 @@ import itertools
 import logging
 from pathlib import Path
 
-from .db import ensemblgenomes, phylo, stat
+from .db import api, phylo, stat
 from .extern import kent, lastz, mafs2cram, multiz, phast
 from .util import cli, read_config
 
@@ -10,7 +10,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
-    available_species = ensemblgenomes.species_names()
+    available_species = api.species_names()
     parser = cli.ArgumentParser()
     parser.add_argument("-N", "--check-args", action="store_true")
     parser.add_argument("-c", "--config", type=Path)

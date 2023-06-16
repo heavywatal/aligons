@@ -1,7 +1,7 @@
 """https://jbrowse.org.
 
-src: {ensemblgenomes.prefix}/fasta/{species}/dna/*.fa.gz
-src: {ensemblgenomes.prefix}/gff3/{species}/*.chr.gff3.gz
+src: {db.root}/aligons/{label}/fasta/{species}/*.fa.gz
+src: {db.root}/aligons/{label}/gff3/{species}/*.chr.gff3.gz
 src: {vNN}/pairwise/{species}/{query}/cram/genome.cram
 src: {vNN}/multiple/{species}/{clade}/phastcons.bw
 dst: {vNN}/{jbrowse_XYZ}/{species}/config.json
@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, TypeAlias
 
 from aligons import db
-from aligons.db import ensemblgenomes, phylo, plantdhs, plantregmap, stat
+from aligons.db import api, phylo, plantdhs, plantregmap, stat
 from aligons.util import cli, fs, resources_data, subp
 
 StrPath: TypeAlias = str | Path
@@ -153,7 +153,7 @@ class JBrowseConfig:
 
     def add_assembly(self, species: str):
         # --alias, --name, --displayName
-        genome = ensemblgenomes.get_file("*.genome.fa.gz", species)
+        genome = api.genome_fa(species)
         args: subp.Args = ["add-assembly"]
         args.extend(["--target", self.target])
         args.extend(["--load", _load])
@@ -162,7 +162,7 @@ class JBrowseConfig:
             jbrowse(args)
 
     def add_track_gff(self, species: str):
-        gff = ensemblgenomes.get_file("*.genome.gff3.gz", species)
+        gff = api.genome_gff3(species)
         ngff = gff.with_suffix("").with_suffix("").with_suffix(".name.gff3.gz")
         if ngff.exists():
             gff = ngff

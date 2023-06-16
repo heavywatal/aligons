@@ -5,7 +5,7 @@ from pathlib import Path
 from aligons.extern import htslib, jellyfish, kent
 from aligons.util import cli, config, fs, read_config
 
-from . import ensemblgenomes, phylo
+from . import api, ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
 
@@ -57,12 +57,12 @@ def download(species: list[str]):
 def index(species: list[str]):
     pool = cli.ThreadPool()
     futures: list[cli.FuturePath] = []
-    for sp_dir in ensemblgenomes.species_dirs("fasta", species):
+    for sp_dir in api.species_dirs("fasta", species):
         futures.append(pool.submit(index_fasta, sp_dir))
-    for sp_dir in ensemblgenomes.species_dirs("gff3", species):
+    for sp_dir in api.species_dirs("gff3", species):
         futures.append(pool.submit(index_gff3, sp_dir))
     if config["db"]["kmer"]:
-        for sp_dir in ensemblgenomes.species_dirs("fasta", species):
+        for sp_dir in api.species_dirs("fasta", species):
             futures.append(pool.submit(softmask, sp_dir))
     cli.wait_raise(futures)
 

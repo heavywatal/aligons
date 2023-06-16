@@ -1,7 +1,7 @@
 """Soft-mask fasta sequences based on kmer frequencies.
 
-src: {ensemblgenomes.prefix}/fasta/{species}/dna/*.fa.gz
-dst: {ensemblgenomes.prefix}/fasta/{species}/dna/kmer/*.fa.gz
+src: {db.root}/aligons/{label}/fasta/{species}/*.fa.gz
+dst: {db.root}/aligons/{label}/fasta/{species}/kmer/*.fa.gz
 """
 import concurrent.futures as confu
 import gzip
@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import tomli_w
 
-from aligons.db import ensemblgenomes
+from aligons.db import api
 from aligons.util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ def main(argv: list[str] | None = None):
 
 
 def run(species: str):
-    genome = ensemblgenomes.get_file("*.genome.fa.gz", species)
+    genome = api.genome_fa(species)
     jf = count(genome)
     dumpfile = dump(jf)
     histofile = histo(jf)
@@ -34,7 +34,7 @@ def run(species: str):
     log_config(histofile, threshold)
     threads = config["jellyfish"]["count"]["threads"]
     with confu.ThreadPoolExecutor(max_workers=threads) as pool:
-        for chromosome in ensemblgenomes.glob("*.chromosome.*.fa.gz", [species]):
+        for chromosome in api.iter_chromosome_fa(species):
             pool.submit(mask_genome, chromosome, dumpfile, threshold)
     return jf.parent
 

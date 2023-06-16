@@ -4,7 +4,6 @@ import logging
 import os
 import re
 from collections.abc import Iterable
-from contextlib import suppress
 from ftplib import FTP
 from pathlib import Path
 
@@ -133,16 +132,6 @@ def shorten(name: str):
         return "oesy"
     split = name.lower().split("_")
     return split[0][0] + split[1][:3]
-
-
-def sanitize_queries(target: str, queries: list[str]):
-    queries = list(dict.fromkeys(queries))
-    with suppress(ValueError):
-        queries.remove(target)
-    assert queries
-    _log.debug(f"{queries=}")
-    assert set(queries) <= set(species_names())
-    return queries
 
 
 def consolidate_compara_mafs(indir: Path):

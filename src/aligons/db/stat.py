@@ -3,7 +3,7 @@ import logging
 
 from aligons.util import cli
 
-from . import ensemblgenomes, phylo
+from . import api, phylo
 
 _log = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ def main(argv: list[str] | None = None):
     newick = phylo.newicks[args.clade]
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangulate(phylo.render_tips(root, [])):
-        if species not in ensemblgenomes.species_names():
+        if species not in api.species_names():
             print(f"{pre} {species}")
             continue
         rows = chrom_sizes(species)
@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None):
 
 
 def chrom_sizes(species: str):
-    path = ensemblgenomes.get_file("fasize.chrom.sizes", species)
+    path = api.fasize(species)
     with path.open() as fin:
         reader = csv.reader(fin, delimiter="\t")
         return list(reader)
@@ -43,7 +43,7 @@ def fasize(species: str):
 
 
 def gff3_size(species: str):
-    path = ensemblgenomes.get_file("*.genome.gff3.gz", species)
+    path = api.genome_gff3(species)
     return path.stat().st_size / 1e6
 
 

@@ -10,8 +10,8 @@ import logging
 import shutil
 from pathlib import Path
 
-from aligons.db import ensemblgenomes, phylo
-from aligons.util import ConfDict, cli, config, empty_options, fs, subp
+from aligons.db import api, phylo
+from aligons.util import ConfDict, cli, empty_options, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def run(clade: Path):
 
 def integrate_wigs(clade: Path):
     species = clade.parent.name
-    chrom_sizes = ensemblgenomes.get_file("*chrom.sizes", species)
+    chrom_sizes = api.fasize(species)
     name = "phastcons.wig.gz"
     wigs = [p / name for p in fs.sorted_naturally(clade.glob("chromosome.*"))]
     _log.debug(f"{[str(x) for x in wigs]}")
@@ -137,11 +137,10 @@ def net_axt_maf(
     options: ConfDict = empty_options,
 ):
     sing_maf = syntenic_net.parent / "sing.maf"
-    subdir = "kmer" if config["db"]["kmer"] else ""
-    target_2bit = ensemblgenomes.get_file("*.genome.2bit", target, subdir)
-    query_2bit = ensemblgenomes.get_file("*.genome.2bit", query, subdir)
-    target_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", target)
-    query_sizes = ensemblgenomes.get_file("fasize.chrom.sizes", query)
+    target_2bit = api.genome_2bit(target)
+    query_2bit = api.genome_2bit(query)
+    target_sizes = api.fasize(target)
+    query_sizes = api.fasize(query)
     is_to_run = fs.is_outdated(sing_maf, [syntenic_net, pre_chain])
     toaxt_cmd = "netToAxt"
     toaxt_cmd += subp.optjoin(options, "-")

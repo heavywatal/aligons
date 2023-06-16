@@ -8,8 +8,8 @@ import logging
 import re
 from pathlib import Path
 
-from aligons.db import ensemblgenomes, phylo
-from aligons.util import cli, config, fs, subp
+from aligons.db import api, phylo
+from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -19,11 +19,10 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-t", "--test", action="store_true")
     parser.add_argument("query", nargs="*", type=Path)  # pairwise/{target}/{query}
     args = parser.parse_args(argv or None)
-    subdir = "kmer" if config["db"]["kmer"] else ""
     if args.test:
         for path in args.query:
             target = path.parent.parent.parent.name
-            reference = ensemblgenomes.get_file("*.genome.fa.gz", target, subdir)
+            reference = api.genome_fa(target)
             stem = str(path.parent).replace("/", "_")
             maf2cram(path, Path(stem + ".cram"), reference)
         return
@@ -33,14 +32,13 @@ def main(argv: list[str] | None = None):
 def run(target: Path, clade: str):
     tree = phylo.newicks[clade]
     tips = phylo.extract_names(tree)
-    query_names = ensemblgenomes.sanitize_queries(target.name, tips)
+    query_names = api.sanitize_queries(target.name, tips)
     return [mafs2cram(target / q) for q in query_names]
 
 
 def mafs2cram(path: Path):
     target_species = path.parent.name
-    subdir = "kmer" if config["db"]["kmer"] else ""
-    reference = ensemblgenomes.get_file("*.genome.fa.gz", target_species, subdir)
+    reference = api.genome_fa(target_species)
     outdir = path / "cram"
     if not cli.dry_run:
         outdir.mkdir(0o755, exist_ok=True)

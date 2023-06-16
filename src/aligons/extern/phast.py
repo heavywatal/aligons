@@ -14,7 +14,7 @@ import re
 import sys
 from pathlib import Path
 
-from aligons.db import ensemblgenomes, phylo
+from aligons.db import api, phylo
 from aligons.util import ConfDict, cli, config, empty_options, fs, read_config, subp
 
 _log = logging.getLogger(__name__)
@@ -178,11 +178,11 @@ def path_labeled_gff3(species: str, chromosome: str):
 def prepare_labeled_gff3(species: str):
     """Deploy labeled copies of GFF3.
 
-    src: {ensemblgenomes.prefix}/gff3/{species}/*.{chromosome}.gff3.gz
+    src: {db.root}/aligons/{label}/gff3/{species}/*.{chromosome}.gff3.gz
     dst: ./gff3/{species}/labeled-{chromosome}.gff3.gz
     """
     shortname = phylo.shorten(species)
-    for infile in ensemblgenomes.glob("*.chromosome*.gff3.gz", [species]):
+    for infile in api.iter_chromosome_gff3(species):
         mobj = re.search(r"(chromosome.+)\.gff3\.gz$", infile.name)
         assert mobj
         outfile = path_labeled_gff3(species, mobj.group(1))
