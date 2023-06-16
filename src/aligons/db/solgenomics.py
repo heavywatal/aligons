@@ -42,21 +42,23 @@ def main(argv: list[str] | None = None):
     cli.wait_raise(_futures)
     _futures.clear()
     if args.mask:
-        split_toplevel_fa()
-        fts: list[cli.FuturePath] = []
-        for ft in confu.as_completed(_futures):
-            infile = ft.result()
-            assert (mobj := re.match("[^_]+_[^_]+", infile.name))
-            species = mobj.group(0)
-            genus = species.split("_")[0]
-            fts.append(mask.run(ft.result(), genus))
-        cli.wait_raise(fts)
+        future_chromosomes = submit_split_toplevel_fa()
+        future_masked = submit_mask(future_chromosomes)
+        cli.wait_raise(future_masked)
 
 
-def split_toplevel_fa():
-    pattern = "*.dna.toplevel.fa.gz"
-    for fa_gz in local_db_root().rglob(pattern):
-        _futures.extend(_split_toplevel_fa(fa_gz))
+def submit_mask(ft_fastas: list[cli.FuturePath]) -> list[cli.FuturePath]:
+    fts: list[cli.FuturePath] = []
+    for future in confu.as_completed(ft_fastas):
+        fts.append(mask.run(future.result()))
+    return fts
+
+
+def submit_split_toplevel_fa() -> list[cli.FuturePath]:
+    fts: list[cli.FuturePath] = []
+    for toplevel_fa_gz in local_db_root().rglob("*.dna.toplevel.fa.gz"):
+        fts.extend(_split_toplevel_fa(toplevel_fa_gz))
+    return fts
 
 
 def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:

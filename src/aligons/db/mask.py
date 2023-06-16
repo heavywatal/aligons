@@ -15,14 +15,18 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
-    parser.add_argument("-S", "--species", default="rice")
+    parser.add_argument("-S", "--species")
     parser.add_argument("infile", type=Path, nargs="+")
     args = parser.parse_args(argv or None)
     cli.wait_raise(run(x, args.species) for x in args.infile)
 
 
-def run(infile: Path, species: str, outfile: Path | None = None) -> cli.FuturePath:
+def run(
+    infile: Path, species: str | None = None, outfile: Path | None = None
+) -> cli.FuturePath:
     assert infile.suffix != ".gz"
+    if not species:
+        species = "angiosperms"
     if outfile is None:
         patt = re.compile(r"\.dna\.")
         assert patt.search(infile.name)

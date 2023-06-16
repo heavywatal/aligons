@@ -26,31 +26,13 @@ def main(argv: list[str] | None = None):
     parser.add_argument("infile", type=Path, nargs="*")
     args = parser.parse_args(argv or None)
     if args.test:
-        test_species(args.species)
+        if args.species:
+            assert test_species(args.species)
+        else:
+            assert test_famdb_angiosperms()
         return
     for infile in args.infile:
         cli.thread_submit(repeatmasker, infile, args.species)
-
-
-def test_species(species: str):
-    with tempfile.TemporaryDirectory(prefix="RepeatMasker") as tmp, fs.chdir(tmp):
-        _log.info(f"{Path('.').absolute()}")
-        fasta = Path("test.fa")
-        if not fasta.exists():
-            with fasta.open("wt") as fout:
-                fout.write(">name\nAAACCCGGGTTT\n")
-        args: subp.Args = ["RepeatMasker", "-species", species, fasta]
-        args.extend(["-qq", "-nolow", "-norna", "-no_is", "-noisy", "-nopost"])
-        p = subp.run(args, stdout=subp.PIPE, stderr=subp.PIPE, check=False)
-        _log.info(p.stdout.decode())
-        stderr = p.stderr.decode()
-        _log.info(stderr)
-        if not p.returncode:
-            return True
-        mobj = re.search(r"Species .+ is not known to \w+", stderr)
-        assert mobj, "Unexpected error from RepeatMasker"
-        _log.warning(mobj.group(0))
-        return False
 
 
 def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
@@ -98,6 +80,59 @@ def read_out(infile: Path):
             "id",
         ],
     )
+
+
+def test_species(species: str):
+    """Test if species is recognized by RepeatMasker.
+
+    Existence in NCBI taxonomy does not suffice.
+    <https://www.ncbi.nlm.nih.gov/taxonomy>
+    """
+    with tempfile.TemporaryDirectory(prefix="RepeatMasker") as tmp, fs.chdir(tmp):
+        _log.info(f"{Path('.').absolute()}")
+        fasta = Path("test.fa")
+        if not fasta.exists():
+            with fasta.open("wt") as fout:
+                fout.write(">name\nAAACCCGGGTTT\n")
+        args: subp.Args = ["RepeatMasker", "-species", species, fasta]
+        args.extend(["-qq", "-nolow", "-norna", "-no_is", "-noisy", "-nopost"])
+        p = subp.run(args, stdout=subp.PIPE, stderr=subp.PIPE, check=False)
+        _log.info(p.stdout.decode())
+        stderr = p.stderr.decode()
+        _log.info(stderr)
+        if not p.returncode:
+            return True
+        mobj = re.search(r"Species .+ is not known to \w+", stderr)
+        assert mobj, "Unexpected error from RepeatMasker"
+        _log.warning(mobj.group(0))
+        return False
+
+
+def test_famdb_angiosperms():
+    assert not famdb_families("angiosperms", descendants=True)
+    fa = famdb_families("oryza_sativa", ancestors=True)
+    for mobj in re.finditer(r">.+?\n", fa):
+        seqname = mobj.group(0)
+        assert "@root" in seqname, seqname
+    _log.info("No angiosperms has specific repeat families registered.")
+    return True
+
+
+def famdb_families(
+    term: str,
+    *,
+    ancestors: bool = False,
+    descendants: bool = False,
+    fmt: str = "fasta_name",
+) -> str:
+    args: subp.Args = ["famdb.py", "families", "-f", fmt]
+    if ancestors:
+        args.append("-a")
+    if descendants:
+        args.append("-d")
+    args.append(term)
+    p = subp.run(args, stdout=subp.PIPE)
+    return p.stdout.decode()
 
 
 if __name__ == "__main__":
