@@ -63,8 +63,8 @@ def merge_crams(futures: list[confu.Future[Path]]):
     is_to_run = bool(crams) and fs.is_outdated(outfile, crams)
     cmd = f"samtools merge --no-PG -O CRAM -@ 2 -f -o {outfile!s} "
     cmd += " ".join([str(x) for x in crams])
-    subp.run_if(is_to_run, cmd)
-    subp.run_if(is_to_run, ["samtools", "index", outfile])
+    subp.run(cmd, if_=is_to_run)
+    subp.run(["samtools", "index", outfile], if_=is_to_run)
     if outfile.exists():
         print(outfile)
     return outfile
@@ -72,16 +72,18 @@ def merge_crams(futures: list[confu.Future[Path]]):
 
 def maf2cram(infile: Path, outfile: Path, reference: Path):
     is_to_run = fs.is_outdated(outfile, infile)
-    mafconv = subp.popen_if(is_to_run, ["maf-convert", "sam", infile], stdout=subp.PIPE)
+    mafconv = subp.popen(
+        ["maf-convert", "sam", infile], if_=is_to_run, stdout=subp.PIPE
+    )
     (stdout, _stderr) = mafconv.communicate()
-    content = sanitize_cram(is_to_run, reference, stdout)
+    content = sanitize_cram(reference, stdout, if_=is_to_run)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {outfile!s}"
-    subp.popen_if(is_to_run, cmd, stdin=subp.PIPE).communicate(content)
+    subp.popen(cmd, if_=is_to_run, stdin=subp.PIPE).communicate(content)
     _log.info(f"{outfile}")
     return outfile
 
 
-def sanitize_cram(cond: bool, reference: Path, sam: bytes):  # noqa: FBT001
+def sanitize_cram(reference: Path, sam: bytes, *, if_: bool):
     def repl(mobj: re.Match[bytes]):
         qstart = 0
         if int(mobj["flag"]) & 16:  # reverse strand
@@ -114,7 +116,7 @@ def sanitize_cram(cond: bool, reference: Path, sam: bytes):  # noqa: FBT001
     )
     lines = [patt.sub(repl, line) for line in sam.splitlines(keepends=True)]
     cmd = f"samtools view --no-PG -h -C -@ 2 -T {reference!s}"
-    samview = subp.popen_if(cond, cmd, stdin=subp.PIPE, stdout=subp.PIPE)
+    samview = subp.popen(cmd, if_=if_, stdin=subp.PIPE, stdout=subp.PIPE)
     (stdout, _stderr) = samview.communicate(b"".join(lines))
     return stdout
 

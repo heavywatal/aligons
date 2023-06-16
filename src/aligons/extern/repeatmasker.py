@@ -41,9 +41,7 @@ def test_species(species: str):
                 fout.write(">name\nAAACCCGGGTTT\n")
         args: subp.Args = ["RepeatMasker", "-species", species, fasta]
         args.extend(["-qq", "-nolow", "-norna", "-no_is", "-noisy", "-nopost"])
-        p = subp.run_if(
-            True, args, stdout=subp.PIPE, stderr=subp.PIPE, check=False  # noqa: FBT003
-        )
+        p = subp.run(args, stdout=subp.PIPE, stderr=subp.PIPE, check=False)
         _log.info(p.stdout.decode())
         stderr = p.stderr.decode()
         _log.info(stderr)
@@ -67,7 +65,7 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
     if species:
         args.extend(["-species", species])
     args.append(infile)
-    subp.run_if(fs.is_outdated(outfile, infile), args)
+    subp.run(args, if_=fs.is_outdated(outfile, infile))
     _log.info(f"{outfile}")
     return outfile
 

@@ -25,50 +25,12 @@ _log = logging.getLogger(__name__)
 def popen(
     args: _CMD,
     *,
-    stdin: _FILE = None,
-    stdout: _FILE = None,
-    quiet: bool = False,
-):
-    return popen_if(True, args, stdin=stdin, stdout=stdout, quiet=quiet)  # noqa: FBT003
-
-
-def run(  # noqa: PLR0913
-    args: _CMD,
-    *,
-    executable: StrPath | None = None,
-    stdin: _FILE = None,
-    input: bytes | None = None,  # noqa: A002
-    stdout: _FILE = None,
-    stderr: _FILE = None,
-    shell: bool = False,
-    cwd: Path | None = None,
-    text: bool | None = None,
-    quiet: bool = False,
-):
-    return run_if(
-        True,  # noqa: FBT003
-        args,
-        executable=executable,
-        stdin=stdin,
-        input=input,
-        stdout=stdout,
-        stderr=stderr,
-        shell=shell,
-        cwd=cwd,
-        text=text,
-        quiet=quiet,
-    )
-
-
-def popen_if(
-    cond: bool,  # noqa: FBT001
-    args: _CMD,
-    *,
+    if_: bool = True,
     stdin: _FILE = None,
     stdout: _FILE = None,
     quiet: bool = False,
 ):  # kwargs hinders type inference of output type [str | bytes]
-    (args, cmd) = prepare_args(args, cond)
+    (args, cmd) = prepare_args(args, if_=if_)
     if quiet:
         _log.debug(cmd)
     else:
@@ -76,10 +38,10 @@ def popen_if(
     return subprocess.Popen(args, stdin=stdin, stdout=stdout)
 
 
-def run_if(  # noqa: PLR0913
-    cond: bool,  # noqa: FBT001
+def run(  # noqa: PLR0913
     args: _CMD,
     *,
+    if_: bool = True,
     executable: StrPath | None = None,
     stdin: _FILE = None,
     input: bytes | None = None,  # noqa: A002
@@ -91,7 +53,7 @@ def run_if(  # noqa: PLR0913
     quiet: bool = False,
     check: bool = True,
 ):  # kwargs hinders type inference of output type [str | bytes]
-    (args, cmd) = prepare_args(args, cond)
+    (args, cmd) = prepare_args(args, if_=if_)
     if quiet:
         _log.debug(cmd)
     else:
@@ -112,13 +74,13 @@ def run_if(  # noqa: PLR0913
     )
 
 
-def prepare_args(args: _CMD, cond: bool):  # noqa: FBT001
+def prepare_args(args: _CMD, *, if_: bool):
     if isinstance(args, str):
         cmd = args.rstrip()
         args = shlex.split(cmd)
     else:
         cmd = " ".join(str(x) for x in args)
-    if cli.dry_run or not cond:
+    if cli.dry_run or not if_:
         cmd = re.sub("^", "# ", cmd, flags=re.MULTILINE)
         args = ["sleep", "0"]
     return (args, cmd)

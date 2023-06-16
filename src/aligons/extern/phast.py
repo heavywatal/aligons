@@ -53,7 +53,7 @@ def phastCons(  # noqa: N802
     cmd += f" --seqname {seqname} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
     wig = path / "phastcons.wig.gz"
     is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
-    p = subp.run_if(is_to_run, cmd, stdout=subp.PIPE)
+    p = subp.run(cmd, if_=is_to_run, stdout=subp.PIPE)
     with gzip.open(devnull_if(not is_to_run, wig), "wb") as fout:
         fout.write(p.stdout)
     if wig.exists():
@@ -102,8 +102,8 @@ def msa_view_features(maf: Path, gff: Path, *, conserved: bool):
         outfile = maf.parent / "4d-codons.ss"
         cmd += " --4d"
     is_to_run = fs.is_outdated(outfile, maf)
-    p = subp.run_if(
-        is_to_run, cmd, stdout=subp.PIPE, shell=True, executable="/bin/bash"
+    p = subp.run(
+        cmd, if_=is_to_run, stdout=subp.PIPE, shell=True, executable="/bin/bash"
     )
     with devnull_if(not is_to_run, outfile).open("wb") as fout:
         fout.write(p.stdout)
@@ -114,7 +114,7 @@ def msa_view_ss(codons_ss: Path):
     outfile = codons_ss.parent / "4d-sites.ss"
     s = f"msa_view {codons_ss!s} --in-format SS --out-format SS --tuple-size 1"
     is_to_run = fs.is_outdated(outfile, codons_ss)
-    p = subp.run_if(is_to_run, s, stdout=subp.PIPE)
+    p = subp.run(s, if_=is_to_run, stdout=subp.PIPE)
     with devnull_if(not is_to_run, outfile).open("wb") as fout:
         fout.write(p.stdout)
     return outfile
@@ -133,15 +133,15 @@ def phyloFit(ss: Path, tree: str, *, conserved: bool):  # noqa: N802
         f"phyloFit --tree {tree} --msa-format SS {option}"
         f" --out-root {out_root} {ss!s}"
     )
-    subp.run_if(fs.is_outdated(outfiles[0], ss), cmd)
+    subp.run(cmd, if_=fs.is_outdated(outfiles[0], ss))
     return outfiles
 
 
 def phyloBoot(mods: list[Path], outfile: Path):  # noqa: N802
     read_mods = ",".join(str(x) for x in mods)
-    subp.run_if(
-        fs.is_outdated(outfile, mods),
+    subp.run(
         f"phyloBoot --read-mods {read_mods} --output-average {outfile}",
+        if_=fs.is_outdated(outfile, mods),
     )
 
 

@@ -266,7 +266,7 @@ class FTPensemblgenomes(FTP):
         for targz in outdir.glob("*.tar.gz"):
             expanded = prefix() / targz.with_suffix("").with_suffix("")
             tar = ["tar", "xzf", targz, "-C", outdir]
-            subp.run_if(fs.is_outdated(expanded / "README.maf"), tar)
+            subp.run(tar, if_=fs.is_outdated(expanded / "README.maf"))
             # TODO: MD5SUM
             dirs.append(expanded.resolve())
         return dirs

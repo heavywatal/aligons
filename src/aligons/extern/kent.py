@@ -38,7 +38,7 @@ def integrate_wigs(clade: Path):
     outfile = clade / "phastcons.bw"
     is_to_run = not cli.dry_run and fs.is_outdated(outfile, wigs)
     args = ["wigToBigWig", "stdin", chrom_sizes, outfile]
-    p = subp.popen_if(is_to_run, args, stdin=subp.PIPE)
+    p = subp.popen(args, if_=is_to_run, stdin=subp.PIPE)
     if is_to_run:
         assert p.stdin
         for wig in wigs:
@@ -56,7 +56,7 @@ def bigWigInfo(path: Path):  # noqa: N802
 
 def faToTwoBit(fa_gz: Path):  # noqa: N802
     outfile = fa_gz.with_suffix("").with_suffix(".2bit")
-    subp.run_if(fs.is_outdated(outfile, fa_gz), ["faToTwoBit", fa_gz, outfile])
+    subp.run(["faToTwoBit", fa_gz, outfile], if_=fs.is_outdated(outfile, fa_gz))
     return outfile
 
 
@@ -77,7 +77,7 @@ def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path, options: ConfDict):
     cmd += subp.optjoin(options, "-")
     cmd += f" stdin {t2bit} {q2bit} {chain}"
     is_to_run = fs.is_outdated(chain, axtgz)
-    p = subp.popen_if(is_to_run, cmd, stdin=subp.PIPE)
+    p = subp.popen(cmd, if_=is_to_run, stdin=subp.PIPE)
     if is_to_run and not cli.dry_run:
         assert p.stdin
         with gzip.open(axtgz, "rb") as fin:
@@ -94,10 +94,10 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
     pre_chain = subdir / "pre.chain.gz"
     is_to_run = fs.is_outdated(pre_chain, chains)
     merge_cmd = ["chainMergeSort"] + [str(x) for x in chains]
-    merge = subp.popen_if(is_to_run, merge_cmd, stdout=subp.PIPE)
+    merge = subp.popen(merge_cmd, if_=is_to_run, stdout=subp.PIPE)
     assert merge.stdout
     pre_cmd = f"chainPreNet stdin {target_sizes} {query_sizes} stdout"
-    pre = subp.popen_if(is_to_run, pre_cmd, stdin=merge.stdout, stdout=subp.PIPE)
+    pre = subp.popen(pre_cmd, if_=is_to_run, stdin=merge.stdout, stdout=subp.PIPE)
     merge.stdout.close()
     if is_to_run and not cli.dry_run:
         (stdout, _stderr) = pre.communicate()
@@ -118,8 +118,8 @@ def chain_net_syntenic(
     cn_cmd += subp.optjoin(options, "-")
     cn_cmd += f" stdin {target_sizes} {query_sizes} stdout /dev/null"
     ns_cmd = f"netSyntenic stdin {syntenic_net}"
-    cn = subp.popen_if(is_to_run, cn_cmd, stdin=subp.PIPE, stdout=subp.PIPE)
-    ns = subp.popen_if(is_to_run, ns_cmd, stdin=subp.PIPE)
+    cn = subp.popen(cn_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=subp.PIPE)
+    ns = subp.popen(ns_cmd, if_=is_to_run, stdin=subp.PIPE)
     content = b""
     if is_to_run and not cli.dry_run:
         with gzip.open(pre_chain, "rb") as fout:
@@ -146,15 +146,15 @@ def net_axt_maf(
     toaxt_cmd = "netToAxt"
     toaxt_cmd += subp.optjoin(options, "-")
     toaxt_cmd += f" {syntenic_net} stdin {target_2bit} {query_2bit} stdout"
-    toaxt = subp.popen_if(is_to_run, toaxt_cmd, stdin=subp.PIPE, stdout=subp.PIPE)
+    toaxt = subp.popen(toaxt_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=subp.PIPE)
     assert toaxt.stdin
     assert toaxt.stdout
     if is_to_run and not cli.dry_run:
         with gzip.open(pre_chain, "rb") as fout:
             shutil.copyfileobj(fout, toaxt.stdin)
             toaxt.stdin.close()
-    sort = subp.popen_if(
-        is_to_run, "axtSort stdin stdout", stdin=toaxt.stdout, stdout=subp.PIPE
+    sort = subp.popen(
+        "axtSort stdin stdout", if_=is_to_run, stdin=toaxt.stdout, stdout=subp.PIPE
     )
     toaxt.stdout.close()
     assert sort.stdout
@@ -164,7 +164,7 @@ def net_axt_maf(
         f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
         f" {target_sizes} {query_sizes} {sing_maf}"
     )
-    atm = subp.popen_if(is_to_run, axttomaf_cmd, stdin=sort.stdout)
+    atm = subp.popen(axttomaf_cmd, if_=is_to_run, stdin=sort.stdout)
     sort.stdout.close()
     atm.communicate()
     return sing_maf

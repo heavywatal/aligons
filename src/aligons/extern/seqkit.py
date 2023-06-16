@@ -26,7 +26,7 @@ def split(path: Path, *, compress: bool = True):
     if compress:
         args.extend(["-e", ".gz"])
     args.extend(["-O", outdir, path])
-    subp.run_if(fs.is_outdated(outdir, path), args)
+    subp.run(args, if_=fs.is_outdated(outdir, path))
     return outdir
 
 

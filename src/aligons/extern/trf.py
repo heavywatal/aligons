@@ -69,7 +69,7 @@ def trf(infile: Path):
     args.extend(params)
     args.extend(["-d", "-h", "-l", "10"])
     is_to_run = fs.is_outdated(dat, infile) and not cli.dry_run
-    p = subp.run_if(is_to_run, args, check=False)
+    p = subp.run(args, if_=is_to_run, check=False)
     if is_to_run:
         pwd_dat = Path(dat.name.removesuffix(".gz"))
         _log.info(f"trf returned {p.returncode}; wrote {pwd_dat}")

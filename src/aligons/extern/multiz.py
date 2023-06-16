@@ -66,9 +66,9 @@ def multiz(path: Path, options: ConfDict = empty_options):
         with (path / "roasted.sh").open("w") as fout:
             fout.write(script)
     try:
-        comp = subp.run_if(
-            is_to_run,
+        comp = subp.run(
             script,
+            if_=is_to_run,
             shell=True,
             cwd=path,
             stdout=subp.PIPE,

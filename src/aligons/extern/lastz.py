@@ -106,7 +106,7 @@ def lastz(
     cmd = f"lastz {t2bit} {q2bit} --format=axt"
     cmd += subp.optjoin(options)
     is_to_run = fs.is_outdated(axtgz, [t2bit, q2bit])
-    lastz = subp.run_if(is_to_run, cmd, stdout=subp.PIPE)
+    lastz = subp.run(cmd, stdout=subp.PIPE, if_=is_to_run)
     if is_to_run and not cli.dry_run:
         with gzip.open(axtgz, "wb") as fout:
             fout.write(lastz.stdout)

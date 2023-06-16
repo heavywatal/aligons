@@ -7,17 +7,17 @@ hello = "printf hello"
 @pytest.mark.parametrize("cmd", [hello, hello.split()])
 def test_run(cmd: str | list[str]):
     cli.dry_run = False
-    assert subp.run_if(False, cmd, stdout=subp.PIPE).stdout == b""  # noqa: FBT003
-    assert subp.run_if(True, cmd, stdout=subp.PIPE).stdout == b"hello"  # noqa: FBT003
+    assert subp.run(cmd, if_=False, stdout=subp.PIPE).stdout == b""
+    assert subp.run(cmd, if_=True, stdout=subp.PIPE).stdout == b"hello"
     assert subp.run(cmd, stdout=subp.PIPE).stdout == b"hello"
 
 
 @pytest.mark.parametrize("cmd", [hello, hello.split()])
 def test_popen(cmd: str | list[str]):
     cli.dry_run = False
-    pf = subp.popen_if(False, cmd, stdout=subp.PIPE)  # noqa: FBT003
+    pf = subp.popen(cmd, if_=False, stdout=subp.PIPE)
     assert pf.communicate()[0] == b""
-    pt = subp.popen_if(True, cmd, stdout=subp.PIPE)  # noqa: FBT003
+    pt = subp.popen(cmd, if_=True, stdout=subp.PIPE)
     assert pt.communicate()[0] == b"hello"
     assert subp.popen(cmd, stdout=subp.PIPE).communicate()[0] == b"hello"
 

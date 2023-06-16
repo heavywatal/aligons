@@ -44,7 +44,7 @@ def split_fa_gz(
 
 def faidx_query(bgz: Path, region: str, outfile: Path):
     args: subp.Args = ["samtools", "faidx", bgz, region]
-    p = subp.run_if(fs.is_outdated(outfile, bgz), args, stdout=subp.PIPE)
+    p = subp.run(args, if_=fs.is_outdated(outfile, bgz), stdout=subp.PIPE)
     if p.stdout:
         content = p.stdout
         if outfile.suffix == ".gz":
@@ -96,7 +96,7 @@ def collect_gff3_header(infiles: Iterable[Path]):
 def bgzip(path: Path):
     """https://www.htslib.org/doc/bgzip.html."""
     outfile = path.with_suffix(path.suffix + ".gz")
-    subp.run_if(fs.is_outdated(outfile, path), ["bgzip", "-@2", path])
+    subp.run(["bgzip", "-@2", path], if_=fs.is_outdated(outfile, path))
     return outfile
 
 
@@ -119,7 +119,7 @@ def faidx(bgz: Path | cli.FuturePath):
     if isinstance(bgz, confu.Future):
         bgz = bgz.result()
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
-    subp.run_if(fs.is_outdated(outfile, bgz), ["samtools", "faidx", bgz])
+    subp.run(["samtools", "faidx", bgz], if_=fs.is_outdated(outfile, bgz))
     _log.info(f"{outfile}")
     return outfile
 
@@ -132,7 +132,7 @@ def tabix(bgz: Path | cli.FuturePath):
     if isinstance(bgz, confu.Future):
         bgz = bgz.result()
     outfile = bgz.with_suffix(bgz.suffix + ".csi")
-    subp.run_if(fs.is_outdated(outfile, bgz), ["tabix", "--csi", bgz])
+    subp.run(["tabix", "--csi", bgz], if_=fs.is_outdated(outfile, bgz))
     _log.info(f"{outfile}")
     return outfile
 
