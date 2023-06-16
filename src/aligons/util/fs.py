@@ -1,6 +1,8 @@
 import concurrent.futures as confu
+import contextlib
 import itertools
 import logging
+import os
 import re
 import subprocess
 from collections.abc import Iterable
@@ -75,6 +77,17 @@ def checkline(line: str, directory: Path):
             _log.error(f"{name}")
             _log.error(f"expected: {e_sum}\t{e_blocks}")
             _log.error(f"observed: {o_sum}\t{o_blocks}")
+
+
+@contextlib.contextmanager
+def chdir(path: Path | str):
+    """Change working directory temporarily with 'with' statement."""
+    previous_wd = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(previous_wd)
 
 
 if __name__ == "__main__":

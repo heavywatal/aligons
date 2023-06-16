@@ -9,6 +9,7 @@ dst: {basename}.fa.out.gff
 import io
 import logging
 import re
+import tempfile
 from pathlib import Path
 
 import polars as pl
@@ -20,11 +21,38 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
+    parser.add_argument("--test", action="store_true")
     parser.add_argument("-S", "--species")
-    parser.add_argument("infile", type=Path, nargs="+")
+    parser.add_argument("infile", type=Path, nargs="*")
     args = parser.parse_args(argv or None)
+    if args.test:
+        test_species(args.species)
+        return
     for infile in args.infile:
         cli.thread_submit(repeatmasker, infile, args.species)
+
+
+def test_species(species: str):
+    with tempfile.TemporaryDirectory(prefix="RepeatMasker") as tmp, fs.chdir(tmp):
+        _log.info(f"{Path('.').absolute()}")
+        fasta = Path("test.fa")
+        if not fasta.exists():
+            with fasta.open("wt") as fout:
+                fout.write(">name\nAAACCCGGGTTT\n")
+        args: subp.Args = ["RepeatMasker", "-species", species, fasta]
+        args.extend(["-qq", "-nolow", "-norna", "-no_is", "-noisy", "-nopost"])
+        p = subp.run_if(
+            True, args, stdout=subp.PIPE, stderr=subp.PIPE, check=False  # noqa: FBT003
+        )
+        _log.info(p.stdout.decode())
+        stderr = p.stderr.decode()
+        _log.info(stderr)
+        if not p.returncode:
+            return True
+        mobj = re.search(r"Species .+ is not known to \w+", stderr)
+        assert mobj, "Unexpected error from RepeatMasker"
+        _log.warning(mobj.group(0))
+        return False
 
 
 def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
