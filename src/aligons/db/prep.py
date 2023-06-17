@@ -13,10 +13,9 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
-    angiosperms = phylo.extract_names(phylo.newicks["angiospermae"])
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("--compara", choices=angiosperms)
+    parser.add_argument("--compara", choices=phylo.list_species("angiospermae"))
     parser.add_argument("-C", "--clade", default="bep")
     args = parser.parse_args(argv or None)
     if args.config:
@@ -28,15 +27,15 @@ def main(argv: list[str] | None = None):
         fts = [pool.submit(ensemblgenomes.consolidate_compara_mafs, d) for d in dirs]
         cli.wait_raise(fts)
         return
-    tree = phylo.newicks[args.clade]
-    species = phylo.extract_names(tree)
+    species = phylo.list_species(args.clade)
     prepare_ensemblgenomes(species)
 
 
 def prepare_ensemblgenomes(species: list[str]):
     assert species
-    assert not (d := set(species) - set(ensemblgenomes.species_names_all())), d
+    species = ensemblgenomes.remove_unavailable(species)
     with ensemblgenomes.FTPensemblgenomes() as ftp:
+        assert not (d := set(species) - set(ftp.available_species())), d
         pool = cli.ThreadPool()
         futures: list[cli.FuturePath] = []
         for sp in species:

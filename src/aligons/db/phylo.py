@@ -7,8 +7,6 @@ from typing import NamedTuple, TypeAlias
 
 from aligons.util import cli
 
-from .ensemblgenomes import make_newicks, shorten
-
 _log = logging.getLogger(__name__)
 
 
@@ -100,8 +98,55 @@ def get_subtree(newick: str, tips: Sequence[str]):
     return newickize(root)
 
 
+def make_newicks():
+    ehrhartoideae = "(oryza_sativa,leersia_perrieri)ehrhartoideae"
+    pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae"
+    andropogoneae = "(sorghum_bicolor,zea_mays)andropogoneae"
+    paniceae = "(setaria_italica,panicum_hallii_fil2)paniceae"
+    bep = f"({ehrhartoideae},{pooideae})bep"
+    pacmad = f"({andropogoneae},{paniceae})pacmad"
+    poaceae = f"({bep},{pacmad})poaceae"
+    monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"
+
+    _solanum = "(solanum_lycopersicum,solanum_tuberosum)"
+    solanaceae = f"(({_solanum},capsicum_annuum),nicotiana_attenuata)solanaceae"
+    _convolvulaceae = "ipomoea_triloba"
+    solanales = f"({solanaceae},{_convolvulaceae})solanales"
+    _lamiales = "(olea_europaea_sylvestris,sesamum_indicum)lamiales"
+    lamiids = f"(({solanales},coffea_canephora),{_lamiales})lamiids"
+    _asteraceae = "(helianthus_annuus,lactuca_sativa)asteraceae"
+    _companulids = f"({_asteraceae},daucus_carota)"
+    _core_asterids = f"({lamiids},{_companulids})"
+    asterids = f"({_core_asterids},actinidia_chinensis)asterids"
+    eudicots = f"({asterids},arabidopsis_thaliana)eudicots"
+
+    angiospermae = f"({eudicots},{monocot})angiospermae"
+    assert "oryza_sativa" in angiospermae, angiospermae
+    return {k: v + ";" for k, v in locals().items() if not k.startswith("_")}
+
+
 newicks_with_inner = make_newicks()
 newicks = {k: remove_inner(v) for k, v in newicks_with_inner.items()}
+
+
+def list_species(clade: str = "angiospermae") -> list[str]:
+    return extract_names(newicks[clade])
+
+
+def expand_shortnames(shortnames: list[str]):
+    return _filter_by_shortname(list_species(), shortnames)
+
+
+def _filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
+    return (x for x in species if shorten(x) in queries)
+
+
+def shorten(name: str):
+    """Oryza_sativa -> osat."""
+    if name.lower() == "olea_europaea_sylvestris":
+        return "oesy"
+    split = name.lower().split("_")
+    return split[0][0] + split[1][:3]
 
 
 def print_graph(newick: str, graph: int = 0):

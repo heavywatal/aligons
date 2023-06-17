@@ -5,7 +5,6 @@
   - gff3/{species}/
   - maf/ensembl-compara/pairwise_alignments/
 """
-import functools
 import logging
 import os
 import re
@@ -16,6 +15,8 @@ from pathlib import Path
 from aligons import db
 from aligons.util import cli, config, fs, subp
 
+from . import phylo
+
 _log = logging.getLogger(__name__)
 
 
@@ -23,119 +24,37 @@ def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-V", "--versions", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
-    parser.add_argument("-f", "--files", action="store_true")
-    parser.add_argument("-g", "--glob", default="*")
-    parser.add_argument("--name", action="store_true")
-    parser.add_argument("species", nargs="*")
+    parser.add_argument("--fmt", default="fasta", choices=("fasta", "gff3", "maf"))
     args = parser.parse_args(argv or None)
     if args.versions:
-        for x in sorted(list_versions()):
+        for x in sorted(_list_versions()):
             print(x)
-        return
-    species = species_names_all() if args.all and not args.files else species_names()
-    if args.species:
-        species = list(filter_by_shortname(species, args.species))
-    if not args.files:
-        for sp in species:
-            print(sp)
-        return
-    for x in glob(args.glob, species):
-        if args.name:
-            print(x.name)
-        else:
-            print(x)
+    elif args.all:
+        with FTPensemblgenomes() as ftp:
+            for sp in ftp.available_species():
+                print(sp)
+        _log.info(f"{version()=}")
+    elif (fmt_dir := _prefix_mirror() / args.fmt).exists():
+        for x in fmt_dir.iterdir():
+            if x.is_dir():
+                print(x)
+    else:
+        _log.warning(f"No local mirror of release-{version()}")
 
 
-def make_newicks():
-    ehrhartoideae = "(oryza_sativa,leersia_perrieri)ehrhartoideae"
-    pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae"
-    andropogoneae = "(sorghum_bicolor,zea_mays)andropogoneae"
-    paniceae = "(setaria_italica,panicum_hallii_fil2)paniceae"
-    bep = f"({ehrhartoideae},{pooideae})bep"
-    pacmad = f"({andropogoneae},{paniceae})pacmad"
-    poaceae = f"({bep},{pacmad})poaceae"
-    monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"
-
-    _solanum = "(solanum_lycopersicum,solanum_tuberosum)"
-    solanaceae = f"(({_solanum},capsicum_annuum),nicotiana_attenuata)solanaceae"
-    _convolvulaceae = "ipomoea_triloba"
-    solanales = f"({solanaceae},{_convolvulaceae})solanales"
-    _lamiales = "olea_europaea_sylvestris"
-    if version() > 51:  # noqa: PLR2004
-        _lamiales = f"({_lamiales},sesamum_indicum)"
-    lamiids = f"(({solanales},coffea_canephora),{_lamiales})lamiids"
-    _asteraceae = "helianthus_annuus"
-    if version() > 52:  # noqa: PLR2004
-        _asteraceae = f"({_asteraceae},lactuca_sativa)"
-    _companulids = f"({_asteraceae},daucus_carota)"
-    _core_asterids = f"({lamiids},{_companulids})"
-    asterids = f"({_core_asterids},actinidia_chinensis)asterids"
-    eudicots = f"({asterids},arabidopsis_thaliana)eudicots"
-
-    angiospermae = f"({eudicots},{monocot})angiospermae"
-    assert "oryza_sativa" in angiospermae, angiospermae
-    return {k: v + ";" for k, v in locals().items() if not k.startswith("_")}
-
-
-def list_versions():
+def _list_versions() -> Iterable[Path]:
     _log.debug(f"{_prefix_mirror_root()=}")
     return _prefix_mirror_root().glob("release-*")
 
 
-@functools.cache
-def species_names_all():
-    with FTPensemblgenomes() as ftp:
-        lst = ftp.nlst_cache("fasta")
-    return [Path(x).name for x in lst]
-
-
-@functools.cache
-def species_names(fmt: str = "fasta"):
-    return [x.name for x in species_dirs(fmt)]
-
-
-def species_dirs(fmt: str = "fasta", species: list[str] | None = None):
-    assert (root := _prefix_mirror() / fmt).exists(), root
-    requests = set(species or [])
-    for path in root.iterdir():
-        if not path.is_dir():
-            continue
-        if not species or (path.name in requests):
-            requests.discard(path.name)  # TODO: search twice
-            yield path
-    assert not requests, f"directory not found: {requests}"
-
-
-def get_file(pattern: str, species: str, subdir: str = ""):
-    found = list(glob(pattern, [species], subdir))
-    _log.debug(f"{found=}")
-    assert len(found) == 1, found
-    return found[0]
-
-
-def glob(pattern: str, species: list[str], subdir: str = ""):
-    for path in species_dirs("fasta", species):
-        for x in fs.sorted_naturally((path / "dna" / subdir).glob(pattern)):
-            yield x
-    for path in species_dirs("gff3", species):
-        for x in fs.sorted_naturally(path.glob(pattern)):
-            yield x
-
-
-def expand_shortnames(shortnames: list[str]):
-    return filter_by_shortname(species_names_all(), shortnames)
-
-
-def filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
-    return (x for x in species if shorten(x) in queries)
-
-
-def shorten(name: str):
-    """Oryza_sativa -> osat."""
-    if name.lower() == "olea_europaea_sylvestris":
-        return "oesy"
-    split = name.lower().split("_")
-    return split[0][0] + split[1][:3]
+def remove_unavailable(species: list[str]):
+    unavailable: list[str] = []
+    _lamiales = "olea_europaea_sylvestris"
+    if version() < 52:  # noqa: PLR2004
+        unavailable.append("sesamum_indicum")
+    if version() < 53:  # noqa: PLR2004
+        unavailable.append("lactuca_sativa")
+    return [sp for sp in species if sp not in unavailable]
 
 
 def consolidate_compara_mafs(indir: Path):
@@ -144,8 +63,8 @@ def consolidate_compara_mafs(indir: Path):
     assert mobj, indir.name
     target_short = mobj.group(1)
     query_short = mobj.group(2)
-    target = list(expand_shortnames([target_short]))[0]
-    query = list(expand_shortnames([query_short]))[0]
+    target = list(phylo.expand_shortnames([target_short]))[0]
+    query = list(phylo.expand_shortnames([query_short]))[0]
     outdir = Path("compara") / target / query
     pat = re.compile(r"lastz_net\.([^_]+)_\d+\.maf$")
     infiles_by_seq: dict[str, list[Path]] = {}
@@ -213,6 +132,7 @@ class FTPensemblgenomes(FTP):
     def lazy_init(self):
         if self.sock is not None:
             return
+        self.orig_wd = Path.cwd()
         host = "ftp.ensemblgenomes.org"
         _log.debug(f"ftp.connect({host})")
         _log.info(self.connect(host))
@@ -222,9 +142,11 @@ class FTPensemblgenomes(FTP):
         _log.info(f"ftp.cwd({path})")
         _log.info(self.cwd(path))
         _log.info(f"os.chdir({_prefix_mirror()})")
-        self.orig_wd = Path.cwd()
         _prefix_mirror().mkdir(0o755, parents=True, exist_ok=True)
         os.chdir(_prefix_mirror())  # for RETR only
+
+    def available_species(self) -> list[str]:
+        return [Path(x).name for x in self.nlst_cache("fasta")]
 
     def download_fasta(self, species: str):
         relpath = f"fasta/{species}/dna"
@@ -246,7 +168,7 @@ class FTPensemblgenomes(FTP):
         relpath = "maf/ensembl-compara/pairwise_alignments"
         outdir = _prefix_mirror() / relpath
         nlst = self.nlst_cache(relpath)
-        sp = shorten(species)
+        sp = phylo.shorten(species)
         for x in nlst:
             if f"/{sp}_" in x:
                 self.retrieve(x)
