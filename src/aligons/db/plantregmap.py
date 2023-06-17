@@ -63,5 +63,12 @@ def db_prefix():
     return db.path("plantregmap")
 
 
+def rglob(pattern: str, species: str = "."):
+    for species_dir in db_prefix().iterdir():
+        if re.search(species, species_dir.name, re.IGNORECASE):
+            for x in species_dir.rglob(pattern):
+                yield x
+
+
 if __name__ == "__main__":
     main()

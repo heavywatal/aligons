@@ -138,10 +138,10 @@ class JBrowseConfig:
             self.add_track(f, "papers", trackid="SV_all-qin2021", subdir="suzuemon")
 
     def add_plantdhs(self):
-        for path in fs.sorted_naturally(plantdhs.glob("Rice_*.bw")):
+        for path in fs.sorted_naturally(plantdhs.db_prefix().glob("Rice_*.bw")):
             trackid = path.stem.removeprefix("Rice_")
             self.add_track(path, "plantdhs", trackid=trackid)
-        for path in fs.sorted_naturally(plantdhs.glob("*.gff.gz")):
+        for path in fs.sorted_naturally(plantdhs.db_prefix().glob("*.gff.gz")):
             self.add_track(path, "plantdhs", trackid=path.stem)
 
     def add_plantregmap(self, species: str):
