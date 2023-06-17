@@ -31,5 +31,9 @@ def resources_data(child: str = ""):
 with resources_data("config.toml").open("rb") as fin:
     _config_src: dict[str, Any] = tomllib.load(fin)
 
+if (userconf := Path.home() / ".aligons.toml").exists():
+    read_config(userconf)
+
+
 config = ConfDict(_config_src)
 empty_options = ConfDict({})
