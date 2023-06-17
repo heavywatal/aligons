@@ -1,6 +1,6 @@
 """Interface to working data.
 
-prefix: {db.root}/aligons/{db.label}/
+prefix: {db.root}/{origin}/
 
 - fasta/{species}/
 - gff3/{species}/
@@ -12,6 +12,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from aligons import db
+from aligons.db import ensemblgenomes
 from aligons.util import cli, config, fs
 
 _log = logging.getLogger(__name__)
@@ -21,17 +22,12 @@ def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-S", "--species")
     args = parser.parse_args(argv or None)
-    print(prefix())
     if args.species:
         for p in _glob("*", args.species):
-            print(p.relative_to(prefix()))
+            print(p)
     else:
         for p in _species_dirs():
             print(p)
-
-
-def prefix() -> Path:
-    return db.path("aligons") / config["db"]["label"]
 
 
 @functools.cache
@@ -40,22 +36,22 @@ def species_names(fmt: str = "fasta"):
 
 
 def fasize(species: str) -> Path:
-    return _get_file("fasize.chrom.sizes", species)
+    return get_file("fasize.chrom.sizes", species)
 
 
 def genome_fa(species: str) -> Path:
     subdir = "kmer" if config["db"]["kmer"] else ""
-    return _get_file("*.genome.fa.gz", species, subdir)
+    return get_file("*.genome.fa.gz", species, subdir)
 
 
 def genome_2bit(species: str) -> Path:
     subdir = "kmer" if config["db"]["kmer"] else ""
-    return _get_file("*.genome.2bit", species, subdir)
+    return get_file("*.genome.2bit", species, subdir)
 
 
 def genome_gff3(species: str) -> Path:
     subdir = "kmer" if config["db"]["kmer"] else ""
-    return _get_file("*.genome.gff3.gz", species, subdir)
+    return get_file("*.genome.gff3.gz", species, subdir)
 
 
 def list_chromosome_fa(species: str) -> Iterable[Path]:
@@ -72,6 +68,12 @@ def list_chromosome_gff3(species: str) -> Iterable[Path]:
     return fs.sorted_naturally(_glob("*.chromosome*.gff3.gz", species))
 
 
+def get_file(pattern: str, species: str, subdir: str = ""):
+    found = list(_glob(pattern, species, subdir))
+    assert len(found) == 1, found
+    return found[0]
+
+
 def sanitize_queries(target: str, queries: list[str]):
     queries = list(dict.fromkeys(queries))
     with suppress(ValueError):
@@ -83,23 +85,29 @@ def sanitize_queries(target: str, queries: list[str]):
 
 
 def _species_dirs(fmt: str = "fasta") -> Iterable[Path]:
-    assert (root := prefix() / fmt).exists(), root
-    for path in root.iterdir():
-        if path.is_dir():
-            yield path
-
-
-def _get_file(pattern: str, species: str, subdir: str = ""):
-    found = list(_glob(pattern, species, subdir))
-    assert len(found) == 1, found
-    return found[0]
+    for prefix in _iter_prefix():
+        if not (fmt_dir := prefix / fmt).exists():
+            _log.warning(f"{fmt_dir} does not exist")
+            continue
+        for path in fmt_dir.iterdir():
+            if path.is_dir():
+                yield path
 
 
 def _glob(pattern: str, species: str, subdir: str = ""):
-    for fmt in ("fasta", "gff3"):
-        d = prefix() / fmt / species / subdir
-        for x in fs.sorted_naturally(d.glob(pattern)):
-            yield x
+    for prefix in _iter_prefix():
+        for fmt in ("fasta", "gff3"):
+            d = prefix / fmt / species / subdir
+            for x in fs.sorted_naturally(d.glob(pattern)):
+                yield x
+
+
+def _iter_prefix() -> Iterable[Path]:
+    return (_prefix(origin) for origin in config["db"]["origin"])
+
+
+def _prefix(origin: str) -> Path:
+    return db.path(origin.format(version=ensemblgenomes.version()))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """https://jbrowse.org.
 
-src: {db.root}/aligons/{label}/fasta/{species}/*.fa.gz
-src: {db.root}/aligons/{label}/gff3/{species}/*.chr.gff3.gz
+src: {db.api.prefix}/fasta/{species}/*.fa.gz
+src: {db.api.prefix}/gff3/{species}/*.chr.gff3.gz
 src: {vNN}/pairwise/{species}/{query}/cram/genome.cram
 src: {vNN}/multiple/{species}/{clade}/phastcons.bw
 dst: {vNN}/{jbrowse_XYZ}/{species}/config.json

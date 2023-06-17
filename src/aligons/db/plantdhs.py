@@ -9,6 +9,7 @@ from aligons.util import cli, fs
 from . import tools
 
 _log = logging.getLogger(__name__)
+_HOST = "plantdhs.org"
 
 
 def main(argv: list[str] | None = None):
@@ -18,20 +19,22 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     if args.download:
         cli.wait_raise(retrieve_deploy(q) for q in iter_download_queries())
-    for x in fs.sorted_naturally(glob(args.pattern)):
-        print(x)
-
-
-def glob(pattern: str):
-    return local_db_root().glob(pattern)
+    else:
+        for x in fs.sorted_naturally(db_prefix().rglob(args.pattern)):
+            print(x)
 
 
 def retrieve_deploy(query: str):
     url = f"https://bioinfor.yzu.edu.cn/download/plantdhs/{query}"
-    outfile = local_db_root() / query
-    if outfile.name.endswith(".gff.zip"):
+    rawfile = db.path_mirror(_HOST) / query
+    outfile = db_prefix() / query
+    if outfile.name.endswith(".zip"):
         outfile = outfile.with_suffix(".gz")
-    future = tools.retrieve_compress(url, outfile)
+    content = tools.retrieve_content(url, rawfile)
+    if outfile.suffix == ".gz":
+        future = cli.thread_submit(tools.compress, content, outfile)
+    else:
+        future = cli.thread_submit(fs.symlink, rawfile, outfile)
     return cli.thread_submit(htslib.try_index, future)
 
 
@@ -48,12 +51,12 @@ def iter_download_queries_all():
 
 
 def download_page():
-    url = "http://plantdhs.org/Download"
-    cache = local_db_root() / "download.html"
-    return tools.retrieve_cache(url, cache).decode()
+    url = f"http://{_HOST}/Download"
+    cache = db.path_mirror(_HOST) / "Download.html"
+    return tools.retrieve_content(url, cache, force=True).decode()
 
 
-def local_db_root():
+def db_prefix():
     return db.path("plantdhs")
 
 

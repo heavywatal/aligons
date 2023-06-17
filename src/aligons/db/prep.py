@@ -6,7 +6,7 @@ from aligons.db import tools
 from aligons.extern import htslib, jellyfish, kent
 from aligons.util import cli, config, fs, read_config
 
-from . import api, ensemblgenomes, phylo
+from . import ensemblgenomes, phylo
 
 _log = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def symlink(path: Path, species: str, fmt: str = ""):
         fmt = "fasta" if path.name.removesuffix(".gz").endswith(".fa") else "gff3"
     assert fmt in ("fasta", "gff3")
     filename = path.name.replace("primary_assembly", "chromosome")
-    link = api.prefix() / fmt / species / filename
+    link = ensemblgenomes.prefix() / fmt / species / filename
     return fs.symlink(path, link)
 
 

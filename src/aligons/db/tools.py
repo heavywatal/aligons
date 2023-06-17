@@ -24,11 +24,6 @@ def main(argv: list[str] | None = None):
     split_gff(args.infile)
 
 
-def retrieve_compress(url: str, outfile: Path) -> cli.FuturePath:
-    content = retrieve_cache(url) if fs.is_outdated(outfile) else b""
-    return cli.thread_submit(compress, content, outfile)
-
-
 def compress(content: bytes, outfile: Path) -> Path:
     """Uncompress/compress depending on file names.
 
@@ -57,22 +52,25 @@ def compress(content: bytes, outfile: Path) -> Path:
     return outfile
 
 
-def retrieve_cache(url: str, cache: Path | None = None) -> bytes:
+def retrieve_content(
+    url: str, outfile: Path | None = None, *, force: bool = False
+) -> bytes:
     _log.debug(url)
-    if cache is None:
+    if outfile is None:
         urlp = urlparse(url)
-        cache = db.path("_cache") / (urlp.netloc + urlp.path)
-    _log.debug(f"{cache}")
-    if cli.dry_run:
-        return b""
-    if cache.exists():
-        with cache.open("rb") as fin:
-            return fin.read()
-    cache.parent.mkdir(0o755, parents=True, exist_ok=True)
-    response = urllib.request.urlopen(url)  # noqa: S310
-    content = response.read()
-    with cache.open("wb") as fout:
-        fout.write(content)
+        outfile = db.path_mirror(urlp.netloc + urlp.path)
+    if cli.dry_run and not force:
+        content = b""
+    elif fs.is_outdated(outfile):
+        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
+        response = urllib.request.urlopen(url)  # noqa: S310
+        content = response.read()
+        with outfile.open("wb") as fout:
+            fout.write(content)
+    else:
+        with outfile.open("rb") as fin:
+            content = fin.read()
+    _log.info(f"{outfile}")
     return content
 
 

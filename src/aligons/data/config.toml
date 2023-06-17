@@ -34,8 +34,9 @@ expected-length = 12
 version = 49
 
 [db]
-root = "~/db"
-label = "default"
+root = "~/db/aligons"
+mirror = "~/db"
+origin = ["ensembl-{version}", "solgenomics"]
 kmer = false
 
 [jellyfish.count]

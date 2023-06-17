@@ -1,10 +1,9 @@
 """https://plants.ensembl.org/.
 
-prefix: {db.root}/ensemblgenomes/plants/release-{version}
-
-- fasta/{species}/dna/{stem}.dna_sm.chromosome.{seqid}.fa.gz
-- gff3/{species}/
-- maf/ensembl-compara/pairwise_alignments/
+- {db.mirror}/ensemblgenomes.org/plants/release-{version}/
+  - fasta/{species}/dna/{stem}.dna_sm.chromosome.{seqid}.fa.gz
+  - gff3/{species}/
+  - maf/ensembl-compara/pairwise_alignments/
 """
 import functools
 import logging
@@ -79,8 +78,8 @@ def make_newicks():
 
 
 def list_versions():
-    _log.debug(f"{local_db_root()=}")
-    return local_db_root().glob("release-*")
+    _log.debug(f"{_prefix_mirror_root()=}")
+    return _prefix_mirror_root().glob("release-*")
 
 
 @functools.cache
@@ -96,7 +95,7 @@ def species_names(fmt: str = "fasta"):
 
 
 def species_dirs(fmt: str = "fasta", species: list[str] | None = None):
-    assert (root := prefix() / fmt).exists(), root
+    assert (root := _prefix_mirror() / fmt).exists(), root
     requests = set(species or [])
     for path in root.iterdir():
         if not path.is_dir():
@@ -222,14 +221,14 @@ class FTPensemblgenomes(FTP):
         path = f"/pub/plants/release-{version()}"
         _log.info(f"ftp.cwd({path})")
         _log.info(self.cwd(path))
-        _log.info(f"os.chdir({prefix()})")
+        _log.info(f"os.chdir({_prefix_mirror()})")
         self.orig_wd = Path.cwd()
-        prefix().mkdir(0o755, parents=True, exist_ok=True)
-        os.chdir(prefix())  # for RETR only
+        _prefix_mirror().mkdir(0o755, parents=True, exist_ok=True)
+        os.chdir(_prefix_mirror())  # for RETR only
 
     def download_fasta(self, species: str):
         relpath = f"fasta/{species}/dna"
-        outdir = prefix() / relpath
+        outdir = _prefix_mirror() / relpath
         nlst = self.nlst_cache(relpath)
         files = [self.retrieve(x) for x in self.remove_duplicates(nlst, "_sm.")]
         fs.checksums(outdir / "CHECKSUMS")
@@ -237,7 +236,7 @@ class FTPensemblgenomes(FTP):
 
     def download_gff3(self, species: str):
         relpath = f"gff3/{species}"
-        outdir = prefix() / relpath
+        outdir = _prefix_mirror() / relpath
         nlst = self.nlst_cache(relpath)
         files = [self.retrieve(x) for x in self.remove_duplicates(nlst)]
         fs.checksums(outdir / "CHECKSUMS")
@@ -245,7 +244,7 @@ class FTPensemblgenomes(FTP):
 
     def download_maf(self, species: str):
         relpath = "maf/ensembl-compara/pairwise_alignments"
-        outdir = prefix() / relpath
+        outdir = _prefix_mirror() / relpath
         nlst = self.nlst_cache(relpath)
         sp = shorten(species)
         for x in nlst:
@@ -254,7 +253,7 @@ class FTPensemblgenomes(FTP):
         _log.debug(f"{outdir=}")
         dirs: list[Path] = []
         for targz in outdir.glob("*.tar.gz"):
-            expanded = prefix() / targz.with_suffix("").with_suffix("")
+            expanded = _prefix_mirror() / targz.with_suffix("").with_suffix("")
             tar = ["tar", "xzf", targz, "-C", outdir]
             subp.run(tar, if_=fs.is_outdated(expanded / "README.maf"))
             # TODO: MD5SUM
@@ -277,7 +276,7 @@ class FTPensemblgenomes(FTP):
         return matched + misc
 
     def nlst_cache(self, relpath: str):
-        cache = prefix() / relpath / ".ftp_nlst_cache"
+        cache = _prefix_mirror() / relpath / ".ftp_nlst_cache"
         if cache.exists():
             _log.info(f"{cache=}")
             with cache.open("r") as fin:
@@ -293,7 +292,7 @@ class FTPensemblgenomes(FTP):
         return lst
 
     def retrieve(self, path: str):
-        outfile = prefix() / path
+        outfile = _prefix_mirror() / path
         if not outfile.exists() and not cli.dry_run:
             outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
             with outfile.open("wb") as fout:
@@ -309,16 +308,20 @@ def rsync(relpath: str, options: str = ""):
     server = "ftp.ensemblgenomes.org"
     remote_prefix = f"rsync://{server}/all/pub/plants/release-{version()}"
     src = f"{remote_prefix}/{relpath}/"
-    dst = prefix() / relpath
+    dst = _prefix_mirror() / relpath
     return subp.run(f"rsync -auv {options} {src} {dst}")
 
 
 def prefix():
-    return local_db_root() / f"release-{version()}"
+    return db.path(f"ensembl-{version()}")
 
 
-def local_db_root():
-    return db.path("ensemblgenomes/plants")
+def _prefix_mirror():
+    return _prefix_mirror_root() / f"release-{version()}"
+
+
+def _prefix_mirror_root():
+    return db.path_mirror("ensemblgenomes.org/plants")
 
 
 def version():

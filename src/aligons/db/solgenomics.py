@@ -1,24 +1,18 @@
-"""https://solgenomics.net/ftp/genomes/.
-
-{local_db_root}/fasta/{species}/dna/{stem}.chromosome.{chr}.fa.gz
-{local_db_root}/gff3/{species}/{stem}.gff3.gz
-"""
+"""https://solgenomics.net/ftp/genomes/."""
 import concurrent.futures as confu
 import logging
-import re
 from collections.abc import Generator
 from pathlib import Path
 from typing import TypedDict
 
 from aligons import db
-from aligons.db import mask
+from aligons.db import api, mask
 from aligons.extern import htslib
-from aligons.util import cli, resources_data, tomllib
+from aligons.util import cli, fs, resources_data, tomllib
 
 from . import tools
 
 _log = logging.getLogger(__name__)
-_futures: list[cli.FuturePath] = []
 
 
 class DataSet(TypedDict):
@@ -36,11 +30,11 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-M", "--mask", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
     args = parser.parse_args(argv or None)
-    for entry in iter_dataset():
-        if args.download:
-            retrieve_deploy(entry)
-    cli.wait_raise(_futures)
-    _futures.clear()
+    if args.download:
+        fts: list[cli.FuturePath] = []
+        for entry in iter_dataset():
+            fts.extend(retrieve(entry))
+        cli.wait_raise(fts)
     if args.mask:
         future_chromosomes = submit_split_toplevel_fa()
         future_masked = submit_mask(future_chromosomes)
@@ -56,7 +50,8 @@ def submit_mask(ft_fastas: list[cli.FuturePath]) -> list[cli.FuturePath]:
 
 def submit_split_toplevel_fa() -> list[cli.FuturePath]:
     fts: list[cli.FuturePath] = []
-    for toplevel_fa_gz in local_db_root().rglob("*.dna.toplevel.fa.gz"):
+    for entry in iter_dataset():
+        toplevel_fa_gz = api.get_file("*.dna.toplevel.fa.gz", entry["species"])
         fts.extend(_split_toplevel_fa(toplevel_fa_gz))
     return fts
 
@@ -67,32 +62,34 @@ def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:
     return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"), outdir)
 
 
-def retrieve_deploy(entry: DataSet):
-    sp = entry["species"]
-    stem = f"{sp}_{ver}" if (ver := entry.get("version", None)) else sp
-    query_gff = entry["annotation"]
+def retrieve(entry: DataSet) -> list[cli.FuturePath]:
+    remote_prefix = "https://solgenomics.net/ftp/genomes/"
+    species = entry["species"]
+    annotation = entry["annotation"]
     sequences = entry["sequences"]
-    rel_fa_gz = f"fasta/{sp}/dna/{stem}.dna.toplevel.fa.gz"
-    if len(sequences) > 1:
-        ft_chroms: list[cli.FuturePath] = []
-        for query_fa in sequences:
-            assert (mobj := re.search(r"([^.]+)", Path(query_fa).stem))
-            seqid = mobj.group(1)
-            tmppath = f"fasta/{sp}/dna/{stem}.dna.chromosome.{seqid}.fa.gz"
-            ft_chroms.append(_retrieve_bgzip(query_fa, tmppath))
-        abs_fa_gz = local_db_root() / rel_fa_gz
-        fa_gz = cli.thread_submit(tools.cat, ft_chroms, abs_fa_gz)
+    stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
+    out_fa = db_prefix() / f"fasta/{species}/{stem}.dna.toplevel.fa.gz"
+    out_gff = db_prefix() / f"gff3/{species}/{stem}.gff3.gz"
+    fts: list[cli.FuturePath] = []
+    if not fs.is_outdated(out_fa):
+        content_fa = b""
+    elif len(sequences) > 1:
+        chr_fa = [tools.retrieve_content(remote_prefix + s) for s in sequences]
+        content_fa = b"".join(chr_fa)
     else:
-        fa_gz = _retrieve_bgzip(sequences[0], rel_fa_gz)
-    _futures.append(cli.thread_submit(htslib.faidx, fa_gz))
-    gff3_gz = _retrieve_bgzip(query_gff, f"gff3/{sp}/{stem}.gff3.gz")
-    _futures.append(cli.thread_submit(htslib.tabix, gff3_gz))
+        content_fa = tools.retrieve_content(remote_prefix + sequences[0])
+    fts.append(cli.thread_submit(bgzip_index, content_fa, out_fa))
+    if not fs.is_outdated(out_gff):
+        content_gff = b""
+    else:
+        content_gff = tools.retrieve_content(remote_prefix + annotation)
+    fts.append(cli.thread_submit(bgzip_index, content_gff, out_gff))
+    return fts
 
 
-def _retrieve_bgzip(query: str, relpath: str):
-    outfile = local_db_root() / relpath
-    url = f"https://solgenomics.net/ftp/genomes/{query}"
-    return tools.retrieve_compress(url, outfile)
+def bgzip_index(content: bytes, outfile: Path):
+    htslib.try_index(tools.compress(content, outfile))
+    return outfile
 
 
 def iter_dataset() -> Generator[DataSet, None, None]:
@@ -104,7 +101,7 @@ def iter_dataset() -> Generator[DataSet, None, None]:
         yield DataSet(dic)
 
 
-def local_db_root():
+def db_prefix():
     return db.path("solgenomics")
 
 

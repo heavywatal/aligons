@@ -1,6 +1,6 @@
 """Pairwise genome alignment.
 
-src: {db.root}/aligons/{label}/fasta/{species}/*.fa.gz
+src: {db.api.prefix}/fasta/{species}/*.fa.gz
 dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 
 https://lastz.github.io/lastz/

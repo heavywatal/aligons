@@ -178,7 +178,7 @@ def path_labeled_gff3(species: str, chromosome: str):
 def prepare_labeled_gff3(species: str):
     """Deploy labeled copies of GFF3.
 
-    src: {db.root}/aligons/{db.label}/gff3/{species}/*.{chromosome}.gff3.gz
+    src: {db.api.prefix}/gff3/{species}/*.{chromosome}.gff3.gz
     dst: ./gff3/{species}/labeled-{chromosome}.gff3.gz
     """
     shortname = phylo.shorten(species)

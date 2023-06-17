@@ -62,7 +62,7 @@ def galaxy_index() -> Path:
     cache_tsv = cache_html.with_suffix(".tsv")
     _log.info(f"{cache_tsv}")
     if fs.is_outdated(cache_tsv, cache_html):
-        content = tools.retrieve_cache(_galaxy_prefix, cache_html)
+        content = tools.retrieve_content(_galaxy_prefix, cache_html)
         table = _parse_galaxy_index_html(content)
         table.write_csv(cache_tsv, separator="\t")
     return cache_tsv
@@ -98,7 +98,7 @@ def _parse_galaxy_index_html(content: bytes):
 
 
 def _cache_dir():
-    return db.path("_cache") / _galaxy_domain
+    return db.path_mirror(_galaxy_domain)
 
 
 if __name__ == "__main__":

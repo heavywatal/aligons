@@ -33,6 +33,8 @@ def split_fa_gz(
     if sub[0]:
         stem = re.sub(sub[0], sub[1], stem)
     fai = faidx(bgz)
+    if cli.dry_run and not fai.exists():
+        return []
     with fai.open("rt") as fin:
         seqids = [line.split()[0] for line in fin]
     fts: list[cli.FuturePath] = []

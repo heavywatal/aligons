@@ -10,3 +10,7 @@ def _expand_path(s: str):
 
 def path(relpath: str | Path = ""):
     return _expand_path(config["db"]["root"]) / relpath
+
+
+def path_mirror(relpath: str | Path = ""):
+    return _expand_path(config["db"]["mirror"]) / relpath
