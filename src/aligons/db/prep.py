@@ -13,9 +13,10 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
+    angiosperms = phylo.extract_names(phylo.newicks["angiospermae"])
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("--compara", choices=ensemblgenomes.species_names())
+    parser.add_argument("--compara", choices=angiosperms)
     parser.add_argument("-C", "--clade", default="bep")
     args = parser.parse_args(argv or None)
     if args.config:
