@@ -86,12 +86,14 @@ def zip_decompress(data: bytes) -> bytes:
 def split_gff(path: Path):
     body = read_gff_body(path)
     stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
+    files: list[Path] = []
     _log.debug(f"{stem=}")
     for sequence_region in read_gff_sequence_region(path):
         assert (mobj := re.search(r"##sequence-region\s+(\S+)", sequence_region))
         seqid = mobj.group(1)
         outfile = path.parent / f"{stem}.chromosome.{seqid}.gff3.gz"
-        print(outfile)
+        files.append(outfile)
+        _log.info(f"{outfile}")
         subdf = body.filter(pl.col("seqid") == seqid).sort(["seqid", "start"])
         assert subdf.height
         if cli.dry_run or not fs.is_outdated(outfile, path):
@@ -100,6 +102,7 @@ def split_gff(path: Path):
             fout.write("##gff-version 3\n")
             fout.write(sequence_region)
             fout.write(subdf.write_csv(has_header=False, separator="\t"))
+    return files
 
 
 def read_gff_sequence_region(path: Path):

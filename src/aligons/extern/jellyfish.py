@@ -1,7 +1,7 @@
 """Soft-mask fasta sequences based on kmer frequencies.
 
-src: {db.root}/aligons/{label}/fasta/{species}/*.fa.gz
-dst: {db.root}/aligons/{label}/fasta/{species}/kmer/*.fa.gz
+src: {db.root}/aligons/{db.label}/fasta/{species}/*.fa.gz
+dst: {db.root}/aligons/{db.label}/fasta/{species}/kmer/*.fa.gz
 """
 import concurrent.futures as confu
 import gzip
@@ -21,11 +21,10 @@ def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("species", type=str)
     args = parser.parse_args(argv or None)
-    outdir = run(args.species)
-    print(outdir)
+    print(run(args.species))
 
 
-def run(species: str):
+def run(species: str) -> list[Path]:
     genome = api.genome_fa(species)
     jf = count(genome)
     dumpfile = dump(jf)
@@ -33,10 +32,11 @@ def run(species: str):
     threshold = calc_threshold(histofile)
     log_config(histofile, threshold)
     threads = config["jellyfish"]["count"]["threads"]
+    fts: list[cli.FuturePath] = []
     with confu.ThreadPoolExecutor(max_workers=threads) as pool:
-        for chromosome in api.iter_chromosome_fa(species):
-            pool.submit(mask_genome, chromosome, dumpfile, threshold)
-    return jf.parent
+        for chromosome in api.list_chromosome_fa(species):
+            fts.append(pool.submit(mask_genome, chromosome, dumpfile, threshold))
+    return [f.result() for f in fts]
 
 
 def count(infile: Path):

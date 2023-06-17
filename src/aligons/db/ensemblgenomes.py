@@ -1,4 +1,11 @@
-"""https://plants.ensembl.org/."""
+"""https://plants.ensembl.org/.
+
+prefix: {db.root}/ensemblgenomes/plants/release-{version}
+
+- fasta/{species}/dna/{stem}.dna_sm.chromosome.{seqid}.fa.gz
+- gff3/{species}/
+- maf/ensembl-compara/pairwise_alignments/
+"""
 import functools
 import logging
 import os
@@ -8,8 +15,6 @@ from ftplib import FTP
 from pathlib import Path
 
 from aligons import db
-from aligons.db import tools
-from aligons.extern import htslib
 from aligons.util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -226,21 +231,17 @@ class FTPensemblgenomes(FTP):
         relpath = f"fasta/{species}/dna"
         outdir = prefix() / relpath
         nlst = self.nlst_cache(relpath)
-        for x in self.remove_duplicates(nlst, "_sm."):
-            outfile = self.retrieve(x)
-            post_retrieval(outfile)
+        files = [self.retrieve(x) for x in self.remove_duplicates(nlst, "_sm.")]
         fs.checksums(outdir / "CHECKSUMS")
-        return outdir
+        return [f for f in files if f.suffix == ".gz"]
 
     def download_gff3(self, species: str):
         relpath = f"gff3/{species}"
         outdir = prefix() / relpath
         nlst = self.nlst_cache(relpath)
-        for x in self.remove_duplicates(nlst):
-            outfile = self.retrieve(x)
-            post_retrieval(outfile)
+        files = [self.retrieve(x) for x in self.remove_duplicates(nlst)]
         fs.checksums(outdir / "CHECKSUMS")
-        return outdir
+        return [f for f in files if f.suffix == ".gz"]
 
     def download_maf(self, species: str):
         relpath = "maf/ensembl-compara/pairwise_alignments"
@@ -302,24 +303,6 @@ class FTPensemblgenomes(FTP):
                 _log.info(self.retrbinary(cmd, fout.write))
         _log.info(f"{outfile}")
         return outfile
-
-
-def post_retrieval(outfile: Path):
-    if "primary_assembly" in outfile.name:
-        link = Path(str(outfile).replace("primary_assembly", "chromosome"))
-        if outfile.exists() and not link.exists():
-            link.symlink_to(outfile)
-    elif "toplevel" in outfile.name:
-        if outfile.name.endswith(".fa.gz"):
-            split_toplevel_fa(outfile)
-        elif outfile.name.endswith(".gff3.gz"):
-            tools.split_gff(outfile)
-
-
-def split_toplevel_fa(fa_gz: Path):
-    fmt = "{stem}.{seqid}.fa.gz"
-    fts = htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
-    return [f.result() for f in fts]
 
 
 def rsync(relpath: str, options: str = ""):

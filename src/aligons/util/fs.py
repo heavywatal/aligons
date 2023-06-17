@@ -23,6 +23,15 @@ def main(argv: list[str] | None = None):
         print(x)
 
 
+def symlink(path: Path, link: Path):
+    if is_outdated(link, path) and not cli.dry_run:
+        _log.info(f"ln -s {path} {link}")
+        link.parent.mkdir(0o755, parents=True, exist_ok=True)
+        link.symlink_to(path)
+    _log.info(f"{link}")
+    return link
+
+
 def is_outdated(product: Path, source: list[Path] | Path | None = None):
     if not product.exists():
         return True
