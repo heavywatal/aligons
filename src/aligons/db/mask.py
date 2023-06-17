@@ -24,14 +24,14 @@ def main(argv: list[str] | None = None):
 def run(
     infile: Path, species: str | None = None, outfile: Path | None = None
 ) -> cli.FuturePath:
-    assert infile.suffix != ".gz"
+    assert infile.suffix != ".gz", infile
     if not species:
         species = "angiosperms"
     if outfile is None:
         patt = re.compile(r"\.dna\.")
-        assert patt.search(infile.name)
+        assert patt.search(infile.name), infile
         outfile = infile.parent / (patt.sub(".dna_sm.", infile.name) + ".gz")
-    assert outfile.suffix == ".gz"
+    assert outfile.suffix == ".gz", outfile
     fts: list[cli.FuturePath] = []
     fts.append(cli.thread_submit(repeatmasker.repeatmasker, infile, species))
     fts.append(cli.thread_submit(sdust.run, infile))

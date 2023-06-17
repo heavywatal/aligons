@@ -73,7 +73,7 @@ def make_newicks():
     eudicots = f"({asterids},arabidopsis_thaliana)eudicots"
 
     angiospermae = f"({eudicots},{monocot})angiospermae"
-    assert "oryza_sativa" in angiospermae
+    assert "oryza_sativa" in angiospermae, angiospermae
     return {k: v + ";" for k, v in locals().items() if not k.startswith("_")}
 
 
@@ -109,7 +109,7 @@ def species_dirs(fmt: str = "fasta", species: list[str] | None = None):
 def get_file(pattern: str, species: str, subdir: str = ""):
     found = list(glob(pattern, [species], subdir))
     _log.debug(f"{found=}")
-    assert len(found) == 1
+    assert len(found) == 1, found
     return found[0]
 
 
@@ -141,7 +141,7 @@ def shorten(name: str):
 def consolidate_compara_mafs(indir: Path):
     _log.debug(f"{indir=}")
     mobj = re.search(r"([^_]+)_.+?\.v\.([^_]+)", indir.name)
-    assert mobj
+    assert mobj, indir.name
     target_short = mobj.group(1)
     query_short = mobj.group(2)
     target = list(expand_shortnames([target_short]))[0]
@@ -151,7 +151,7 @@ def consolidate_compara_mafs(indir: Path):
     infiles_by_seq: dict[str, list[Path]] = {}
     for maf in fs.sorted_naturally(indir.glob("*_*.maf")):
         mobj = pat.search(maf.name)
-        assert mobj
+        assert mobj, maf.name
         seq = mobj.group(1)
         infiles_by_seq.setdefault(seq, []).append(maf)
     for seq, infiles in infiles_by_seq.items():
@@ -171,7 +171,7 @@ def consolidate_compara_mafs(indir: Path):
             sed = subp.popen(cmd, stdin=subp.PIPE, stdout=subp.PIPE)
             maff = subp.popen("mafFilter stdin", stdin=sed.stdout, stdout=fout)
             # for padding, not for filtering
-            assert sed.stdout
+            assert sed.stdout, cmd
             sed.stdout.close()
             sed.communicate("".join(lines).encode())
             maff.communicate()
@@ -271,7 +271,7 @@ class FTPensemblgenomes(FTP):
         matched = [x for x in matched if "musa_acuminata_v2" not in x]  # v52
         if substr:
             matched = [x for x in matched if substr in x]
-        assert matched
+        assert matched, substr
         misc = [x for x in nlst if re.search("CHECKSUMS$|README$", x)]
         return matched + misc
 

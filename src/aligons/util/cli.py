@@ -68,7 +68,7 @@ class ConfigLogging(argparse.Action):
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ):
-        assert not values
+        assert not values, values
         assert option_string
         value = getattr(namespace, self.dest, 0)
         setattr(namespace, self.dest, max(value + self.const, -2))

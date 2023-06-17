@@ -37,7 +37,7 @@ def main(argv: list[str] | None = None):
 
 def run(indir: Path, query: Sequence[str]):
     target = indir.name
-    assert target in query
+    assert target in query, f"{target=} not in {query=}"
     tree = phylo.get_newick(query)
     if len(query) > 1:
         dirname = "-".join(phylo.shorten(x) for x in query)
@@ -114,7 +114,7 @@ def roast(
 
 def prepare(indir: Path, outdir: Path, queries: Sequence[str]):
     target = indir.name
-    assert target in queries
+    assert target in queries, f"{target=} not in {query=}"
     if not cli.dry_run:
         outdir.mkdir(0o755, parents=True, exist_ok=True)
     for query in queries:

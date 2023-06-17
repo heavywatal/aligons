@@ -78,9 +78,9 @@ def sanitize_queries(target: str, queries: list[str]):
     queries = list(dict.fromkeys(queries))
     with suppress(ValueError):
         queries.remove(target)
-    assert queries
+    assert queries, target
     _log.debug(f"{queries=}")
-    assert set(queries) <= set(species_names())
+    assert set(queries) <= set(species_names()), f"{queries} vs {species_names()}"
     return queries
 
 

@@ -80,7 +80,8 @@ class JBrowse:
         if not root.exists():
             jbrowse(args)
         with (root / "version.txt").open() as fin:
-            assert fin.read().strip() == version
+            version_txt = fin.read().strip()
+            assert version_txt == version, f"{version_txt=} != {version=}"
 
     def admin_server(self):
         jbrowse(["admin-server", "--root", self.root])

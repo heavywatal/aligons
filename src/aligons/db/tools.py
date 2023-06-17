@@ -35,10 +35,10 @@ def compress(content: bytes, outfile: Path) -> Path:
     """
     if not cli.dry_run and fs.is_outdated(outfile):
         if is_zip(content):
-            assert outfile.suffix != ".zip"
+            assert outfile.suffix != ".zip", outfile
             content = zip_decompress(content)
         if htslib.to_be_bgzipped(outfile.name):
-            assert outfile.suffix == ".gz"
+            assert outfile.suffix == ".gz", outfile
             content = gzip_decompress(content)
             if ".gff" in outfile.name:
                 content = sort_gff(content)
@@ -77,7 +77,7 @@ def retrieve_content(
 def zip_decompress(data: bytes) -> bytes:
     with ZipFile(io.BytesIO(data), "r") as zin:
         members = zin.namelist()
-        assert len(members) == 1
+        assert len(members) == 1, members
         return zin.read(members[0])
 
 
@@ -93,7 +93,7 @@ def split_gff(path: Path):
         files.append(outfile)
         _log.info(f"{outfile}")
         subdf = body.filter(pl.col("seqid") == seqid).sort(["seqid", "start"])
-        assert subdf.height
+        assert subdf.height, f"No {seqid} found in {path}"
         if cli.dry_run or not fs.is_outdated(outfile, path):
             continue
         with gzip.open(outfile, "wt") as fout:
@@ -107,13 +107,13 @@ def read_gff_sequence_region(path: Path):
     lines: list[str] = []
     with gzip.open(path, "rt") as fin:
         gff_version = next(fin)
-        assert gff_version.startswith("##gff-version")
+        assert gff_version.startswith("##gff-version"), gff_version
         for line in fin:
             if not line.startswith("#"):
                 break
             if line.startswith("##sequence-region"):
                 lines.append(line)
-    assert lines
+    assert lines, path
     return lines
 
 

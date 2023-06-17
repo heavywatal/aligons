@@ -201,7 +201,7 @@ def parse_newick(newick: str):
         newick_old = newick
         newick, nodes = _extract_tip_clade(newick, nodes)
     root = nodes.popitem()[1]
-    assert not nodes
+    assert not nodes, nodes
     return root  # noqa: RET504
 
 

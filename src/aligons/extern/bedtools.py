@@ -24,7 +24,7 @@ def main(argv: list[str] | None = None):
 def wait_maskfasta(
     fi: bytes, fts: list[cli.FuturePath], fo: Path, *, soft: bool = True
 ) -> Path:
-    assert fo.suffix == ".gz"
+    assert fo.suffix == ".gz", fo
     beds = [f.result() for f in fts]
     if fs.is_outdated(fo, beds) or cli.dry_run:
         for bed in beds:
@@ -38,7 +38,7 @@ def wait_maskfasta(
 
 def maskfasta(fi: bytes, bed: Path, *, soft: bool = True) -> bytes:
     """https://bedtools.readthedocs.io/en/latest/content/tools/maskfasta.html."""
-    assert bed.exists() or cli.dry_run
+    assert bed.exists() or cli.dry_run, bed
     args: subp.Args = ["bedtools", "maskfasta", "-fullHeader"]
     if soft:
         args.append("-soft")

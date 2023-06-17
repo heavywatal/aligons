@@ -63,7 +63,7 @@ def prepare_ensemblgenomes(species: list[str]):
 def symlink(path: Path, species: str, fmt: str = ""):
     if not fmt:
         fmt = "fasta" if path.name.removesuffix(".gz").endswith(".fa") else "gff3"
-    assert fmt in ("fasta", "gff3")
+    assert fmt in ("fasta", "gff3"), fmt
     filename = path.name.replace("primary_assembly", "chromosome")
     link = ensemblgenomes.prefix() / fmt / species / filename
     return fs.symlink(path, link)
@@ -72,7 +72,7 @@ def symlink(path: Path, species: str, fmt: str = ""):
 def index_fasta(paths: list[Path]):
     """Create bgzipped and indexed genome.fa."""
     if len(paths) == 1:
-        assert "toplevel" in paths[0].name
+        assert "toplevel" in paths[0].name, paths[0]
         paths = split_toplevel_fa(paths[0])
     for chromosome in paths:
         kent.faToTwoBit(chromosome)
@@ -86,7 +86,7 @@ def index_fasta(paths: list[Path]):
 def index_gff3(paths: list[Path]):  # gff3/{species}
     """Create bgzipped and indexed genome.gff3."""
     if len(paths) == 1:
-        assert "toplevel" in paths[0].name
+        assert "toplevel" in paths[0].name, paths[0]
         paths = tools.split_gff(paths[0])
     genome = _create_genome_bgzip(paths)
     htslib.tabix(genome)

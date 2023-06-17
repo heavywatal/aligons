@@ -36,7 +36,13 @@ def main(argv: list[str] | None = None):
 
 
 def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
-    assert infile.suffix != ".gz"
+    """Be careful of messy and dirty output from RepeatMasker.
+
+    - Returns 0 even if aborted, e.g., "cannot read file".
+    - Prints verbose log to stdout, not stderr.
+    - .out.gff lacks some information stored in .out.
+    """
+    assert infile.suffix != ".gz", infile
     outfile = infile.parent / (infile.name + ".out.gff")
     parallel: int = 2
     args: subp.Args = ["RepeatMasker", "-e", "rmblast", "-gff"]
@@ -53,7 +59,7 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
 
 
 def read_out(infile: Path):
-    assert infile.suffix == ".out"
+    assert infile.suffix == ".out", infile
     with infile.open("rb") as fin:
         content = re.sub(rb" *\n *", rb"\n", fin.read())
         content = re.sub(rb" +", rb"\t", content)

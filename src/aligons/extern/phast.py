@@ -184,7 +184,7 @@ def prepare_labeled_gff3(species: str):
     shortname = phylo.shorten(species)
     for infile in api.list_chromosome_gff3(species):
         mobj = re.search(r"(chromosome.+)\.gff3\.gz$", infile.name)
-        assert mobj
+        assert mobj, infile
         outfile = path_labeled_gff3(species, mobj.group(1))
         if fs.is_outdated(outfile, infile) and not cli.dry_run:
             _log.info(f"{outfile}")
