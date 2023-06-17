@@ -51,12 +51,11 @@ def mafs2cram(path: Path):
             continue
         cram = outdir / (chr_dir.name + ".cram")
         futures.append(pool.submit(maf2cram, maf, cram, reference))
-    return pool.submit(merge_crams, futures)
+    return pool.submit(merge_crams, futures, outdir)
 
 
-def merge_crams(futures: list[confu.Future[Path]]):
+def merge_crams(futures: list[confu.Future[Path]], outdir: Path):
     crams: list[Path] = [f.result() for f in futures]
-    outdir = crams[0].parent
     outfile = outdir / "genome.cram"
     is_to_run = bool(crams) and fs.is_outdated(outfile, crams)
     cmd = f"samtools merge --no-PG -O CRAM -@ 2 -f -o {outfile!s} "
