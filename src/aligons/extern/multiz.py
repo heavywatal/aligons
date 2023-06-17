@@ -114,7 +114,7 @@ def roast(
 
 def prepare(indir: Path, outdir: Path, queries: Sequence[str]):
     target = indir.name
-    assert target in queries, f"{target=} not in {query=}"
+    assert target in queries, f"{target=} not in {queries=}"
     if not cli.dry_run:
         outdir.mkdir(0o755, parents=True, exist_ok=True)
     for query in queries:
