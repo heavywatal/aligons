@@ -3,6 +3,7 @@
 src: {stem}.dna.chromosome.{seqid}.fa
 dst: {stem}.dna_sm.chromosome.{seqid}.fa.gz
 """
+import concurrent.futures as confu
 import logging
 import re
 from pathlib import Path
@@ -18,19 +19,23 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-S", "--species")
     parser.add_argument("infile", type=Path, nargs="+")
     args = parser.parse_args(argv or None)
-    cli.wait_raise(run(x, args.species) for x in args.infile)
+    cli.wait_raise(submit(x, args.species) for x in args.infile)
 
 
-def run(
-    infile: Path, species: str | None = None, outfile: Path | None = None
+def submit(
+    infile: cli.FuturePath | Path,
+    species: str | None = None,
+    outfile: Path | None = None,
 ) -> cli.FuturePath:
+    if isinstance(infile, confu.Future):
+        infile = infile.result()
     assert infile.suffix != ".gz", infile
     if not species:
         species = "angiosperms"
     if outfile is None:
-        patt = re.compile(r"\.dna\.")
-        assert patt.search(infile.name), infile
-        outfile = infile.parent / (patt.sub(".dna_sm.", infile.name) + ".gz")
+        (outname, count) = re.subn(r"\.dna\.", ".dna_sm.", infile.name)
+        assert count == 1, infile
+        outfile = infile.parent / (outname + ".gz")
     assert outfile.suffix == ".gz", outfile
     fts: list[cli.FuturePath] = []
     fts.append(cli.thread_submit(repeatmasker.repeatmasker, infile, species))

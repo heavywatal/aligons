@@ -1,5 +1,4 @@
 """https://solgenomics.net/ftp/genomes/."""
-import concurrent.futures as confu
 import logging
 from collections.abc import Generator
 from pathlib import Path
@@ -36,24 +35,27 @@ def main(argv: list[str] | None = None):
             fts.extend(retrieve(entry))
         cli.wait_raise(fts)
     if args.mask:
-        future_chromosomes = submit_split_toplevel_fa()
-        future_masked = submit_mask(future_chromosomes)
-        cli.wait_raise(future_masked)
+        fts: list[cli.FuturePath] = []
+        for entry in iter_dataset():
+            species = entry["species"]
+            fts.append(prepare_fasta(species))
+            gff3_gz = api.get_file("*.gff3.gz", species)
+            fts.append(cli.thread_submit(tools.index_gff3, [gff3_gz]))
+        cli.wait_raise(fts)
 
 
-def submit_mask(ft_fastas: list[cli.FuturePath]) -> list[cli.FuturePath]:
-    fts: list[cli.FuturePath] = []
-    for future in confu.as_completed(ft_fastas):
-        fts.append(mask.run(future.result()))
-    return fts
+def prepare_fasta(species: str) -> cli.FuturePath:
+    toplevel_fa_gz = api.get_file("*.dna.toplevel.fa.gz", species)
+    future_chromosomes = _split_toplevel_fa(toplevel_fa_gz)
+    future_masked = [mask.submit(f) for f in future_chromosomes]
+    links = [_symlink_masked(f) for f in future_masked]
+    return cli.thread_submit(tools.index_fasta, links)
 
 
-def submit_split_toplevel_fa() -> list[cli.FuturePath]:
-    fts: list[cli.FuturePath] = []
-    for entry in iter_dataset():
-        toplevel_fa_gz = api.get_file("*.dna.toplevel.fa.gz", entry["species"])
-        fts.extend(_split_toplevel_fa(toplevel_fa_gz))
-    return fts
+def _symlink_masked(ft: cli.FuturePath) -> Path:
+    masked = ft.result()
+    link = masked.parent.parent / masked.name
+    return fs.symlink(masked, link)
 
 
 def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:

@@ -11,7 +11,7 @@ from zipfile import ZipFile
 import polars as pl
 
 from aligons import db
-from aligons.extern import htslib
+from aligons.extern import htslib, jellyfish, kent
 from aligons.util import cli, fs
 
 _log = logging.getLogger(__name__)
@@ -22,6 +22,54 @@ def main(argv: list[str] | None = None):
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
     split_gff(args.infile)
+
+
+def index_fasta(paths: list[Path]):
+    """Create bgzipped and indexed genome.fa."""
+    if len(paths) == 1:
+        paths = [f.result() for f in _split_toplevel_fa(paths[0])]
+    fts = [cli.thread_submit(kent.faToTwoBit, x) for x in paths]
+    genome = _create_genome_bgzip(paths)
+    htslib.faidx(genome)
+    kent.faToTwoBit(genome)
+    kent.faSize(genome)
+    cli.wait_raise(fts)
+    return genome
+
+
+def index_gff3(paths: list[Path]):  # gff3/{species}
+    """Create bgzipped and indexed genome.gff3."""
+    if len(paths) == 1:
+        assert "chromosome" not in paths[0].name, paths[0]
+        paths = split_gff(paths[0])
+    genome = _create_genome_bgzip(paths)
+    htslib.tabix(genome)
+    return genome
+
+
+def _create_genome_bgzip(files: list[Path]):
+    """Combine chromosome files and bgzip it."""
+    files = fs.sorted_naturally(files)
+    _log.debug(str(files))
+    if cli.dry_run and not files:
+        return Path("/dev/null")
+    name = files[0].name
+    ext = files[0].with_suffix("").suffix
+    (outname, count) = re.subn(rf"\.chromosome\..+{ext}", rf".genome{ext}", name)
+    assert count == 1, name
+    outfile = files[0].parent / outname
+    return htslib.concat_bgzip(files, outfile)
+
+
+def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:
+    assert "toplevel" in fa_gz.name, fa_gz
+    fmt = "{stem}.{seqid}.fa.gz"
+    return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
+
+
+def softmask(species: str):
+    masked = jellyfish.run(species)
+    return index_fasta(masked)
 
 
 def compress(content: bytes, outfile: Path) -> Path:
