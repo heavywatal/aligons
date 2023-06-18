@@ -106,11 +106,15 @@ def _species_dirs(fmt: str = "fasta") -> Iterable[Path]:
 
 
 def _glob(pattern: str, species: str, subdir: str = ""):
+    is_enough = False  # to allow duplicated species from multiple origins
     for prefix in _iter_prefix():
         for fmt in ("fasta", "gff3"):
             d = prefix / fmt / species / subdir
             for x in fs.sorted_naturally(d.glob(pattern)):
+                is_enough = True
                 yield x
+        if is_enough:
+            break
 
 
 def _iter_prefix() -> Iterable[Path]:
