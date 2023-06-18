@@ -31,9 +31,8 @@ def main(argv: list[str] | None = None):
 
 def prepare_ensemblgenomes(species: list[str]):
     assert species
-    species = ensemblgenomes.remove_unavailable(species)
     with ensemblgenomes.FTPensemblgenomes() as ftp:
-        assert not (d := set(species) - set(ftp.available_species())), d
+        species = ftp.remove_unavailable(species)
         pool = cli.ThreadPool()
         futures: list[cli.FuturePath] = []
         for sp in species:

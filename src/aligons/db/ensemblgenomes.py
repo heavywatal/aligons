@@ -47,16 +47,6 @@ def _list_versions() -> Iterable[Path]:
     return _prefix_mirror_root().glob("release-*")
 
 
-def remove_unavailable(species: list[str]):
-    unavailable: list[str] = []
-    _lamiales = "olea_europaea_sylvestris"
-    if version() < 52:  # noqa: PLR2004
-        unavailable.append("sesamum_indicum")
-    if version() < 53:  # noqa: PLR2004
-        unavailable.append("lactuca_sativa")
-    return [sp for sp in species if sp not in unavailable]
-
-
 def consolidate_compara_mafs(indir: Path):
     _log.debug(f"{indir=}")
     mobj = re.search(r"([^_]+)_.+?\.v\.([^_]+)", indir.name)
@@ -144,6 +134,16 @@ class FTPensemblgenomes(FTP):
         _log.info(f"os.chdir({_prefix_mirror()})")
         _prefix_mirror().mkdir(0o755, parents=True, exist_ok=True)
         os.chdir(_prefix_mirror())  # for RETR only
+
+    def remove_unavailable(self, species: list[str]) -> list[str]:
+        available = self.available_species()
+        filtered: list[str] = []
+        for sp in species:
+            if sp in available:
+                filtered.append(sp)
+            else:
+                _log.info(f"{sp} not found in ensemblegenomes {version()}")
+        return filtered
 
     def available_species(self) -> list[str]:
         return [Path(x).name for x in self.nlst_cache("fasta")]
