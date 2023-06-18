@@ -7,6 +7,7 @@ prefix: {db.root}/{origin}/
 """
 import functools
 import logging
+import re
 from collections.abc import Iterable
 from contextlib import suppress
 from pathlib import Path
@@ -70,6 +71,14 @@ def list_chromosome_gff3(species: str) -> Iterable[Path]:
 
 def get_file(pattern: str, species: str, subdir: str = ""):
     found = list(_glob(pattern, species, subdir))
+    assert len(found) == 1, found
+    return found[0]
+
+
+def get_file_nolabel(pattern: str, species: str, subdir: str = ""):
+    it = _glob(pattern, species, subdir)
+    rex = re.compile(r"\.(chromosome|genome|toplevel)\.")
+    found = [x for x in it if not rex.search(x.name)]
     assert len(found) == 1, found
     return found[0]
 

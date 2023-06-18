@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None):
         for entry in iter_dataset():
             species = entry["species"]
             fts.append(prepare_fasta(species))
-            gff3_gz = api.get_file("*.gff3.gz", species)
+            gff3_gz = api.get_file_nolabel("*.gff3.gz", species)
             fts.append(cli.thread_submit(tools.index_gff3, [gff3_gz]))
         cli.wait_raise(fts)
 
