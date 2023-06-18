@@ -82,53 +82,69 @@ def zip_decompress(data: bytes) -> bytes:
 
 
 def split_gff(path: Path):
+    regions = read_gff_sequence_region(path)
     body = read_gff_body(path)
     stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
     files: list[Path] = []
     _log.debug(f"{stem=}")
-    for sequence_region in read_gff_sequence_region(path):
-        assert (mobj := re.search(r"##sequence-region\s+(\S+)", sequence_region))
-        seqid = mobj.group(1)
+    for name, data in body.groupby("seqid", maintain_order=True):
+        seqid = str(name)
+        if seqid.startswith("scaffold"):
+            _log.debug(f"ignoring scaffold: {seqid}")
+            continue
         outfile = path.parent / f"{stem}.chromosome.{seqid}.gff3.gz"
         files.append(outfile)
         _log.info(f"{outfile}")
-        subdf = body.filter(pl.col("seqid") == seqid).sort(["seqid", "start"])
-        assert subdf.height, f"No {seqid} found in {path}"
         if cli.dry_run or not fs.is_outdated(outfile, path):
             continue
         with gzip.open(outfile, "wt") as fout:
             fout.write("##gff-version 3\n")
-            fout.write(sequence_region)
-            fout.write(subdf.write_csv(has_header=False, separator="\t"))
+            fout.write(regions.get(seqid, ""))
+            fout.write(data.sort(["start"]).write_csv(has_header=False, separator="\t"))
     return files
 
 
-def read_gff_sequence_region(path: Path):
+def read_gff_sequence_region(path: Path) -> dict[str, str]:
     lines: list[str] = []
     with gzip.open(path, "rt") as fin:
-        gff_version = next(fin)
-        assert gff_version.startswith("##gff-version"), gff_version
         for line in fin:
             if not line.startswith("#"):
                 break
-            if line.startswith("##sequence-region"):
-                lines.append(line)
-    assert lines, path
-    return lines
+            lines.append(line)
+    if not lines or not lines[0].startswith("##gff-version"):
+        _log.warning(f"{path}:invalid GFF without ##gff-version")
+    else:
+        lines.pop(0)
+    regions: dict[str, str] = {}
+    comments: list[str] = []
+    # solgenomics has dirty headers without space: ##sequence-regionSL4.0ch01
+    pattern = re.compile(r"(##sequence-region)\s*(.+)", re.S)
+    for line in lines:
+        if mobj := pattern.match(line):
+            value = mobj.group(2)
+            regions[value.split()[0]] = " ".join(mobj.groups())
+        else:
+            comments.append(line)
+    if not regions:
+        _log.info(f"{path}:unfriendly GFF without ##sequence-region")
+    if comments:
+        ignored = "\n".join(comments)
+        _log.warning(f"{path}:comments in GFF ignored:\n{ignored}")
+    return regions
 
 
-def sort_gff(content: bytes):
+def sort_gff(content: bytes) -> bytes:
     return extract_gff_header(content) + sort_gff_body(content)
 
 
-def extract_gff_header(content: bytes):
+def extract_gff_header(content: bytes) -> bytes:
     if m := re.match(rb"##gff-version.+?(?=^[^#])", content, re.M | re.S):
         return m.group(0)
-    _log.warning("invalid GFF format without ##gff-version")
+    _log.warning("invalid GFF without ##gff-version")
     return b"##gff-version 3\n"
 
 
-def sort_gff_body(content: bytes):
+def sort_gff_body(content: bytes) -> bytes:
     bio = io.BytesIO()
     (
         read_gff_body(content)
