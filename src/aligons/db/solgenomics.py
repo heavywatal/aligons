@@ -9,7 +9,7 @@ from aligons.db import api, mask
 from aligons.extern import htslib
 from aligons.util import cli, fs, resources_data, tomllib
 
-from . import tools
+from . import phylo, tools
 
 _log = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-M", "--mask", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
     args = parser.parse_args(argv or None)
+    _test_newick()
     if args.download:
         fts: list[cli.FuturePath] = []
         for entry in iter_dataset():
@@ -105,6 +106,13 @@ def iter_dataset() -> Generator[DataSet, None, None]:
 
 def db_prefix():
     return db.path("solgenomics")
+
+
+def _test_newick():
+    for entry in iter_dataset():
+        species = entry["species"]
+        if species not in phylo.list_species():
+            _log.warning(f"{species} not found in phylo")
 
 
 if __name__ == "__main__":

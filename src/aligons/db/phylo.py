@@ -108,8 +108,9 @@ def make_newicks():
     poaceae = f"({bep},{pacmad})poaceae"
     monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"
 
-    _solanum = "(solanum_lycopersicum,solanum_tuberosum)"
-    solanaceae = f"(({_solanum},capsicum_annuum),nicotiana_attenuata)solanaceae"
+    _lycopersicon = "(solanum_lycopersicum,solanum_pennellii)"
+    solanum = f"(({_lycopersicon},solanum_tuberosum),solanum_melongena)solanum"
+    solanaceae = f"(({solanum},capsicum_annuum),nicotiana_attenuata)solanaceae"
     _convolvulaceae = "ipomoea_triloba"
     solanales = f"({solanaceae},{_convolvulaceae})solanales"
     _lamiales = "(olea_europaea_sylvestris,sesamum_indicum)lamiales"
