@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 from aligons.db import tools
+from aligons.extern import htslib
 from aligons.util import cli, config, fs, read_config
 
 from . import ensemblgenomes, phylo
@@ -37,11 +38,11 @@ def prepare_ensemblgenomes(species: list[str]):
         futures: list[cli.FuturePath] = []
         for sp in species:
             fasta_originals = ftp.download_fasta(sp)
-            fasta_links = [symlink(x, sp, "fasta") for x in fasta_originals]
-            futures.append(pool.submit(tools.index_fasta, fasta_links))
+            fasta_copies = [_ln_or_bgzip(x, sp, "fasta") for x in fasta_originals]
+            futures.append(pool.submit(tools.index_fasta, fasta_copies))
             gff3_originals = ftp.download_gff3(sp)
-            gff3_links = [symlink(x, sp, "gff3") for x in gff3_originals]
-            futures.append(pool.submit(tools.index_gff3, gff3_links))
+            gff3_copies = [_ln_or_bgzip(x, sp, "gff3") for x in gff3_originals]
+            futures.append(pool.submit(tools.index_gff3, gff3_copies))
         cli.wait_raise(futures)
     if config["db"]["kmer"]:
         futures.clear()
@@ -56,13 +57,18 @@ def prepare_ensemblgenomes(species: list[str]):
             ensemblgenomes.rsync(f"gff3/{sp}", options)
 
 
-def symlink(path: Path, species: str, fmt: str = ""):
+def _ln_or_bgzip(src: Path, species: str, fmt: str = ""):
     if not fmt:
-        fmt = "fasta" if path.name.removesuffix(".gz").endswith(".fa") else "gff3"
+        fmt = "fasta" if src.name.removesuffix(".gz").endswith(".fa") else "gff3"
     assert fmt in ("fasta", "gff3"), fmt
-    filename = path.name.replace("primary_assembly", "chromosome")
-    link = ensemblgenomes.prefix() / fmt / species / filename
-    return fs.symlink(path, link)
+    dstname = src.name.replace("primary_assembly", "chromosome")
+    dst = ensemblgenomes.prefix() / fmt / species / dstname
+    if ".chromosome." in dstname:
+        fs.symlink(src, dst)
+    elif fs.is_outdated(dst, src):
+        with src.open("rb") as fin, dst.open("wb") as fout:
+            fout.write(htslib.bgzip_compress(tools.gzip_decompress(fin.read())))
+    return dst
 
 
 if __name__ == "__main__":
