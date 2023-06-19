@@ -50,3 +50,7 @@ lower_count = 10
 
 [jellyfish.histo]
 high = 1000
+
+[jbrowse]
+version = "2.6.1"
+load = "symlink"

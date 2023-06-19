@@ -9,20 +9,17 @@ dst: {document_root}/{jbrowse_XYZ}/{vNN}/{species} ->
 """
 import json
 import logging
-import os
 import re
 from pathlib import Path
 from typing import Any, TypeAlias
 
 from aligons import db
 from aligons.db import api, phylo, plantdhs, plantregmap, stat
-from aligons.util import cli, fs, resources_data, subp
+from aligons.util import cli, config, fs, resources_data, subp
 
 StrPath: TypeAlias = str | Path
 
 _log = logging.getLogger(__name__)
-_load = "symlink"
-env_version = os.environ["JBROWSE_VERSION"]
 
 
 def main(argv: list[str] | None = None):
@@ -33,6 +30,9 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-o", "--outdir", type=Path, default=Path("."))
     parser.add_argument("indir", type=Path)  # multiple/oryza_sativa/
     args = parser.parse_args(argv or None)
+    if cli.dry_run:
+        jbrowse(["version"])
+        return
     jb = JBrowse(args.outdir)
     if args.admin:
         jb.admin_server()
@@ -51,9 +51,11 @@ def main(argv: list[str] | None = None):
 
 class JBrowse:
     def __init__(self, document_root: Path, prefix: StrPath = ""):
+        self.load = config["jbrowse"]["load"]
+        self.version = config["jbrowse"]["version"]
         self.document_root = document_root
         self.prefix = Path(prefix)
-        self.root = document_root / self.prefix / f"jbrowse-{env_version}"
+        self.root = document_root / self.prefix / f"jbrowse-{self.version}"
 
     def deploy(self, target: Path):
         _log.debug(f"{target=}")
@@ -73,7 +75,8 @@ class JBrowse:
                 fout.write(redirect_html(url))
         print(f"http://localhost/{slug / relpath}/ -> {url}")
 
-    def create(self, version: str = env_version):
+    def create(self, version: str = ""):
+        version = version or self.version
         root = self.document_root / self.prefix / f"jbrowse-{version}"
         args = ["create", root]
         args.append(f"--tag=v{version}")
@@ -108,6 +111,7 @@ class JBrowseConfig:
         self.add_assembly(species)
         self.add_track_gff(species)
         clades = [x.name for x in self.multiple_dir.iterdir() if "-" not in x.name]
+        _log.info(f"{clades}")
         clades = phylo.sorted_by_len_newicks(clades, reverse=True)
         for clade in clades:
             wig = self.multiple_dir / clade / "phastcons.bw"
@@ -157,7 +161,7 @@ class JBrowseConfig:
         genome = api.genome_fa(species)
         args: subp.Args = ["add-assembly"]
         args.extend(["--target", self.target])
-        args.extend(["--load", _load])
+        args.extend(["--load", self.jb.load])
         args.append(genome)
         if not (self.target / genome.name).exists():
             jbrowse(args)
@@ -176,7 +180,7 @@ class JBrowseConfig:
         # --description, --config
         args: subp.Args = ["add-track"]
         args.extend(["--target", self.target])
-        args.extend(["--load", _load])
+        args.extend(["--load", self.jb.load])
         if subdir:
             args.extend(["--subDir", subdir])
         if trackid:
@@ -315,9 +319,13 @@ def make_theme():
 
 
 def jbrowse(args: subp.Args):
-    cmd: subp.Args = ["jbrowse"]
-    cmd.extend(args)
-    subp.run(cmd)
+    subp.run(["jbrowse", *args])
+
+
+def npx_jbrowse(args: subp.Args, version: str = ""):
+    pkg = "@jbrowse/cli"
+    pkg = f"{pkg}@{version}" if version else pkg
+    subp.run(["npx", pkg, *args])
 
 
 def iter_targets(path: Path):
