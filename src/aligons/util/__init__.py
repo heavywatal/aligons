@@ -31,8 +31,11 @@ def resources_data(child: str = ""):
 with resources_data("config.toml").open("rb") as fin:
     _config_src: dict[str, Any] = tomllib.load(fin)
 
-if (userconf := Path.home() / ".aligons.toml").exists():
-    read_config(userconf)
+_config_user = Path.home() / ".aligons.toml"
+_config_pwd = Path(".aligons.toml")
+for file in [_config_user, _config_pwd]:
+    if file.exists():
+        read_config(file)
 
 
 config = ConfDict(_config_src)
