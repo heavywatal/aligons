@@ -30,7 +30,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument("-n", "--dry-run", action="store_true")
         self.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
 
-    def parse_args(
+    def parse_args(  # type: ignore[reportIncompatibleMethodOverride]
         self,
         args: Sequence[str] | None = None,
         namespace: argparse.Namespace | None = None,
