@@ -8,7 +8,7 @@ import logging
 import re
 from pathlib import Path
 
-from aligons.db import api, phylo
+from aligons.db import api
 from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -29,10 +29,8 @@ def main(argv: list[str] | None = None):
     cli.wait_raise([mafs2cram(path) for path in args.query])
 
 
-def run(target: Path, clade: str):
-    tree = phylo.newicks[clade]
-    tips = phylo.extract_names(tree)
-    query_names = api.sanitize_queries(target.name, tips)
+def run(target: Path, species: list[str]):
+    query_names = api.sanitize_queries(target.name, species)
     return [mafs2cram(target / q) for q in query_names]
 
 

@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 from types import MappingProxyType
 
-from aligons.db import api, phylo
+from aligons.db import api
 from aligons.util import ConfDict, cli, config, fs, read_config, subp
 
 from . import kent
@@ -27,22 +27,17 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     if args.config:
         read_config(args.config)
-    _run(args.target, args.query)
+    run(args.target, args.query)
 
 
-def run(target: str, clade: str):
-    tree = phylo.newicks[clade]
-    _run(target, phylo.extract_names(tree))
-    return Path("pairwise") / target
-
-
-def _run(target: str, queries: list[str]):
+def run(target: str, queries: list[str]):
     queries = api.sanitize_queries(target, queries)
     futures: list[confu.Future[Path]] = []
     for query in queries:
         pa = PairwiseAlignment(target, query, config)
         futures.extend(pa.run())
     cli.wait_raise(futures)
+    return Path("pairwise") / target
 
 
 class PairwiseAlignment:

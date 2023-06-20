@@ -28,13 +28,14 @@ def main(argv: list[str] | None = None):
 
 
 def phastcons(target: str, clade: str, tips: int, max_bp: float, *, compara: bool):
+    tree = phylo.newicks[clade]
+    lst_species = phylo.extract_tip_names(tree)
+    lst_species = list(filter(lambda x: test_fasize(x, max_bp), lst_species))
     if compara:  # noqa: SIM108
         pairwise = Path("compara") / target
     else:
-        pairwise = lastz.run(target, clade)
-    fts = mafs2cram.run(pairwise, clade)
-    lst_species = phylo.extract_tip_names(phylo.newicks[clade])
-    lst_species = list(filter(lambda x: test_fasize(x, max_bp), lst_species))
+        pairwise = lastz.run(target, lst_species)
+    fts = mafs2cram.run(pairwise, lst_species)
     n = tips or len(lst_species)
     for species in itertools.combinations(lst_species, n):
         if target not in species:
