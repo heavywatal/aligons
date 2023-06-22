@@ -8,7 +8,7 @@ import gzip
 import logging
 from pathlib import Path
 
-import numpy as np
+import polars as pl
 import tomli_w
 
 from aligons.db import api
@@ -89,15 +89,16 @@ def histo(jffile: Path):
     return outfile
 
 
-def calc_threshold(histofile: Path):
+def calc_threshold(histofile: Path) -> int:
     if cli.dry_run:
         return 65535
-    arr = np.loadtxt(histofile, delimiter=" ", dtype=int)
-    y = arr[:, 1]
-    ddy = np.diff(np.diff(y))
-    x = arr[: len(ddy), 0]
-    i = np.argmin(ddy**2 + x**2)
-    return int(arr[i, 0])
+    daf = pl.read_csv(histofile, has_header=False, new_columns=["x", "y"], separator=" ")
+    y = daf["y"]
+    ddy = y.diff(null_behavior="drop").diff(null_behavior="drop")
+    x = daf["x"][:len(ddy)]
+    i = (ddy ** 2 + x ** 2).arg_min()
+    assert i
+    return int(x[i])
 
 
 def log_config(histofile: Path, freq: int):
