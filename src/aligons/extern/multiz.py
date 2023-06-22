@@ -20,12 +20,12 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
-    nodes_all = phylo.extract_names(phylo.newicks_with_inner["angiospermae"])
+    nodes_all = phylo.extract_names(phylo.get_tree())
     parser = cli.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
-    parser.add_argument("query", choices=nodes_all)
+    parser.add_argument("query", nargs="+", choices=nodes_all)
     args = parser.parse_args(argv or None)
     if args.config:
         read_config(args.config)
@@ -37,10 +37,10 @@ def main(argv: list[str] | None = None):
 
 def run(indir: Path, query: Sequence[str]):
     target = indir.name
-    assert target in query, f"{target=} not in {query=}"
-    tree = phylo.get_newick(query)
+    tree = phylo.get_subtree(query)
     if len(query) > 1:
         dirname = "-".join(phylo.shorten(x) for x in query)
+        assert target in query, f"{target=} not in {query=}"
     else:
         dirname = query[0]
         query = phylo.extract_names(tree)

@@ -66,7 +66,7 @@ def prepare_mods(clade: Path):
     prepare_labeled_gff3(target)
     cons_mod = clade / "cons.mod"
     noncons_mod = clade / "noncons.mod"
-    tree = phylo.get_newick(clade.name.split("-"), phylo.shorten_names)
+    tree = phylo.get_subtree(clade.name.split("-"), phylo.shorten_names)
     cfutures: list[cli.FuturePath] = []
     nfutures: list[cli.FuturePath] = []
     pool = cli.ThreadPool()

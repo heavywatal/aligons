@@ -14,7 +14,7 @@ def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("--compara", choices=phylo.list_species("angiospermae"))
+    parser.add_argument("--compara", choices=phylo.list_species())
     parser.add_argument("-C", "--clade", default="bep")
     args = parser.parse_args(argv or None)
     if args.config:

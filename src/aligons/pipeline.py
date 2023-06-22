@@ -18,7 +18,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-g", "--max-bp", type=float, default=float("inf"))
     parser.add_argument("--compara", action="store_true")
     parser.add_argument("target", choices=available_species)
-    parser.add_argument("clade", choices=phylo.newicks.keys())
+    parser.add_argument("clade", choices=phylo.extract_inner_names(phylo.get_tree()))
     args = parser.parse_args(argv or None)
     if args.config:
         read_config(args.config)
@@ -28,8 +28,7 @@ def main(argv: list[str] | None = None):
 
 
 def phastcons(target: str, clade: str, tips: int, max_bp: float, *, compara: bool):
-    tree = phylo.newicks[clade]
-    lst_species = phylo.extract_tip_names(tree)
+    lst_species = phylo.list_species(clade)
     lst_species = list(filter(lambda x: test_fasize(x, max_bp), lst_species))
     if compara:  # noqa: SIM108
         pairwise = Path("compara") / target

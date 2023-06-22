@@ -53,6 +53,7 @@ def test_extract_labels(
     newick_xlength_short_tips: str,
 ):
     tip_names = ["oryza_sativa", "hordeum_vulgare", "panicum_hallii_fil2"]
+    inner_names = ["bep", "poaceae"]
     names = tip_names[:2] + ["bep", tip_names[2], "poaceae"]
     short_names = ["osat", "hvul", "bep", "phal", "poaceae"]
     short_tip_names = [short_names[i] for i in (0, 1, 3)]
@@ -68,6 +69,12 @@ def test_extract_labels(
     assert phylo.extract_tip_names(newick_xlength_tips) == tip_names
     assert phylo.extract_tip_names(newick_short) == short_tip_names
     assert phylo.extract_tip_names(newick_xlength_short_tips) == short_tip_names
+    assert phylo.extract_inner_names(newick_standard) == inner_names
+    assert phylo.extract_inner_names(newick_xlength) == inner_names
+    assert phylo.extract_inner_names(newick_popular) == []
+    assert phylo.extract_inner_names(newick_xlength_tips) == []
+    assert phylo.extract_inner_names(newick_short) == inner_names
+    assert phylo.extract_inner_names(newick_xlength_short_tips) == []
 
 
 def test_remove_inner(
@@ -133,11 +140,17 @@ def test_newickize(newick: str):
     assert phylo.newickize(root) == newick
 
 
-def test_subtree():
+def test_select_clade(newick: str, newick_xlength: str):
+    exp = "(oryza_sativa:0.1,hordeum_vulgare:0.2)bep:0.3;"
+    assert phylo.select_clade(newick, "bep") == exp
+    assert phylo.select_clade(newick_xlength, "bep") == phylo.remove_lengths(exp)
+
+
+def test_select_tips():
     tree = "((((A,B),(C,D)),(E,(F,G))),H);"
     subtree = "((A,C),E);"
     tips = phylo.extract_names(subtree)
-    assert phylo.get_subtree(tree, tips) == subtree
+    assert phylo.select_tips(tree, tips) == subtree
 
 
 def test_print_graph(capsys: pytest.CaptureFixture[str]):

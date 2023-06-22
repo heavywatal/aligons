@@ -121,7 +121,7 @@ class JBrowseConfig:
             self.add_track(bed, "conservation", trackid="CNS-" + clade, subdir=clade)
         gen = self.pairwise_dir.rglob("genome.cram")
         crams = {cram.parent.parent.name: cram for cram in gen}
-        for query in phylo.extract_tip_names(phylo.newicks[clades[0]]):
+        for query in phylo.list_species(clades[0]):
             if cram := crams.pop(query, None):
                 self.add_track(cram, "alignment", trackid=query, subdir=query)
         for query, cram in crams.items():

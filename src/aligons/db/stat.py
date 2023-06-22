@@ -13,7 +13,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-l", "--long", action="store_true")
     parser.add_argument("-C", "--clade", default="angiospermae")
     args = parser.parse_args(argv or None)
-    newick = phylo.newicks[args.clade]
+    newick = phylo.get_subtree([args.clade])
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangulate(phylo.render_tips(root, [])):
         if species not in api.species_names():

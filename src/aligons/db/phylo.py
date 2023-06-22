@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import functools
 import logging
 import re
 from collections.abc import Callable, Iterable, Iterator, Sequence
+from pathlib import Path
 from typing import NamedTuple, TypeAlias
 
-from aligons.util import cli
+from aligons.util import cli, config
 
 _log = logging.getLogger(__name__)
 
@@ -18,41 +20,29 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-g", "--graph", action="count")
     parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
-    trees = newicks_with_inner if args.inner or args.graph else newicks
+    tree = get_subtree(args.query)
     if args.short:
-        trees = {k: shorten_names(v) for k, v in trees.items()}
-    if args.query:
-        if len(args.query) > 1:
-            tree = get_subtree(trees["angiospermae"], args.query)
-        else:
-            tree = trees[args.query[0]]
-        if args.name:
-            print(" ".join(extract_names(tree)))
-        elif args.graph:
-            print_graph(tree, args.graph)
-        else:
-            print(tree)
-        return
-    for key, tree in trees.items():
-        print(f"{key}: {tree}")
-    return
-
-
-def get_newick(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x):
-    if len(queries) == 1:
-        return fun(newicks[queries[0]])
-    tree = fun(newicks["angiospermae"])
-    if len(queries) > 1:
-        tree = get_subtree(tree, queries)
-    return tree
+        tree = shorten_names(tree)
+    if not args.inner:
+        tree = remove_inner(tree)
+    if args.name:
+        print("\n".join(extract_names(tree)))
+    elif args.graph:
+        print_graph(tree, args.graph)
+    else:
+        print(tree)
 
 
 def sorted_by_len_newicks(clades: list[str], *, reverse: bool = False):
-    return sorted(clades, key=lambda x: len(newicks[x]), reverse=reverse)
+    return sorted(clades, key=lambda x: len(get_subtree([x])), reverse=reverse)
 
 
 def extract_tip_names(newick: str):
     return extract_names(remove_inner(newick))
+
+
+def extract_inner_names(newick: str) -> list[str]:
+    return re.findall(r"(?<=\))[^\s(),;:]+", newick)
 
 
 def extract_names(newick: str):
@@ -84,7 +74,11 @@ def remove_whitespace(x: str):
     return "".join(x.split())
 
 
-def get_subtree(newick: str, tips: Sequence[str]):
+def select_clade(newick: str, clade: str):
+    return newickize(parse_newick(newick, clade))
+
+
+def select_tips(newick: str, tips: Sequence[str]):
     def repl(mobj: re.Match[str]):
         if (s := mobj.group(0)) in tips:
             return s
@@ -98,7 +92,27 @@ def get_subtree(newick: str, tips: Sequence[str]):
     return newickize(root)
 
 
-def make_newicks():
+def get_subtree(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x):
+    tree = fun(get_tree())
+    if len(queries) == 1:
+        tree = select_clade(tree, queries[0])
+    elif len(queries) > 1:
+        tree = select_tips(tree, queries)
+    return remove_inner(tree)
+
+
+@functools.cache
+def get_tree() -> str:
+    if not (tree := config["db"].get("tree", "")):
+        tree = make_newick()
+    elif "," not in tree:
+        with Path(tree).expanduser().open("rt") as fin:
+            tree = fin.read()
+    return tree
+
+
+@functools.cache
+def make_newick() -> str:
     ehrhartoideae = "(oryza_sativa,leersia_perrieri)ehrhartoideae"
     pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae"
     andropogoneae = "(sorghum_bicolor,zea_mays)andropogoneae"
@@ -121,17 +135,11 @@ def make_newicks():
     asterids = f"({_core_asterids},actinidia_chinensis)asterids"
     eudicots = f"({asterids},arabidopsis_thaliana)eudicots"
 
-    angiospermae = f"({eudicots},{monocot})angiospermae"
-    assert "oryza_sativa" in angiospermae, angiospermae
-    return {k: v + ";" for k, v in locals().items() if not k.startswith("_")}
-
-
-newicks_with_inner = make_newicks()
-newicks = {k: remove_inner(v) for k, v in newicks_with_inner.items()}
+    return f"({eudicots},{monocot})angiospermae"
 
 
 def list_species(clade: str = "angiospermae") -> list[str]:
-    return extract_names(newicks[clade])
+    return extract_names(get_subtree([clade]))
 
 
 def expand_shortnames(shortnames: list[str]):
@@ -240,15 +248,19 @@ def _column_generator(top: str, bottom: str) -> StrGen:
         yield bottom
 
 
-def parse_newick(newick: str):
+def parse_newick(newick: str, inner: str = "") -> Node:
+    if inner:
+        assert inner in newick, f"{inner} not found in {newick}"
     nodes = {}
     newick_old = ""
     while newick != newick_old:
         newick_old = newick
         newick, nodes = _extract_tip_clade(newick, nodes)
+        if inner and (clade := nodes.get(inner, None)):
+            return clade
     root = nodes.popitem()[1]
     assert not nodes, nodes
-    return root  # noqa: RET504
+    return root
 
 
 def _extract_tip_clade(tree: str, nodes: dict[str, Node]):

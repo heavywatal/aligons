@@ -38,6 +38,7 @@ root = "~/db/aligons"
 mirror = "~/db"
 origin = ["ensembl-{version}", "solgenomics"]
 kmer = false
+# tree = ""  # string in newick format or path to newick file
 
 [jellyfish.count]
 mer_len = 20
