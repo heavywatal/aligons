@@ -92,11 +92,12 @@ def histo(jffile: Path):
 def calc_threshold(histofile: Path) -> int:
     if cli.dry_run:
         return 65535
-    daf = pl.read_csv(histofile, has_header=False, new_columns=["x", "y"], separator=" ")
+    cols = ["x", "y"]
+    daf = pl.read_csv(histofile, has_header=False, new_columns=cols, separator=" ")
     y = daf["y"]
     ddy = y.diff(null_behavior="drop").diff(null_behavior="drop")
-    x = daf["x"][:len(ddy)]
-    i = (ddy ** 2 + x ** 2).arg_min()
+    x = daf["x"][: len(ddy)]
+    i = (ddy**2 + x**2).arg_min()
     assert i
     return int(x[i])
 
