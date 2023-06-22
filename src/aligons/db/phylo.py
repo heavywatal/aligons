@@ -174,7 +174,7 @@ def print_graph(newick: str, graph: int = 0):
 
 class Node(NamedTuple):
     name: str
-    children: list[Node] = []
+    children: list[Node] | None = None
     distance: float | None = None
 
 
@@ -229,7 +229,7 @@ def _iter_children(
     render_fun: Callable[[Node, list[StrGen]], GraphGen],
     bricks: Bricks,
 ):
-    for child in (children := node.children):
+    for child in (children := node.children or []):
         if child.name == children[-1].name:
             gen = _column_generator(bricks.last_branch, bricks.blank)
         elif child.name == children[0].name:

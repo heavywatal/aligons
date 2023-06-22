@@ -1,7 +1,7 @@
 try:
     import tomllib
 except ModuleNotFoundError:
-    import tomli as tomllib
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]
 from importlib import resources
 from pathlib import Path
 from types import MappingProxyType
