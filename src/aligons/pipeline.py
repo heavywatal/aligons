@@ -2,7 +2,7 @@ import itertools
 import logging
 from pathlib import Path
 
-from .db import api, phylo, stat
+from .db import api, phylo
 from .extern import kent, lastz, mafs2cram, multiz, phast
 from .util import cli, read_config
 
@@ -10,15 +10,15 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
-    available_species = api.species_names()
+    tree = phylo.get_tree()
     parser = cli.ArgumentParser()
     parser.add_argument("-N", "--check-args", action="store_true")
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("-t", "--tips", type=int, default=0)
     parser.add_argument("-g", "--max-bp", type=float, default=float("inf"))
     parser.add_argument("--compara", action="store_true")
-    parser.add_argument("target", choices=available_species)
-    parser.add_argument("clade", choices=phylo.extract_inner_names(phylo.get_tree()))
+    parser.add_argument("target", choices=phylo.extract_tip_names(tree))
+    parser.add_argument("clade", choices=phylo.extract_inner_names(tree))
     args = parser.parse_args(argv or None)
     if args.config:
         read_config(args.config)
@@ -47,7 +47,7 @@ def phastcons(target: str, clade: str, tips: int, max_bp: float, *, compara: boo
 
 
 def test_fasize(species: str, max_bp: float):
-    bp = stat.fasize(species)
+    bp = api.sum_chrom_sizes(species)
     ret = bp < max_bp
     _log.info(f"{species:30}{round(bp / 1e6):>5} Mbp {ret}")
     return ret

@@ -5,6 +5,7 @@ prefix: {db.root}/{origin}/
 - fasta/{species}/
 - gff3/{species}/
 """
+import csv
 import functools
 import logging
 import re
@@ -13,7 +14,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from aligons import db
-from aligons.db import ensemblgenomes
+from aligons.db import ensemblgenomes, phylo
 from aligons.util import cli, config, fs
 
 _log = logging.getLogger(__name__)
@@ -22,13 +23,14 @@ _log = logging.getLogger(__name__)
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-S", "--species")
+    parser.add_argument("-l", "--long", action="store_true")
+    parser.add_argument("-C", "--clade", default="angiospermae")
     args = parser.parse_args(argv or None)
     if args.species:
         for p in _glob("*", args.species):
             print(p)
     else:
-        for p in _species_dirs():
-            print(p)
+        print_stats(args.clade, long=args.long)
 
 
 @functools.cache
@@ -123,6 +125,41 @@ def _iter_prefix() -> Iterable[Path]:
 
 def _prefix(origin: str) -> Path:
     return db.path(origin.format(version=ensemblgenomes.version()))
+
+
+def print_stats(clade: str, *, long: bool = False):
+    newick = phylo.get_subtree([clade])
+    root = phylo.parse_newick(newick)
+    for pre, species in phylo.rectangulate(phylo.render_tips(root, [])):
+        if species not in species_names():
+            print(f"{pre} {species}")
+            continue
+        rows = _chrom_sizes(species)
+        lengths = [int(row[1]) for row in rows]
+        fasize = sum(lengths) / 1e6
+        nseqs = len(lengths)
+        gffsize = _gff3_size(species)
+        print(f"{pre} {species} {fasize:4.0f}Mbp {nseqs:2} {gffsize:4.1f}MB")
+        if long:
+            print("\n".join([f"{row[0]:>6} {row[1]:>11}" for row in rows]))
+
+
+def sum_chrom_sizes(species: str):
+    rows = _chrom_sizes(species)
+    lengths = [int(row[1]) for row in rows]
+    return sum(lengths)
+
+
+def _chrom_sizes(species: str):
+    path = fasize(species)
+    with path.open() as fin:
+        reader = csv.reader(fin, delimiter="\t")
+        return list(reader)
+
+
+def _gff3_size(species: str):
+    path = genome_gff3(species)
+    return path.stat().st_size / 1e6
 
 
 if __name__ == "__main__":
