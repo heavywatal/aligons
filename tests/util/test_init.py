@@ -1,4 +1,15 @@
-from aligons.util import update_nested
+from pathlib import Path
+
+from aligons.util import config, read_config, update_nested
+
+
+def test_read_config(tmp_path: Path):
+    assert config["db"]["root"]
+    file = tmp_path / "aligons.toml"
+    with file.open("wt") as fout:
+        fout.write(f"[db]\nroot = '{tmp_path}'\n")
+    read_config(file)
+    assert config["db"]["root"] == str(tmp_path)
 
 
 def test_update_nested():
