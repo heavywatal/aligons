@@ -20,10 +20,12 @@ def test_logging_config(caplog: pytest.LogCaptureFixture):
     assert "warning" in caplog.text
     assert "error" in caplog.text
     assert "critical" in caplog.text
+    caplog.clear()
     caplog.set_level(logging.INFO)
     cli.main([])
     assert "debug" not in caplog.text
     assert "info" in caplog.text
+    caplog.clear()
     caplog.set_level(logging.DEBUG)
     cli.main([])
     assert "debug" in caplog.text
