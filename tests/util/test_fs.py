@@ -28,3 +28,19 @@ def test_sorted_naturally(capsys: pytest.CaptureFixture[str]):
     fs.main(names)
     captured = capsys.readouterr()
     assert captured.out == "\n".join(names) + "\n"
+
+
+def test_symlink(tmp_path: Path):
+    newlink = tmp_path / "link"
+    assert fs.symlink(tmp_path, newlink) == newlink
+    assert newlink.exists()
+    assert newlink.is_symlink()
+    assert fs.symlink(tmp_path, newlink) == newlink
+    assert len(list(tmp_path.iterdir())) == 1
+
+
+def test_chdir(tmp_path: Path):
+    assert Path.cwd() != tmp_path
+    with fs.chdir(tmp_path):
+        assert Path.cwd() == tmp_path
+    assert Path.cwd() != tmp_path

@@ -1,4 +1,5 @@
 import logging
+import time
 
 import pytest
 from aligons.util import cli
@@ -26,3 +27,17 @@ def test_logging_config(caplog: pytest.LogCaptureFixture):
     caplog.set_level(logging.DEBUG)
     cli.main([])
     assert "debug" in caplog.text
+
+
+def test_threadpool(caplog: pytest.LogCaptureFixture):
+    jobs = 2
+    seconds = 0.01
+    acceptance = 1.5
+    cli.ThreadPool(jobs)
+    start = time.time()
+    fts = [cli.thread_submit(time.sleep, seconds) for _ in range(jobs)]
+    cli.wait_raise(fts)
+    elapsed = time.time() - start
+    assert elapsed < seconds * acceptance
+    cli.ThreadPool(42)
+    assert "ignored" in caplog.text
