@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, TypeAlias
 
 from aligons import db
-from aligons.db import api, phylo, plantdhs, plantregmap, stat
+from aligons.db import api, phylo, plantdhs, plantregmap
 from aligons.util import cli, config, fs, resources_data, subp
 
 StrPath: TypeAlias = str | Path
@@ -214,7 +214,7 @@ class JBrowseConfig:
         jbrowse(args)
 
     def configure(self):
-        chrom_sizes = {x[0]: x[1] for x in stat.chrom_sizes(self.target.name)}
+        chrom_sizes = api.chrom_sizes(self.target.name)
         config_json = self.target / "config.json"
         with config_json.open() as fin:
             cfg = json.load(fin)
@@ -229,7 +229,7 @@ class JBrowseConfig:
             {
                 "refName": chrom,
                 "start": 0,
-                "end": int(chrom_sizes[chrom]),
+                "end": chrom_sizes[chrom],
                 "reversed": False,
                 "assemblyName": assembly["name"],
             },

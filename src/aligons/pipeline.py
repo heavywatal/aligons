@@ -47,7 +47,7 @@ def phastcons(target: str, clade: str, tips: int, max_bp: float, *, compara: boo
 
 
 def test_fasize(species: str, max_bp: float):
-    bp = api.sum_chrom_sizes(species)
+    bp = sum(x for x in api.chrom_sizes(species).values())
     ret = bp < max_bp
     _log.info(f"{species:30}{round(bp / 1e6):>5} Mbp {ret}")
     return ret

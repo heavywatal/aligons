@@ -134,27 +134,21 @@ def print_stats(clade: str, *, long: bool = False):
         if species not in species_names():
             print(f"{pre} {species}")
             continue
-        rows = _chrom_sizes(species)
-        lengths = [int(row[1]) for row in rows]
+        chrom_sizes_ = chrom_sizes(species)
+        lengths = chrom_sizes_.values()
         fasize = sum(lengths) / 1e6
         nseqs = len(lengths)
         gffsize = _gff3_size(species)
         print(f"{pre} {species} {fasize:4.0f}Mbp {nseqs:2} {gffsize:4.1f}MB")
         if long:
-            print("\n".join([f"{row[0]:>6} {row[1]:>11}" for row in rows]))
+            print("\n".join([f"{key:>6} {val:>11}" for key, val in chrom_sizes_]))
 
 
-def sum_chrom_sizes(species: str):
-    rows = _chrom_sizes(species)
-    lengths = [int(row[1]) for row in rows]
-    return sum(lengths)
-
-
-def _chrom_sizes(species: str):
+def chrom_sizes(species: str) -> dict[str, int]:
     path = fasize(species)
     with path.open() as fin:
         reader = csv.reader(fin, delimiter="\t")
-        return list(reader)
+        return {x[0]: int(x[1]) for x in reader}
 
 
 def _gff3_size(species: str):
