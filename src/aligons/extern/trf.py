@@ -13,7 +13,6 @@ from pathlib import Path
 
 import polars as pl
 
-from aligons.db import tools
 from aligons.extern import htslib
 from aligons.util import cli, fs, subp
 
@@ -82,7 +81,7 @@ def trf(infile: Path):
 
 def dat_to_bed(infile: Path) -> str:
     with infile.open("rb") as fin:
-        content = tools.gzip_decompress(fin.read())
+        content = fs.gzip_decompress(fin.read())
     blocks = content.split(b"\n\nSequence: ")[1:]
     return "".join([_block_to_bed(x) for x in blocks])
 

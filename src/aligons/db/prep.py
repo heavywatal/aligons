@@ -67,7 +67,7 @@ def _ln_or_bgzip(src: Path, species: str, fmt: str = ""):
         fs.symlink(src, dst)
     elif fs.is_outdated(dst, src):
         with src.open("rb") as fin, dst.open("wb") as fout:
-            fout.write(htslib.bgzip_compress(tools.gzip_decompress(fin.read())))
+            fout.write(htslib.bgzip_compress(fs.gzip_decompress(fin.read())))
     return dst
 
 

@@ -1,4 +1,3 @@
-import concurrent.futures as confu
 import gzip
 import io
 import logging
@@ -6,7 +5,6 @@ import re
 import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
-from zipfile import ZipFile
 
 import polars as pl
 
@@ -82,17 +80,17 @@ def compress(content: bytes, outfile: Path) -> Path:
     - gzip if outfile has new .gz
     """
     if not cli.dry_run and fs.is_outdated(outfile):
-        if is_zip(content):
+        if fs.is_zip(content):
             assert outfile.suffix != ".zip", outfile
-            content = zip_decompress(content)
+            content = fs.zip_decompress(content)
         if htslib.to_be_bgzipped(outfile.name):
             assert outfile.suffix == ".gz", outfile
-            content = gzip_decompress(content)
+            content = fs.gzip_decompress(content)
             if ".gff" in outfile.name:
                 content = sort_gff(content)
             content = htslib.bgzip_compress(content)
         elif outfile.suffix == ".gz":
-            content = gzip_compress(content)
+            content = fs.gzip_compress(content)
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         with outfile.open("wb") as fout:
             fout.write(content)
@@ -120,13 +118,6 @@ def retrieve_content(
             content = fin.read()
     _log.info(f"{outfile}")
     return content
-
-
-def zip_decompress(data: bytes) -> bytes:
-    with ZipFile(io.BytesIO(data), "r") as zin:
-        members = zin.namelist()
-        assert len(members) == 1, members
-        return zin.read(members[0])
 
 
 def split_gff(path: Path):
@@ -223,38 +214,6 @@ def read_gff_body(source: Path | str | bytes):
             "attributes",
         ],
     )
-
-
-def cat(infiles: list[Path] | list[cli.FuturePath], outfile: Path):
-    infiles = [f.result() if isinstance(f, confu.Future) else f for f in infiles]
-    if fs.is_outdated(outfile, infiles) and not cli.dry_run:
-        with outfile.open("wb") as fout:
-            for f in infiles:
-                with f.open("rb") as fin:
-                    fout.write(fin.read())
-                    fout.flush()
-    _log.info(f"{outfile}")
-    return outfile
-
-
-def gzip_compress(content: bytes):
-    if not is_gz(content):
-        content = gzip.compress(content)
-    return content
-
-
-def gzip_decompress(content: bytes):
-    if is_gz(content):
-        content = gzip.decompress(content)
-    return content
-
-
-def is_gz(content: bytes):
-    return content.startswith(b"\x1f\x8b")
-
-
-def is_zip(content: bytes):
-    return content.startswith(b"\x50\x4b")
 
 
 if __name__ == "__main__":

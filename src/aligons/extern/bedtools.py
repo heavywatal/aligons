@@ -5,7 +5,6 @@ https://bedtools.readthedocs.io/
 import logging
 from pathlib import Path
 
-from aligons.db import tools
 from aligons.extern import htslib
 from aligons.util import cli, fs, subp
 
@@ -45,7 +44,7 @@ def maskfasta(fi: bytes, bed: Path, *, soft: bool = True) -> bytes:
     args.extend(["-fi", "/dev/stdin"])
     args.extend(["-bed", bed])  # <BED/GFF/VCF>(.gz)
     args.extend(["-fo", "/dev/stdout"])
-    p = subp.run(args, input=tools.gzip_decompress(fi), stdout=subp.PIPE)
+    p = subp.run(args, input=fs.gzip_decompress(fi), stdout=subp.PIPE)
     return p.stdout
 
 
