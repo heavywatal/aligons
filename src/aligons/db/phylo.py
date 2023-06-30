@@ -120,7 +120,8 @@ def make_newick() -> str:
     bep = f"({ehrhartoideae},{pooideae})bep"
     pacmad = f"({andropogoneae},{paniceae})pacmad"
     poaceae = f"({bep},{pacmad})poaceae"
-    monocot = f"(({poaceae},musa_acuminata),dioscorea_rotundata)monocot"
+    poales = f"({poaceae},ananas_comosus)poales"
+    monocot = f"(({poales},musa_acuminata),dioscorea_rotundata,)monocot"
 
     _lycopersicon = "(solanum_lycopersicum,solanum_pennellii)"
     solanum = f"(({_lycopersicon},solanum_tuberosum),solanum_melongena)solanum"
