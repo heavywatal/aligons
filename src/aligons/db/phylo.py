@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-g", "--graph", action="count")
     parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
-    tree = get_subtree(args.query)
+    tree = select(get_tree(), args.query)
     if args.short:
         tree = shorten_names(tree)
     if not args.inner:
@@ -74,6 +74,14 @@ def remove_whitespace(x: str):
     return "".join(x.split())
 
 
+def select(newick: str, queries: Sequence[str]):
+    if len(queries) == 1:
+        newick = select_clade(newick, queries[0])
+    elif len(queries) > 1:
+        newick = select_tips(newick, queries)
+    return newick
+
+
 def select_clade(newick: str, clade: str):
     return newickize(parse_newick(newick, clade))
 
@@ -94,11 +102,7 @@ def select_tips(newick: str, tips: Sequence[str]):
 
 def get_subtree(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x):
     tree = fun(get_tree())
-    if len(queries) == 1:
-        tree = select_clade(tree, queries[0])
-    elif len(queries) > 1:
-        tree = select_tips(tree, queries)
-    return remove_inner(tree)
+    return remove_inner(select(tree, queries))
 
 
 @functools.cache

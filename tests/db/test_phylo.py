@@ -142,15 +142,15 @@ def test_newickize(newick: str):
 
 def test_select_clade(newick: str, newick_xlength: str):
     exp = "(oryza_sativa:0.1,hordeum_vulgare:0.2)bep:0.3;"
-    assert phylo.select_clade(newick, "bep") == exp
-    assert phylo.select_clade(newick_xlength, "bep") == phylo.remove_lengths(exp)
+    assert phylo.select(newick, ["bep"]) == exp
+    assert phylo.select(newick_xlength, ["bep"]) == phylo.remove_lengths(exp)
 
 
 def test_select_tips():
     tree = "((((A,B),(C,D)),(E,(F,G))),H);"
     subtree = "((A,C),E);"
     tips = phylo.extract_names(subtree)
-    assert phylo.select_tips(tree, tips) == subtree
+    assert phylo.select(tree, tips) == subtree
 
 
 def test_print_graph(capsys: pytest.CaptureFixture[str]):
