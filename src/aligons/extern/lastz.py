@@ -58,11 +58,10 @@ class PairwiseAlignment:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
         target_chromosomes = api.list_chromosome_2bit(self._target)
         query_chromosomes = api.list_chromosome_2bit(self._query)
-        flists: list[list[confu.Future[Path]]] = []
-        for t in target_chromosomes:
-            flists.append(
-                [pool.submit(self.align_chr, t, q) for q in query_chromosomes]
-            )
+        flists: list[list[confu.Future[Path]]] = [
+            [pool.submit(self.align_chr, t, q) for q in query_chromosomes]
+            for t in target_chromosomes
+        ]
         return [pool.submit(self.wait_integrate, futures) for futures in flists]
 
     def align_chr(self, t2bit: Path, q2bit: Path):

@@ -32,10 +32,11 @@ def run(species: str) -> list[Path]:
     threshold = calc_threshold(histofile)
     log_config(histofile, threshold)
     threads = config["jellyfish"]["count"]["threads"]
-    fts: list[cli.FuturePath] = []
     with confu.ThreadPoolExecutor(max_workers=threads) as pool:
-        for chromosome in api.list_chromosome_fa(species):
-            fts.append(pool.submit(mask_genome, chromosome, dumpfile, threshold))
+        fts = [
+            pool.submit(mask_genome, chromosome, dumpfile, threshold)
+            for chromosome in api.list_chromosome_fa(species)
+        ]
     return [f.result() for f in fts]
 
 

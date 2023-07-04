@@ -46,8 +46,7 @@ def prepare_ensemblgenomes(species: list[str]):
         cli.wait_raise(futures)
     if config["db"]["kmer"]:
         futures.clear()
-        for sp in species:
-            futures.append(pool.submit(tools.softmask, sp))
+        futures = [pool.submit(tools.softmask, sp) for sp in species]
         cli.wait_raise(futures)
     if False:  # ensemble does not support rsync
         for sp in species:
