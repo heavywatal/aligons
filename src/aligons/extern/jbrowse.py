@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument("-a", "--admin", action="store_true")
     parser.add_argument("-u", "--upgrade", action="store_true")
     parser.add_argument("-d", "--deploy", action="store_true")
-    parser.add_argument("-o", "--outdir", type=Path, default=Path("."))
+    parser.add_argument("-o", "--outdir", type=Path, default=Path())
     parser.add_argument("indir", type=Path)  # multiple/oryza_sativa/
     args = parser.parse_args(argv or None)
     if cli.dry_run:

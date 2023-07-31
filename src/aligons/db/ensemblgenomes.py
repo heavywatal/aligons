@@ -53,8 +53,8 @@ def consolidate_compara_mafs(indir: Path):
     assert mobj, indir.name
     target_short = mobj.group(1)
     query_short = mobj.group(2)
-    target = list(phylo.expand_shortnames([target_short]))[0]
-    query = list(phylo.expand_shortnames([query_short]))[0]
+    target = next(phylo.expand_shortnames([target_short]))
+    query = next(phylo.expand_shortnames([query_short]))
     outdir = Path("compara") / target / query
     pat = re.compile(r"lastz_net\.([^_]+)_\d+\.maf$")
     infiles_by_seq: dict[str, list[Path]] = {}

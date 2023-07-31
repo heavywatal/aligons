@@ -95,7 +95,7 @@ def test_species(species: str):
     <https://www.ncbi.nlm.nih.gov/taxonomy>
     """
     with tempfile.TemporaryDirectory(prefix="RepeatMasker") as tmp, fs.chdir(tmp):
-        _log.info(f"{Path('.').absolute()}")
+        _log.info(f"{Path().absolute()}")
         fasta = Path("test.fa")
         if not fasta.exists():
             with fasta.open("wt") as fout:
