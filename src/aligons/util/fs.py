@@ -110,7 +110,8 @@ def checksums(file: Path):
 def checkline(line: str, directory: Path):
     (e_sum, e_blocks, name) = line.split()
     if (path := directory / name).exists():
-        p = subprocess.run(["/usr/bin/sum", path], stdout=subprocess.PIPE, text=True)
+        cmd = ["/usr/bin/sum", path]
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, text=True, check=True)
         (o_sum, o_blocks, _) = p.stdout.split()
         if (e_sum.lstrip("0"), e_blocks) != (o_sum, o_blocks):
             _log.error(f"{name}")
