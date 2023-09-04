@@ -233,7 +233,7 @@ def _iter_children(
     columns: list[StrGen],
     render_fun: Callable[[Node, list[StrGen]], GraphGen],
     bricks: Bricks,
-):
+) -> GraphGen:
     for child in (children := node.children or []):
         if child.name == children[-1].name:
             gen = _column_generator(bricks.last_branch, bricks.blank)
@@ -242,8 +242,7 @@ def _iter_children(
         else:
             gen = _column_generator(bricks.middle_branch, bricks.straight)
         columns.append(gen)
-        for x in render_fun(child, columns):
-            yield x
+        yield from render_fun(child, columns)
         columns.pop()
 
 

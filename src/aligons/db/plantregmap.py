@@ -1,6 +1,8 @@
 """http://plantregmap.gao-lab.org/."""
 import logging
 import re
+from collections.abc import Iterator
+from pathlib import Path
 
 from aligons import db
 from aligons.extern import htslib
@@ -63,11 +65,10 @@ def db_prefix():
     return db.path("plantregmap")
 
 
-def rglob(pattern: str, species: str = "."):
+def rglob(pattern: str, species: str = ".") -> Iterator[Path]:
     for species_dir in db_prefix().iterdir():
         if re.search(species, species_dir.name, re.IGNORECASE):
-            for x in species_dir.rglob(pattern):
-                yield x
+            yield from species_dir.rglob(pattern)
 
 
 if __name__ == "__main__":
