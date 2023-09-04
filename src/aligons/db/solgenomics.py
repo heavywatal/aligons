@@ -1,6 +1,6 @@
 """https://solgenomics.net/ftp/genomes/."""
 import logging
-from collections.abc import Generator
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TypedDict
 
@@ -95,7 +95,7 @@ def bgzip_index(content: bytes, outfile: Path):
     return outfile
 
 
-def iter_dataset() -> Generator[DataSet, None, None]:
+def iter_dataset() -> Iterator[DataSet]:
     with resources_data("solgenomics.toml").open("rb") as fin:
         meta = tomllib.load(fin)
     for dic in meta["dataset"]:
