@@ -41,6 +41,8 @@ def phastcons(target: str, clade: str, tips: int, max_bp: float, *, compara: boo
             continue
         _log.info(f"{species = }")
         multiple = multiz.run(pairwise, species)
+        if n == len(lst_species):
+            (multiple.parent / clade).symlink_to(multiple.name)
         phast.run(multiple)
         kent.run(multiple)
     cli.wait_raise(fts)
