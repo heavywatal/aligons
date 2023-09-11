@@ -23,14 +23,13 @@ _log = logging.getLogger(__name__)
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-S", "--species")
-    parser.add_argument("-l", "--long", action="store_true")
     parser.add_argument("-C", "--clade", default="angiospermae")
     args = parser.parse_args(argv or None)
     if args.species:
         for p in _glob("*", args.species):
             print(p)
     else:
-        print_stats(args.clade, long=args.long)
+        print_stats(args.clade)
 
 
 @functools.cache
@@ -73,7 +72,9 @@ def list_chromosome_gff3(species: str) -> Iterable[Path]:
 
 def get_file(pattern: str, species: str, subdir: str = ""):
     found = list(_glob(pattern, species, subdir))
-    assert found, f"not found {pattern} in {species}/{subdir}"
+    if not found:
+        msg = f"{pattern} not found in {species}/{subdir}"
+        raise FileNotFoundError(msg)
     assert len(found) == 1, found
     return found[0]
 
@@ -82,7 +83,9 @@ def get_file_nolabel(pattern: str, species: str, subdir: str = ""):
     it = _glob(pattern, species, subdir)
     rex = re.compile(r"\.(chromosome|genome|toplevel)\.")
     found = [x for x in it if not rex.search(x.name)]
-    assert found, f"not found {pattern} in {species}/{subdir}"
+    if not found:
+        msg = f"{pattern} not found in {species}/{subdir}"
+        raise FileNotFoundError(msg)
     assert len(found) == 1, found
     return found[0]
 
@@ -127,21 +130,20 @@ def _prefix(origin: str) -> Path:
     return db.path(origin.format(version=ensemblgenomes.version()))
 
 
-def print_stats(clade: str, *, long: bool = False):
+def print_stats(clade: str):
     newick = phylo.get_subtree([clade])
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangulate(phylo.render_tips(root, [])):
-        if species not in species_names():
-            print(f"{pre} {species}")
-            continue
-        chrom_sizes_ = chrom_sizes(species)
-        lengths = chrom_sizes_.values()
-        fasize = sum(lengths) / 1e6
-        nseqs = len(lengths)
-        gffsize = _gff3_size(species)
-        print(f"{pre} {species} {fasize:4.0f}Mbp {nseqs:2} {gffsize:4.1f}MB")
-        if long:
-            print("\n".join([f"{key:>6} {val:>11}" for key, val in chrom_sizes_]))
+        print(f"{pre} {species}", end="")
+        try:
+            chrom_sizes_ = chrom_sizes(species)
+            fasize = sum(chrom_sizes_.values()) / 1e6
+            nseqs = len(chrom_sizes_)
+            print(f" {fasize:4.0f}Mbp {nseqs:2}", end="")
+            gffsize = _gff3_size(species)
+            print(f" {gffsize:4.1f}MB")
+        except FileNotFoundError:
+            print("")
 
 
 def chrom_sizes(species: str) -> dict[str, int]:
