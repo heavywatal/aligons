@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 
 import pytest
-from aligons.util import config, read_config, update_nested, log_config
+from aligons.util import config, log_config, read_config, update_nested
 
 
 def test_read_config(tmp_path: Path):

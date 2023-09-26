@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .db import api, phylo
 from .extern import kent, lastz, mafs2cram, multiz, phast
-from .util import cli, read_config, log_config
+from .util import cli, log_config, read_config
 
 _log = logging.getLogger(__name__)
 
