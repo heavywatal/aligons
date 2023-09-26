@@ -53,5 +53,6 @@ lower_count = 10
 high = 1000
 
 [jbrowse]
-version = "2.6.1"
+version = "2.6.3"
+document_root = "/var/www/html"
 load = "symlink"
