@@ -1,6 +1,8 @@
+import re
 from pathlib import Path
 
-from aligons.util import config, read_config, update_nested
+import pytest
+from aligons.util import config, read_config, update_nested, log_config
 
 
 def test_read_config(tmp_path: Path):
@@ -18,3 +20,25 @@ def test_update_nested():
     update_nested(x, y)
     assert x == {"both": 2, "x": 1, "y": 2}
     assert y == {"both": 2, "y": 2}
+
+
+def test_write_config(tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    file = tmp_path / "aligons-log.toml"
+    log_config(file)
+    assert "+" not in caplog.text
+    log_config(file)
+    assert "+" not in caplog.text
+    with file.open("r") as fin:
+        content = fin.read()
+    content = re.sub(r"(hspthresh) = \d+", r"\1 = 999", content)
+    content = re.sub(r"\[multiz\][^[]+", "\n[MISSING]\nx = 999\n\n", content)
+    modified = tmp_path / "aligons-mod.toml"
+    with modified.open("w") as fout:
+        fout.write(content)
+    with pytest.raises(ValueError, match="config"):
+        log_config(modified)
+    assert "'hspthresh': 999" in caplog.text
+    assert "-[multiz] {}" in caplog.text
+    assert "+[multiz] {" in caplog.text
+    assert "-[MISSING] {'x': 999}" in caplog.text
+    assert "+[MISSING] {}" in caplog.text

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .db import api, phylo
 from .extern import kent, lastz, mafs2cram, multiz, phast
-from .util import cli, read_config
+from .util import cli, read_config, log_config
 
 _log = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     if args.config:
         read_config(args.config)
+    log_config()
     if args.check_args:
         return
     phastcons(args.target, args.clade, args.tips, args.max_bp, compara=args.compara)
