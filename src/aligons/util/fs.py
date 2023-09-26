@@ -52,15 +52,15 @@ def newest(files: list[Path]):
     return max(files, key=lambda p: p.stat().st_ctime)
 
 
-def sorted_naturally(iterable: Iterable[StrPath]):
+def sorted_naturally(iterable: Iterable[StrPath]) -> list[StrPath]:
     return sorted(iterable, key=natural_key)
 
 
-def natural_key(x: StrPath):
+def natural_key(x: StrPath) -> list[str]:
     return [try_zeropad(s) for s in re.split(r"[\W_]", name_if_path(x))]
 
 
-def name_if_path(x: StrPath):
+def name_if_path(x: StrPath) -> str:
     return x if isinstance(x, str) else x.name
 
 
