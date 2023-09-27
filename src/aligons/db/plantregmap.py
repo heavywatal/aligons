@@ -98,7 +98,7 @@ class FTPplantregmap(ftplib.LazyFTP):
         self.nlst_cache("08-download/FTP")
         self.nlst_cache("08-download/FTP/pairwise_alignments")
         if species:
-            self.nlst_cache("08-download/{species}")
+            self.nlst_cache(f"08-download/{species}")
 
     def download_pairwise_alignments(self, species: str):
         relpath = f"08-download/FTP/pairwise_alignments/{species}"
