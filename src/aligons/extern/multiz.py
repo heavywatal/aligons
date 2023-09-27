@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from aligons.db import phylo
-from aligons.util import ConfDict, cli, config, empty_options, fs, read_config, subp
+from aligons.util import cli, config, fs, read_config, subp
 
 _log = logging.getLogger(__name__)
 
@@ -47,18 +47,16 @@ def run(indir: Path, query: Sequence[str]):
     outdir = Path("multiple") / target / dirname
     prepare(indir, outdir, query)
     chromodirs = outdir.glob("chromosome.*")
-    multiz_opts = config["multiz"]
-    multiz_opts["tree"] = tree
     pool = cli.ThreadPool()
-    cli.wait_raise(pool.submit(multiz, p, multiz_opts) for p in chromodirs)
+    cli.wait_raise(pool.submit(multiz, p, tree) for p in chromodirs)
     return outdir
 
 
-def multiz(path: Path, options: ConfDict = empty_options):
+def multiz(path: Path, tree: str):
     sing_mafs = list(path.glob("*.sing.maf"))
     tmpdir = path / "_tmp"
     outfile = path / "multiz.maf"
-    roasted = roast(sing_mafs, tmpdir.name, outfile.name, options)
+    roasted = roast(sing_mafs, tmpdir.name, outfile.name, tree)
     script = "set -eu\n" + roasted.stdout
     is_to_run = fs.is_outdated(outfile, sing_mafs)
     if is_to_run and not cli.dry_run:
@@ -92,18 +90,13 @@ def multiz(path: Path, options: ConfDict = empty_options):
     return outfile
 
 
-def roast(
-    sing_mafs: list[Path],
-    tmpdir: str,
-    outfile: str,
-    options: ConfDict = empty_options,
-):
+def roast(sing_mafs: list[Path], tmpdir: str, outfile: str, tree: str):
     """Generate shell script to execute multiz."""
-    tree = options["tree"]
-    tree = phylo.shorten_names(tree).replace(",", " ").rstrip(";")
+    options = config["multiz"]
     radius = options.get("R", 30)
     min_width = options.get("M", 1)
     ref_label = sing_mafs[0].name.split(".", 1)[0]
+    tree = phylo.shorten_names(tree).replace(",", " ").rstrip(";")
     args = (
         f"roast - R={radius} M={min_width} T={tmpdir} E={ref_label} '{tree}' "
         + " ".join([x.name for x in sing_mafs])

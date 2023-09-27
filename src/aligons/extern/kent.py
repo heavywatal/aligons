@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 from aligons.db import api, phylo
-from aligons.util import ConfDict, cli, empty_options, fs, subp
+from aligons.util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -71,10 +71,10 @@ def faSize(genome_fa_gz: Path):  # noqa: N802
     return outfile
 
 
-def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path, options: ConfDict):
+def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path):
     chain = axtgz.with_suffix("").with_suffix(".chain")
     cmd = "axtChain"
-    cmd += subp.optjoin(options, "-")
+    cmd += subp.optjoin(config["axtChain"], "-")
     cmd += f" stdin {t2bit} {q2bit} {chain}"
     is_to_run = fs.is_outdated(chain, axtgz)
     p = subp.popen(cmd, if_=is_to_run, stdin=subp.PIPE)
@@ -106,16 +106,11 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
     return pre_chain
 
 
-def chain_net_syntenic(
-    pre_chain: Path,
-    target_sizes: Path,
-    query_sizes: Path,
-    options: ConfDict = empty_options,
-):
+def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path):
     syntenic_net = pre_chain.parent / "syntenic.net"
     is_to_run = fs.is_outdated(syntenic_net, pre_chain)
     cn_cmd = "chainNet"
-    cn_cmd += subp.optjoin(options, "-")
+    cn_cmd += subp.optjoin(config["chainNet"], "-")
     cn_cmd += f" stdin {target_sizes} {query_sizes} stdout /dev/null"
     ns_cmd = f"netSyntenic stdin {syntenic_net}"
     cn = subp.popen(cn_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=subp.PIPE)
@@ -129,13 +124,7 @@ def chain_net_syntenic(
     return syntenic_net
 
 
-def net_axt_maf(
-    syntenic_net: Path,
-    pre_chain: Path,
-    target: str,
-    query: str,
-    options: ConfDict = empty_options,
-):
+def net_axt_maf(syntenic_net: Path, pre_chain: Path, target: str, query: str):
     sing_maf = syntenic_net.parent / "sing.maf"
     target_2bit = api.genome_2bit(target)
     query_2bit = api.genome_2bit(query)
@@ -143,7 +132,7 @@ def net_axt_maf(
     query_sizes = api.fasize(query)
     is_to_run = fs.is_outdated(sing_maf, [syntenic_net, pre_chain])
     toaxt_cmd = "netToAxt"
-    toaxt_cmd += subp.optjoin(options, "-")
+    toaxt_cmd += subp.optjoin(config["netToAxt"], "-")
     toaxt_cmd += f" {syntenic_net} stdin {target_2bit} {query_2bit} stdout"
     toaxt = subp.popen(toaxt_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=subp.PIPE)
     assert toaxt.stdin
