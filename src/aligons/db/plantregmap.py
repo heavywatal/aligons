@@ -8,10 +8,15 @@ from aligons import db
 from aligons.extern import htslib
 from aligons.util import cli, fs
 
-from . import tools
+from . import ftplib, tools
 
 _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"
+
+_longer = {
+    "Osj": "Oryza_sativa_Japonica_Group",
+    "Sly": "Solanum_lycopersicum",
+}
 
 
 def main(argv: list[str] | None = None):
@@ -20,6 +25,12 @@ def main(argv: list[str] | None = None):
     parser.add_argument("pattern", nargs="?", default="*")
     args = parser.parse_args(argv or None)
     if args.download:
+        with FTPplantregmap() as ftp:
+            sp = "Osj"
+            ftp.ls_cache(_longer[sp])
+            ftp.download_pairwise_alignments(sp)
+            ftp.download_multiple_alignments(_longer[sp])
+            ftp.download_conservation(_longer[sp])
         cli.wait_raise(retrieve_deploy(q) for q in iter_download_queries())
     else:
         for x in fs.sorted_naturally(db_prefix().rglob(args.pattern)):
@@ -69,6 +80,40 @@ def rglob(pattern: str, species: str = ".") -> Iterator[Path]:
     for species_dir in db_prefix().iterdir():
         if re.search(species, species_dir.name, re.IGNORECASE):
             yield from species_dir.rglob(pattern)
+
+
+class FTPplantregmap(ftplib.LazyFTP):
+    def __init__(self):
+        host = "ftp.cbi.pku.edu.cn"
+        super().__init__(
+            host,
+            "/pub/database/PlantRegMap",
+            db.path_mirror(host) / "plantregmap",
+            timeout=65535,
+        )
+
+    def ls_cache(self, species: str = ""):
+        self.nlst_cache("")
+        self.nlst_cache("08-download")
+        self.nlst_cache("08-download/FTP")
+        self.nlst_cache("08-download/FTP/pairwise_alignments")
+        if species:
+            self.nlst_cache("08-download/{species}")
+
+    def download_pairwise_alignments(self, species: str):
+        relpath = f"08-download/FTP/pairwise_alignments/{species}"
+        nlst = self.nlst_cache(relpath)
+        return [self.retrieve(x, checksize=True) for x in nlst]
+
+    def download_multiple_alignments(self, species: str):
+        relpath = f"08-download/{species}/multiple_alignments"
+        nlst = self.nlst_cache(relpath)
+        return [self.retrieve(x, checksize=True) for x in nlst]
+
+    def download_conservation(self, species: str):
+        relpath = f"08-download/{species}/sequence_conservation"
+        nlst = self.nlst_cache(relpath)
+        return [self.retrieve(x, checksize=True) for x in nlst]
 
 
 if __name__ == "__main__":
