@@ -9,13 +9,12 @@ import logging
 import os
 import re
 from collections.abc import Iterable
-from ftplib import FTP
 from pathlib import Path
 
 from aligons import db
 from aligons.util import cli, config, fs, subp
 
-from . import phylo
+from . import ftplib, phylo
 
 _log = logging.getLogger(__name__)
 
@@ -106,34 +105,13 @@ def readlines_compara_maf(file: Path):
                 yield line
 
 
-class FTPensemblgenomes(FTP):
+class FTPensemblgenomes(ftplib.LazyFTP):
     def __init__(self):
-        _log.info("FTP()")
-        super().__init__()
-
-    def quit(self):  # noqa: A003
-        _log.info(f"os.chdir({self.orig_wd})")
-        os.chdir(self.orig_wd)
-        _log.info("ftp.quit()")
-        resp = super().quit()
-        _log.info(resp)
-        return resp
-
-    def lazy_init(self):
-        if self.sock is not None:
-            return
-        self.orig_wd = Path.cwd()
-        host = "ftp.ensemblgenomes.org"
-        _log.debug(f"ftp.connect({host})")
-        _log.info(self.connect(host))
-        _log.debug("ftp.login()")
-        _log.info(self.login())
-        path = f"/pub/plants/release-{version()}"
-        _log.info(f"ftp.cwd({path})")
-        _log.info(self.cwd(path))
-        _log.info(f"os.chdir({_prefix_mirror()})")
-        _prefix_mirror().mkdir(0o755, parents=True, exist_ok=True)
-        os.chdir(_prefix_mirror())  # for RETR only
+        super().__init__(
+            "ftp.ensemblgenomes.org",
+            f"/pub/plants/release-{version()}",
+            _prefix_mirror(),
+        )
 
     def remove_unavailable(self, species: list[str]) -> list[str]:
         available = self.available_species()
@@ -150,7 +128,7 @@ class FTPensemblgenomes(FTP):
 
     def download_fasta(self, species: str):
         relpath = f"fasta/{species}/dna"
-        outdir = _prefix_mirror() / relpath
+        outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
         files = [self.retrieve(x) for x in self.remove_duplicates(nlst, "_sm.")]
         fs.checksums(outdir / "CHECKSUMS")
@@ -158,7 +136,7 @@ class FTPensemblgenomes(FTP):
 
     def download_gff3(self, species: str):
         relpath = f"gff3/{species}"
-        outdir = _prefix_mirror() / relpath
+        outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
         files = [self.retrieve(x) for x in self.remove_duplicates(nlst)]
         fs.checksums(outdir / "CHECKSUMS")
@@ -166,7 +144,7 @@ class FTPensemblgenomes(FTP):
 
     def download_maf(self, species: str):
         relpath = "maf/ensembl-compara/pairwise_alignments"
-        outdir = _prefix_mirror() / relpath
+        outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
         sp = phylo.shorten(species)
         for x in nlst:
@@ -175,7 +153,7 @@ class FTPensemblgenomes(FTP):
         _log.debug(f"{outdir=}")
         dirs: list[Path] = []
         for targz in outdir.glob("*.tar.gz"):
-            expanded = _prefix_mirror() / targz.with_suffix("").with_suffix("")
+            expanded = self.prefix / targz.with_suffix("").with_suffix("")
             tar = ["tar", "xzf", targz, "-C", outdir]
             subp.run(tar, if_=fs.is_outdated(expanded / "README.maf"))
             # TODO: MD5SUM
@@ -196,34 +174,6 @@ class FTPensemblgenomes(FTP):
         assert matched, substr
         misc = [x for x in nlst if re.search("CHECKSUMS$|README$", x)]
         return matched + misc
-
-    def nlst_cache(self, relpath: str):
-        cache = _prefix_mirror() / relpath / ".ftp_nlst_cache"
-        if cache.exists():
-            _log.info(f"{cache=}")
-            with cache.open("r") as fin:
-                names = fin.read().rstrip().splitlines()
-            lst = [str(Path(relpath) / x) for x in names]
-        else:
-            self.lazy_init()
-            _log.info(f"ftp.nlst({relpath})")
-            lst = self.nlst(relpath)  # ensembl does not support mlsd
-            cache.parent.mkdir(0o755, parents=True, exist_ok=True)
-            with cache.open("w") as fout:
-                fout.write("\n".join([Path(x).name for x in lst]) + "\n")
-        return lst
-
-    def retrieve(self, path: str):
-        outfile = _prefix_mirror() / path
-        if not outfile.exists() and not cli.dry_run:
-            outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-            with outfile.open("wb") as fout:
-                cmd = f"RETR {path}"
-                self.lazy_init()
-                _log.info(f"ftp.retrbinary({cmd})")
-                _log.info(self.retrbinary(cmd, fout.write))
-        _log.info(f"{outfile}")
-        return outfile
 
 
 def rsync(relpath: str, options: str = ""):
