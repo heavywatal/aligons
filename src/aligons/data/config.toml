@@ -36,7 +36,7 @@ version = 49
 [db]
 root = "~/db/aligons"
 mirror = "~/db"
-origin = ["ensembl-{version}", "solgenomics"]
+origin = ["ensembl-{version}", "solgenomics", "plantregmap"]
 kmer = false
 # tree = ""  # string in newick format or path to newick file
 

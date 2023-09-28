@@ -5,8 +5,9 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from aligons import db
-from aligons.extern import htslib
-from aligons.util import cli, fs
+from aligons.db import api
+from aligons.extern import htslib, kent, mafs2cram
+from aligons.util import cli, fs, subp
 
 from . import ftplib, tools
 
@@ -25,13 +26,10 @@ def main(argv: list[str] | None = None):
     parser.add_argument("pattern", nargs="?", default="*")
     args = parser.parse_args(argv or None)
     if args.download:
-        with FTPplantregmap() as ftp:
-            sp = "Osj"
-            ftp.ls_cache(_longer[sp])
-            ftp.download_pairwise_alignments(sp)
-            ftp.download_multiple_alignments(_longer[sp])
-            ftp.download_conservation(_longer[sp])
-        cli.wait_raise(retrieve_deploy(q) for q in iter_download_queries())
+        fts: list[cli.FuturePath] = []
+        fts.extend(download_via_ftp("Osj"))
+        fts.extend(retrieve_deploy(q) for q in iter_download_queries())
+        cli.wait_raise(fts)
     else:
         for x in fs.sorted_naturally(db_prefix().rglob(args.pattern)):
             print(x)
@@ -82,6 +80,41 @@ def rglob(pattern: str, species: str = ".") -> Iterator[Path]:
             yield from species_dir.rglob(pattern)
 
 
+def download_via_ftp(sp: str) -> list[cli.FuturePath]:
+    fts: list[cli.FuturePath] = []
+    with FTPplantregmap() as ftp:
+        species = _longer[sp]
+        ftp.ls_cache(species)
+        for bedgraph in ftp.download_conservation(species):
+            fts.append(cli.thread_submit(to_bigwig, bedgraph, species))  # noqa: PERF401
+        for maf in ftp.download_multiple_alignments(species):
+            fts.append(cli.thread_submit(to_cram, maf, species))  # noqa: PERF401
+        ftp.download_pairwise_alignments(sp)
+    return fts
+
+
+def to_cram(link: Path, species: str) -> Path:
+    outfile = link.parent / link.with_suffix(".cram")
+    reference = api.genome_fa(species)
+    return mafs2cram.maf2cram(link, outfile, reference)
+
+
+def to_bigwig(link: Path, species: str) -> Path:
+    bedgraph = gunzip(link)
+    bigwig = bedgraph.with_suffix(".bw")
+    if fs.is_outdated(bigwig, bedgraph):
+        kent.bedGraphToBigWig(bedgraph, api.fasize(species))
+    return bigwig
+
+
+def gunzip(infile: Path):
+    outfile = infile.parent / infile.name.removesuffix(".gz")
+    if fs.is_outdated(outfile, infile):
+        subp.run(["gunzip", "-fk", infile])
+        subp.run(["touch", outfile])
+    return outfile
+
+
 class FTPplantregmap(ftplib.LazyFTP):
     def __init__(self):
         host = "ftp.cbi.pku.edu.cn"
@@ -99,21 +132,27 @@ class FTPplantregmap(ftplib.LazyFTP):
         self.nlst_cache("08-download/FTP/pairwise_alignments")
         if species:
             self.nlst_cache(f"08-download/{species}")
+        self.retrieve("Species_abbr.list")
 
-    def download_pairwise_alignments(self, species: str):
+    def download_pairwise_alignments(self, species: str) -> Iterator[Path]:
         relpath = f"08-download/FTP/pairwise_alignments/{species}"
         nlst = self.nlst_cache(relpath)
-        return [self.retrieve(x, checksize=True) for x in nlst]
+        yield from (self.retrieve_symlink(x, _longer[species]) for x in nlst)
 
-    def download_multiple_alignments(self, species: str):
+    def download_multiple_alignments(self, species: str) -> Iterator[Path]:
         relpath = f"08-download/{species}/multiple_alignments"
         nlst = self.nlst_cache(relpath)
-        return [self.retrieve(x, checksize=True) for x in nlst]
+        yield from (self.retrieve_symlink(x, species) for x in nlst)
 
-    def download_conservation(self, species: str):
+    def download_conservation(self, species: str) -> Iterator[Path]:
         relpath = f"08-download/{species}/sequence_conservation"
         nlst = self.nlst_cache(relpath)
-        return [self.retrieve(x, checksize=True) for x in nlst]
+        yield from (self.retrieve_symlink(x, species) for x in nlst)
+
+    def retrieve_symlink(self, relpath: str, species: str) -> Path:
+        orig = self.retrieve(relpath, checksize=True)
+        outdir = db_prefix() / species / "compara"
+        return fs.symlink(orig, outdir / orig.name)
 
 
 if __name__ == "__main__":

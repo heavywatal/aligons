@@ -54,6 +54,13 @@ def bigWigInfo(path: Path):  # noqa: N802
     return subp.run(args, stdout=subp.PIPE, text=True).stdout
 
 
+def bedGraphToBigWig(path: Path, chrom_sizes: Path):  # noqa: N802
+    # gz or stdin are not accepted
+    outfile = path.with_suffix("").with_suffix(".bw")
+    subp.run(["bedGraphToBigWig", path, chrom_sizes, outfile])
+    return outfile
+
+
 def faToTwoBit(fa_gz: Path):  # noqa: N802
     outfile = fa_gz.with_suffix("").with_suffix(".2bit")
     subp.run(["faToTwoBit", fa_gz, outfile], if_=fs.is_outdated(outfile, fa_gz))
