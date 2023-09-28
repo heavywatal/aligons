@@ -29,6 +29,8 @@ def main(argv: list[str] | None = None):
 def symlink(path: Path, link: Path):
     if is_outdated(link, path) and not cli.dry_run:
         _log.info(f"ln -s {path} {link}")
+        if link.is_symlink():
+            link.unlink()
         link.parent.mkdir(0o755, parents=True, exist_ok=True)
         link.symlink_to(path)
     _log.info(f"{link}")
