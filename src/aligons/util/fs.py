@@ -43,13 +43,13 @@ def is_outdated(product: Path, source: list[Path] | Path | None = None):
     if isinstance(source, list):
         source = [x for x in source if x.exists()]
         source = newest(source) if source else None
-    if source and source.exists() and product.stat().st_ctime < source.stat().st_ctime:
+    if source and source.exists() and product.stat().st_mtime < source.stat().st_mtime:
         return True
     return False
 
 
 def newest(files: list[Path]):
-    return max(files, key=lambda p: p.stat().st_ctime)
+    return max(files, key=lambda p: p.stat().st_mtime)
 
 
 def sorted_naturally(iterable: Iterable[StrPath]) -> list[StrPath]:
