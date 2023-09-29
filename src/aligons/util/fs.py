@@ -118,10 +118,11 @@ def checkline(line: str, directory: Path):
             (o_sum, o_blocks, _) = p.stdout.split()
         except ValueError:  # old coreutils
             (o_sum, o_blocks) = p.stdout.split()
-        if (e_sum.lstrip("0"), e_blocks) != (o_sum, o_blocks):
-            _log.error(f"{name}")
-            _log.error(f"expected: {e_sum}\t{e_blocks}")
-            _log.error(f"observed: {o_sum}\t{o_blocks}")
+        if (e_sum.lstrip("0"), e_blocks) != (o_sum.lstrip("0"), o_blocks):
+            msg = f"sum {name}"
+            msg += f"\nexpected: {e_sum}\t{e_blocks}"
+            msg += f"\nobserved: {o_sum}\t{o_blocks}"
+            _log.error(msg)
 
 
 @contextlib.contextmanager
