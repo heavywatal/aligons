@@ -27,12 +27,31 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     if args.download:
         fts: list[cli.FuturePath] = []
+        fts.extend(download_genome())
+        fts.extend(split_mask_index())
         fts.extend(download_via_ftp("Osj"))
         fts.extend(retrieve_deploy(q) for q in iter_download_queries())
         cli.wait_raise(fts)
     else:
         for x in fs.sorted_naturally(db_prefix().rglob(args.pattern)):
             print(x)
+
+
+def download_genome():
+    fts: list[cli.FuturePath] = []
+    for entry in tools.iter_dataset("plantregmap.toml"):
+        fts.extend(tools.retrieve(entry, db_prefix()))
+    return fts
+
+
+def split_mask_index():
+    fts: list[cli.FuturePath] = []
+    for entry in tools.iter_dataset("plantregmap.toml"):
+        species = entry["species"]
+        fts.append(tools.prepare_fasta(species))
+        gff3_gz = api.get_file_nolabel("*.gff3.gz", species)
+        fts.append(cli.thread_submit(tools.index_gff3, [gff3_gz]))
+    return fts
 
 
 def retrieve_deploy(query: str):
@@ -89,7 +108,8 @@ def download_via_ftp(sp: str) -> list[cli.FuturePath]:
             fts.append(cli.thread_submit(to_bigwig, bedgraph, species))  # noqa: PERF401
         for maf in ftp.download_multiple_alignments(species):
             fts.append(cli.thread_submit(to_cram, maf, species))  # noqa: PERF401
-        ftp.download_pairwise_alignments(sp)
+        for _ in ftp.download_pairwise_alignments(sp):
+            pass
     return fts
 
 

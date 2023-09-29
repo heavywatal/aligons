@@ -1,0 +1,8 @@
+[[dataset]]
+url_prefix = "http://rice.uga.edu/pub/data/Eukaryotic_Projects/o_sativa/annotation_dbs/pseudomolecules/"
+species = "Oryza_sativa_Japonica_Group"
+version = "7.0"
+label = "Osj"
+clade = "bep"
+sequences = ["version_7.0/all.dir/all.con"]
+annotation = "version_7.0/all.dir/all.gff3"

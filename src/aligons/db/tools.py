@@ -1,16 +1,14 @@
-import gzip
-import io
 import logging
 import re
 import urllib.request
+from collections.abc import Iterator
 from pathlib import Path
 from urllib.parse import urlparse
 
-import polars as pl
-
 from aligons import db
+from aligons.db import DataSet, api, mask
 from aligons.extern import htslib, jellyfish, kent
-from aligons.util import cli, fs
+from aligons.util import cli, fs, gff, resources_data, tomllib
 
 _log = logging.getLogger(__name__)
 
@@ -19,7 +17,60 @@ def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
-    split_gff(args.infile)
+    gff.split_by_seqid(args.infile)
+
+
+def iter_dataset(filename: str) -> Iterator[DataSet]:
+    with resources_data(filename).open("rb") as fin:
+        meta = tomllib.load(fin)
+    for dic in meta["dataset"]:
+        if dic.get("draft", False):
+            continue
+        yield DataSet(dic)
+
+
+def retrieve(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
+    url_prefix = entry["url_prefix"]
+    species = entry["species"]
+    annotation = entry["annotation"]
+    sequences = entry["sequences"]
+    stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
+    out_fa = prefix / f"fasta/{species}/{stem}.dna.toplevel.fa.gz"
+    out_gff = prefix / f"gff3/{species}/{stem}.gff3.gz"
+    fts: list[cli.FuturePath] = []
+    if not fs.is_outdated(out_fa):
+        content_fa = b""
+    elif len(sequences) > 1:
+        chr_fa = [retrieve_content(url_prefix + s) for s in sequences]
+        content_fa = b"".join(chr_fa)
+    else:
+        content_fa = retrieve_content(url_prefix + sequences[0])
+    fts.append(cli.thread_submit(bgzip_index, content_fa, out_fa))
+    if not fs.is_outdated(out_gff):
+        content_gff = b""
+    else:
+        content_gff = retrieve_content(url_prefix + annotation)
+    fts.append(cli.thread_submit(bgzip_index, content_gff, out_gff))
+    return fts
+
+
+def prepare_fasta(species: str) -> cli.FuturePath:
+    toplevel_fa_gz = api.get_file("*.dna.toplevel.fa.gz", species)
+    future_chromosomes = _split_toplevel_fa_work(toplevel_fa_gz)
+    future_masked = [mask.submit(f) for f in future_chromosomes]
+    links = [_symlink_masked(f) for f in future_masked]
+    return cli.thread_submit(index_fasta, links)
+
+
+def _symlink_masked(ft: cli.FuturePath) -> Path:
+    masked = ft.result()
+    link = masked.parent.parent / masked.name
+    return fs.symlink(masked, link)
+
+
+def bgzip_index(content: bytes, outfile: Path):
+    htslib.try_index(compress(content, outfile))
+    return outfile
 
 
 def index_fasta(paths: list[Path]):
@@ -39,7 +90,7 @@ def index_gff3(paths: list[Path]):  # gff3/{species}
     """Create bgzipped and indexed genome.gff3."""
     if len(paths) == 1:
         assert "chromosome" not in paths[0].name, paths[0]
-        paths = split_gff(paths[0])
+        paths = gff.split_by_seqid(paths[0])
     genome = _create_genome_bgzip(paths)
     htslib.tabix(genome)
     return genome
@@ -57,6 +108,12 @@ def _create_genome_bgzip(files: list[Path]):
     assert count == 1, name
     outfile = files[0].parent / outname
     return htslib.concat_bgzip(files, outfile)
+
+
+def _split_toplevel_fa_work(fa_gz: Path) -> list[cli.FuturePath]:
+    fmt = "{stem}.{seqid}.fa"
+    outdir = fa_gz.parent / "_work"
+    return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"), outdir)
 
 
 def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:
@@ -87,7 +144,7 @@ def compress(content: bytes, outfile: Path) -> Path:
             assert outfile.suffix == ".gz", outfile
             content = fs.gzip_decompress(content)
             if ".gff" in outfile.name:
-                content = sort_gff(content)
+                content = gff.sort(content)
             content = htslib.bgzip_compress(content)
         elif outfile.suffix == ".gz":
             content = fs.gzip_compress(content)
@@ -118,102 +175,6 @@ def retrieve_content(
             content = fin.read()
     _log.info(f"{outfile}")
     return content
-
-
-def split_gff(path: Path):
-    regions = read_gff_sequence_region(path)
-    body = read_gff_body(path)
-    stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
-    files: list[Path] = []
-    _log.debug(f"{stem=}")
-    for name, data in body.groupby("seqid", maintain_order=True):
-        seqid = str(name)
-        if seqid.startswith("scaffold"):
-            _log.debug(f"ignoring scaffold: {seqid}")
-            continue
-        outfile = path.parent / f"{stem}.chromosome.{seqid}.gff3.gz"
-        files.append(outfile)
-        _log.info(f"{outfile}")
-        if cli.dry_run or not fs.is_outdated(outfile, path):
-            continue
-        with gzip.open(outfile, "wt") as fout:
-            fout.write("##gff-version 3\n")
-            fout.write(regions.get(seqid, ""))
-            fout.write(data.sort(["start"]).write_csv(has_header=False, separator="\t"))
-    return files
-
-
-def read_gff_sequence_region(path: Path) -> dict[str, str]:
-    lines: list[str] = []
-    with gzip.open(path, "rt") as fin:
-        for line in fin:
-            if not line.startswith("#"):
-                break
-            lines.append(line)
-    if not lines or not lines[0].startswith("##gff-version"):
-        _log.warning(f"{path}:invalid GFF without ##gff-version")
-    else:
-        lines.pop(0)
-    regions: dict[str, str] = {}
-    comments: list[str] = []
-    # solgenomics has dirty headers without space: ##sequence-regionSL4.0ch01
-    pattern = re.compile(r"(##sequence-region)\s*(.+)", re.S)
-    for line in lines:
-        if mobj := pattern.match(line):
-            value = mobj.group(2)
-            regions[value.split()[0]] = " ".join(mobj.groups())
-        else:
-            comments.append(line)
-    if not regions:
-        _log.info(f"{path}:unfriendly GFF without ##sequence-region")
-    if comments:
-        ignored = "\n".join(comments)
-        _log.warning(f"{path}:comments in GFF ignored:\n{ignored}")
-    return regions
-
-
-def sort_gff(content: bytes) -> bytes:
-    return extract_gff_header(content) + sort_gff_body(content)
-
-
-def extract_gff_header(content: bytes) -> bytes:
-    if m := re.match(rb"##gff-version.+?(?=^[^#])", content, re.M | re.S):
-        return m.group(0)
-    _log.warning("invalid GFF without ##gff-version")
-    return b"##gff-version 3\n"
-
-
-def sort_gff_body(content: bytes) -> bytes:
-    bio = io.BytesIO()
-    (
-        read_gff_body(content)
-        .sort(["seqid", "start"])
-        .write_csv(bio, has_header=False, separator="\t")
-    )
-    return bio.getvalue()
-
-
-def read_gff_body(source: Path | str | bytes):
-    if isinstance(source, bytes):
-        source = re.sub(rb"\n\n+", rb"\n", source)
-    return pl.read_csv(
-        source,
-        separator="\t",
-        comment_char="#",
-        has_header=False,
-        dtypes=[pl.Utf8],
-        new_columns=[
-            "seqid",
-            "source",
-            "type",
-            "start",
-            "end",
-            "score",
-            "strand",
-            "phase",
-            "attributes",
-        ],
-    )
 
 
 if __name__ == "__main__":
