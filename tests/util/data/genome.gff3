@@ -1,0 +1,11 @@
+##gff-version 3
+##sequence-region   1 1 43270923
+##sequence-region   2 1 35937250
+##sequence-region   10 1 23207287
+##sequence-region   Mt 1 490520
+Mt	aligons	gene	100	999	.	+	.	ID=24601
+10	aligons	gene	100	999	.	+	.	ID=24601
+2	aligons	gene	100	999	.	+	.	ID=24601
+1	aligons	gene	200	999	.	+	.	ID=24601
+1	aligons	gene	100	999	.	+	.	ID=24601
+scaffold01	aligons	gene	100	999	.	+	.	ID=24601

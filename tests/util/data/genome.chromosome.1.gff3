@@ -1,0 +1,4 @@
+##gff-version 3
+##sequence-region 1 1 43270923
+1	aligons	gene	100	999	.	+	.	ID=24601
+1	aligons	gene	200	999	.	+	.	ID=24601
