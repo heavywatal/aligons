@@ -84,3 +84,11 @@ def test_chdir(tmp_path: Path):
     with fs.chdir(tmp_path):
         assert Path.cwd() == tmp_path
     assert Path.cwd() != tmp_path
+
+
+def test_checksums(caplog: pytest.LogCaptureFixture):
+    data_dir = Path(__file__).parent / "data"
+    fs.checksums(data_dir / "CHECKSUMS")
+    assert not caplog.text
+    fs.checkline("42 1 sorted.gff3", data_dir)
+    assert "expected: 42" in caplog.text
