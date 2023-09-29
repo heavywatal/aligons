@@ -24,7 +24,7 @@ def split_by_seqid(path: Path):
     stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
     files: list[Path] = []
     _log.debug(f"{stem=}")
-    for name, data in body.groupby("seqid", maintain_order=True):
+    for name, data in body.group_by("seqid", maintain_order=True):
         seqid = str(name)
         if seqid.startswith("scaffold"):
             _log.debug(f"ignoring scaffold: {seqid}")

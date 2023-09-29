@@ -89,7 +89,7 @@ def _parse_galaxy_index_html(content: bytes):
             pl.col("href").str.extract(":(.+)").alias("tag"),
         )
         .sort(["app", "time"])
-        .groupby("app")
+        .group_by("app")
         .last()
         .with_columns(pl.col("time").dt.date().alias("date"))
         .select(["app", "tag", "date", "size"])
