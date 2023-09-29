@@ -56,7 +56,7 @@ def test_invalid(tmp_path: Path, caplog: pytest.LogCaptureFixture):
     invalid_gff = tmp_path / "invalid.gff3.gz"
     with source_gff.open("rb") as fin, gzip.open(invalid_gff, "wb") as fout:
         fout.write(fin.read())
-    gff.split_by_seqid(invalid_gff)
+    gff.main(["--dry-run", str(invalid_gff)])
     assert "invalid GFF without ##gff-version" in caplog.text
     assert "unfriendly" in caplog.text
     assert "ignoring comments" in caplog.text
