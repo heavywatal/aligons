@@ -114,7 +114,10 @@ def checkline(line: str, directory: Path):
     if (path := directory / name).exists():
         cmd = ["/usr/bin/sum", path]
         p = subprocess.run(cmd, stdout=subprocess.PIPE, text=True, check=True)
-        (o_sum, o_blocks, _) = p.stdout.split()
+        try:
+            (o_sum, o_blocks, _) = p.stdout.split()
+        except ValueError:  # old coreutils
+            (o_sum, o_blocks) = p.stdout.split()
         if (e_sum.lstrip("0"), e_blocks) != (o_sum, o_blocks):
             _log.error(f"{name}")
             _log.error(f"expected: {e_sum}\t{e_blocks}")
