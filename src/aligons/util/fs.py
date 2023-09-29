@@ -101,7 +101,7 @@ def is_zip(content: bytes):
 
 
 def checksums(file: Path):
-    if cli.dry_run:
+    if cli.dry_run:  # pragma: no cover
         return
     with confu.ThreadPoolExecutor() as pool:
         with file.open("rt") as fin:
@@ -116,7 +116,7 @@ def checkline(line: str, directory: Path):
         p = subprocess.run(cmd, stdout=subprocess.PIPE, text=True, check=True)
         try:
             (o_sum, o_blocks, _) = p.stdout.split()
-        except ValueError:  # old coreutils
+        except ValueError:  # pragma: no cover; old coreutils
             (o_sum, o_blocks) = p.stdout.split()
         if (e_sum.lstrip("0"), e_blocks) != (o_sum.lstrip("0"), o_blocks):
             msg = f"sum {name}"

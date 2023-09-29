@@ -39,6 +39,10 @@ def test_symlink(tmp_path: Path):
     assert newlink.is_symlink()
     assert fs.symlink(tmp_path, newlink) == newlink
     assert len(list(tmp_path.iterdir())) == 1
+    broken = fs.symlink(tmp_path / "noexist", tmp_path / "broken")
+    assert broken.is_symlink()
+    assert not broken.exists()
+    assert fs.symlink(newlink, broken).exists()
 
 
 def test_compress(tmp_path: Path):
