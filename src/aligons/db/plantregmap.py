@@ -23,15 +23,17 @@ _longer = {
 def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
+    parser.add_argument("-G", "--genome", action="store_true")
     parser.add_argument("pattern", nargs="?", default="*")
     args = parser.parse_args(argv or None)
     if args.download:
         fts: list[cli.FuturePath] = []
-        fts.extend(download_genome())
-        fts.extend(split_mask_index())
-        fts.extend(download_via_ftp("Osj"))
+        fts.extend(download_via_ftp())
         fts.extend(retrieve_deploy(q) for q in iter_download_queries())
         cli.wait_raise(fts)
+    elif args.genome:
+        cli.wait_raise(download_genome())
+        cli.wait_raise(split_mask_index())
     else:
         for x in fs.sorted_naturally(db_prefix().rglob(args.pattern)):
             print(x)
@@ -99,20 +101,6 @@ def rglob(pattern: str, species: str = ".") -> Iterator[Path]:
             yield from species_dir.rglob(pattern)
 
 
-def download_via_ftp(sp: str) -> list[cli.FuturePath]:
-    fts: list[cli.FuturePath] = []
-    with FTPplantregmap() as ftp:
-        species = _longer[sp]
-        ftp.ls_cache(species)
-        for bedgraph in ftp.download_conservation(species):
-            fts.append(cli.thread_submit(to_bigwig, bedgraph, species))  # noqa: PERF401
-        for maf in ftp.download_multiple_alignments(species):
-            fts.append(cli.thread_submit(to_cram, maf, species))  # noqa: PERF401
-        for _ in ftp.download_pairwise_alignments(sp):
-            pass
-    return fts
-
-
 def to_cram(link: Path, species: str) -> Path:
     outfile = link.parent / link.with_suffix(".cram")
     reference = api.genome_fa(species)
@@ -135,6 +123,15 @@ def gunzip(infile: Path):
     return outfile
 
 
+def download_via_ftp() -> list[cli.FuturePath]:
+    fts: list[cli.FuturePath] = []
+    with FTPplantregmap() as ftp:
+        for entry in tools.iter_dataset("plantregmap.toml"):
+            sp = entry["label"]
+            fts.extend(ftp.download(sp))
+    return fts
+
+
 class FTPplantregmap(ftplib.LazyFTP):
     def __init__(self):
         host = "ftp.cbi.pku.edu.cn"
@@ -153,6 +150,18 @@ class FTPplantregmap(ftplib.LazyFTP):
         if species:
             self.nlst_cache(f"08-download/{species}")
         self.retrieve("Species_abbr.list")
+
+    def download(self, sp: str) -> list[cli.FuturePath]:
+        fts: list[cli.FuturePath] = []
+        species = _longer[sp]
+        self.ls_cache(species)
+        for bedgraph in self.download_conservation(species):
+            fts.append(cli.thread_submit(to_bigwig, bedgraph, species))  # noqa: PERF401
+        for maf in self.download_multiple_alignments(species):
+            fts.append(cli.thread_submit(to_cram, maf, species))  # noqa: PERF401
+        for _ in self.download_pairwise_alignments(sp):
+            pass
+        return fts
 
     def download_pairwise_alignments(self, species: str) -> Iterator[Path]:
         relpath = f"08-download/FTP/pairwise_alignments/{species}"
