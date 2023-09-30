@@ -54,6 +54,10 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
         args.extend(["-species", species])
     args.append(infile)
     subp.run(args, if_=fs.is_outdated(outfile, infile))
+    if not cli.dry_run:
+        with outfile.open("r") as fin:  # raise FileNotFoundError if failed
+            line1 = fin.readline()
+            assert line1.startswith("##gff-version 3"), line1
     _log.info(f"{outfile}")
     return outfile
 
