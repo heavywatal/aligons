@@ -12,26 +12,49 @@ from aligons.util import cli, tomllib
 _log = logging.getLogger(__name__)
 
 
-def retrieve_content(
-    url: str, outfile: Path | None = None, *, force: bool = False
-) -> bytes:
-    if outfile is None:
-        urlp = urlparse(url)
-        outfile = Path(urlp.netloc + urlp.path)
-    _log.info(f"{outfile}")
-    if cli.dry_run and not force:
-        content = b""
-    elif not outfile.exists():
-        _log.info(url)
-        with urllib.request.urlopen(url) as response:  # noqa: S310
-            content = response.read()
-        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-        with outfile.open("wb") as fout:
-            fout.write(content)
-    else:
-        with outfile.open("rb") as fin:
-            content = fin.read()
-    return content
+class Response:
+    def __init__(self, url: str, path: Path | None = None):
+        self._content = b""
+        self._url = url
+        if path is None:
+            urlp = urlparse(url)
+            path = Path(urlp.netloc + urlp.path)
+        self._path = path
+        if not self._path.exists() and not cli.dry_run:
+            self._fetch()
+
+    def _fetch(self):
+        _log.info(self.url)
+        with urllib.request.urlopen(self.url) as response:  # noqa: S310
+            self._content = response.read()
+        _log.info(f"{self.path}")
+        self.path.parent.mkdir(0o755, parents=True, exist_ok=True)
+        with self.path.open("wb") as fout:
+            fout.write(self._content)
+
+    @property
+    def url(self) -> str:
+        return self._url
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    @property
+    def content(self) -> bytes:
+        if not self._content:
+            _log.info(f"{self.path}")
+            with self.path.open("rb") as fin:
+                self._content = fin.read()
+        return self._content
+
+    @property
+    def text(self) -> str:
+        return self.content.decode()
+
+
+def get(url: str, outfile: Path | None = None) -> Response:
+    return Response(url, outfile)
 
 
 class LazyFTP(FTP):

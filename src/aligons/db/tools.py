@@ -56,7 +56,7 @@ def retrieve(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
 def retrieve_content(url: str) -> bytes:
     urlp = urlparse(url)
     outfile = db.path_mirror(urlp.netloc + urlp.path)
-    return dl.retrieve_content(url, outfile)
+    return dl.get(url, outfile).content
 
 
 def prepare_fasta(species: str) -> cli.FuturePath:

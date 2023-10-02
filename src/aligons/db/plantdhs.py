@@ -30,7 +30,7 @@ def retrieve_deploy(query: str):
     outfile = db_prefix() / query
     if outfile.name.endswith(".zip"):
         outfile = outfile.with_suffix(".gz")
-    content = dl.retrieve_content(url, rawfile)
+    content = dl.get(url, rawfile).content
     if outfile.suffix == ".gz":
         future = cli.thread_submit(tools.compress, content, outfile)
     else:
@@ -50,10 +50,10 @@ def iter_download_queries_all():
         yield mobj[1]
 
 
-def download_page():
+def download_page() -> str:
     url = f"http://{_HOST}/Download"
     cache = db.path_mirror(_HOST) / "Download.html"
-    return dl.retrieve_content(url, cache, force=True).decode()
+    return dl.get(url, cache).text
 
 
 def db_prefix():
