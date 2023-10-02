@@ -5,7 +5,7 @@ from pathlib import Path
 import polars as pl
 
 from aligons import db
-from aligons.util import cli, dl, fs, subp
+from aligons.util import cli, dl, fs
 
 _log = logging.getLogger(__name__)
 _galaxy_domain = "depot.galaxyproject.org"
@@ -37,12 +37,8 @@ def main(argv: list[str] | None = None):
         for x in latest_apps(table):
             url = f"{_galaxy_prefix}{x}"
             if args.download:
-                wget_nc(url)
+                dl.get(url)
             print(x)
-
-
-def wget_nc(url: str):
-    subp.run(["wget", "-nc", url])
 
 
 def latest_apps(table: pl.DataFrame):
