@@ -2,7 +2,6 @@ import logging
 import re
 from collections.abc import Iterator
 from pathlib import Path
-from urllib.parse import urlparse
 
 from aligons import db
 from aligons.db import DataSet, api, mask
@@ -40,23 +39,21 @@ def retrieve(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
     if not fs.is_outdated(out_fa):
         content_fa = b""
     elif len(sequences) > 1:
-        chr_fa = [retrieve_content(url_prefix + s) for s in sequences]
+        chr_fa = [dl_mirror_db(url_prefix + s).content for s in sequences]
         content_fa = b"".join(chr_fa)
     else:
-        content_fa = retrieve_content(url_prefix + sequences[0])
+        content_fa = dl_mirror_db(url_prefix + sequences[0]).content
     fts.append(cli.thread_submit(bgzip_index, content_fa, out_fa))
     if not fs.is_outdated(out_gff):
         content_gff = b""
     else:
-        content_gff = retrieve_content(url_prefix + annotation)
+        content_gff = dl_mirror_db(url_prefix + annotation).content
     fts.append(cli.thread_submit(bgzip_index, content_gff, out_gff))
     return fts
 
 
-def retrieve_content(url: str) -> bytes:
-    urlp = urlparse(url)
-    outfile = db.path_mirror(urlp.netloc + urlp.path)
-    return dl.get(url, outfile).content
+def dl_mirror_db(url: str) -> dl.Response:
+    return dl.mirror(url, db.path_mirror())
 
 
 def prepare_fasta(species: str) -> cli.FuturePath:

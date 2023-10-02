@@ -18,7 +18,7 @@ class Response:
         self._url = url
         if path is None:
             urlp = urlparse(url)
-            path = Path(urlp.netloc + urlp.path)
+            path = Path(Path(urlp.path).name)
         self._path = path
         if not self._path.exists() and not cli.dry_run:
             self._fetch()
@@ -55,6 +55,11 @@ class Response:
 
 def get(url: str, outfile: Path | None = None) -> Response:
     return Response(url, outfile)
+
+
+def mirror(url: str, outdir: Path = Path()) -> Response:
+    urlp = urlparse(url)
+    return Response(url, outdir / (urlp.netloc + urlp.path))
 
 
 class LazyFTP(FTP):
