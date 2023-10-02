@@ -7,9 +7,9 @@ from pathlib import Path
 from aligons import db
 from aligons.db import api
 from aligons.extern import htslib, kent, mafs2cram
-from aligons.util import cli, fs, subp
+from aligons.util import cli, dl, fs, subp
 
-from . import ftplib, tools
+from . import tools
 
 _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"
@@ -65,7 +65,7 @@ def retrieve_deploy(query: str):
         outfile = outfile.with_suffix(outfile.suffix + ".gz")
     elif outfile.name.endswith(".gtf.gz"):
         outfile = outfile.with_suffix("").with_suffix(".gff.gz")
-    content = tools.retrieve_content(url, rawfile)
+    content = dl.retrieve_content(url, rawfile)
     if outfile.suffix == ".gz":
         future = cli.thread_submit(tools.compress, content, outfile)
     else:
@@ -88,7 +88,7 @@ def iter_download_queries_all():
 def download_php():
     url = f"http://{_HOST}/download.php"
     cache = db.path_mirror(_HOST) / "download.php.html"
-    return tools.retrieve_content(url, cache, force=True).decode()
+    return dl.retrieve_content(url, cache, force=True).decode()
 
 
 def db_prefix():
@@ -132,7 +132,7 @@ def download_via_ftp() -> list[cli.FuturePath]:
     return fts
 
 
-class FTPplantregmap(ftplib.LazyFTP):
+class FTPplantregmap(dl.LazyFTP):
     def __init__(self):
         host = "ftp.cbi.pku.edu.cn"
         super().__init__(

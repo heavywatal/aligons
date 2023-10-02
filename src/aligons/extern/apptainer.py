@@ -5,8 +5,7 @@ from pathlib import Path
 import polars as pl
 
 from aligons import db
-from aligons.db import tools
-from aligons.util import cli, fs, subp
+from aligons.util import cli, dl, fs, subp
 
 _log = logging.getLogger(__name__)
 _galaxy_domain = "depot.galaxyproject.org"
@@ -62,7 +61,7 @@ def galaxy_index() -> Path:
     cache_tsv = cache_html.with_suffix(".tsv")
     _log.info(f"{cache_tsv}")
     if fs.is_outdated(cache_tsv, cache_html):
-        content = tools.retrieve_content(_galaxy_prefix, cache_html)
+        content = dl.retrieve_content(_galaxy_prefix, cache_html)
         table = _parse_galaxy_index_html(content)
         table.write_csv(cache_tsv, separator="\t")
     return cache_tsv

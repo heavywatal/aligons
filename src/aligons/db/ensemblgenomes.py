@@ -12,9 +12,9 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from aligons import db
-from aligons.util import cli, config, fs, subp
+from aligons.util import cli, config, dl, fs, subp
 
-from . import ftplib, phylo
+from . import phylo
 
 _log = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ def readlines_compara_maf(file: Path):
                 yield line
 
 
-class FTPensemblgenomes(ftplib.LazyFTP):
+class FTPensemblgenomes(dl.LazyFTP):
     def __init__(self):
         super().__init__(
             "ftp.ensemblgenomes.org",

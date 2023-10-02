@@ -4,7 +4,7 @@ import re
 
 from aligons import db
 from aligons.extern import htslib
-from aligons.util import cli, fs
+from aligons.util import cli, dl, fs
 
 from . import tools
 
@@ -30,7 +30,7 @@ def retrieve_deploy(query: str):
     outfile = db_prefix() / query
     if outfile.name.endswith(".zip"):
         outfile = outfile.with_suffix(".gz")
-    content = tools.retrieve_content(url, rawfile)
+    content = dl.retrieve_content(url, rawfile)
     if outfile.suffix == ".gz":
         future = cli.thread_submit(tools.compress, content, outfile)
     else:
@@ -53,7 +53,7 @@ def iter_download_queries_all():
 def download_page():
     url = f"http://{_HOST}/Download"
     cache = db.path_mirror(_HOST) / "Download.html"
-    return tools.retrieve_content(url, cache, force=True).decode()
+    return dl.retrieve_content(url, cache, force=True).decode()
 
 
 def db_prefix():

@@ -1,6 +1,5 @@
 import logging
 import re
-import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
 from urllib.parse import urlparse
@@ -8,7 +7,7 @@ from urllib.parse import urlparse
 from aligons import db
 from aligons.db import DataSet, api, mask
 from aligons.extern import htslib, jellyfish, kent
-from aligons.util import cli, fs, gff, resources_data, tomllib
+from aligons.util import cli, dl, fs, gff, resources_data, tomllib
 
 _log = logging.getLogger(__name__)
 
@@ -52,6 +51,12 @@ def retrieve(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
         content_gff = retrieve_content(url_prefix + annotation)
     fts.append(cli.thread_submit(bgzip_index, content_gff, out_gff))
     return fts
+
+
+def retrieve_content(url: str) -> bytes:
+    urlp = urlparse(url)
+    outfile = db.path_mirror(urlp.netloc + urlp.path)
+    return dl.retrieve_content(url, outfile)
 
 
 def prepare_fasta(species: str) -> cli.FuturePath:
@@ -153,28 +158,6 @@ def compress(content: bytes, outfile: Path) -> Path:
             fout.write(content)
     _log.info(f"{outfile}")
     return outfile
-
-
-def retrieve_content(
-    url: str, outfile: Path | None = None, *, force: bool = False
-) -> bytes:
-    _log.debug(url)
-    if outfile is None:
-        urlp = urlparse(url)
-        outfile = db.path_mirror(urlp.netloc + urlp.path)
-    if cli.dry_run and not force:
-        content = b""
-    elif fs.is_outdated(outfile):
-        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-        response = urllib.request.urlopen(url)  # noqa: S310
-        content = response.read()
-        with outfile.open("wb") as fout:
-            fout.write(content)
-    else:
-        with outfile.open("rb") as fin:
-            content = fin.read()
-    _log.info(f"{outfile}")
-    return content
 
 
 if __name__ == "__main__":

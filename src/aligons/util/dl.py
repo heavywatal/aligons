@@ -1,13 +1,37 @@
 import logging
 import os
+import urllib.request
 from ftplib import FTP
 from pathlib import Path
+from urllib.parse import urlparse
 
 import tomli_w
 
 from aligons.util import cli, tomllib
 
 _log = logging.getLogger(__name__)
+
+
+def retrieve_content(
+    url: str, outfile: Path | None = None, *, force: bool = False
+) -> bytes:
+    if outfile is None:
+        urlp = urlparse(url)
+        outfile = Path(urlp.netloc + urlp.path)
+    _log.info(f"{outfile}")
+    if cli.dry_run and not force:
+        content = b""
+    elif not outfile.exists():
+        _log.info(url)
+        with urllib.request.urlopen(url) as response:  # noqa: S310
+            content = response.read()
+        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
+        with outfile.open("wb") as fout:
+            fout.write(content)
+    else:
+        with outfile.open("rb") as fin:
+            content = fin.read()
+    return content
 
 
 class LazyFTP(FTP):
