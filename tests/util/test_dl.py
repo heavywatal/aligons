@@ -1,5 +1,6 @@
 import email
 import io
+import logging
 import urllib.request
 import urllib.response
 from pathlib import Path
@@ -9,7 +10,7 @@ from aligons.util import dl
 
 url_netloc = "localhost"
 url_path = "/path/to/file.txt"
-url = f"http://{url_netloc}{url_path}"
+url_full = f"http://{url_netloc}{url_path}"
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +22,7 @@ def tmp_path_module(tmp_path_factory: pytest.TempPathFactory):
 def monkey_url(tmp_path_module: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path_module)
     monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
-    return url
+    return url_full
 
 
 def mock_urlopen(url: str):
@@ -31,16 +32,22 @@ def mock_urlopen(url: str):
 
 
 def _test_response(res: dl.Response, path: Path):
-    assert res.url == url
+    assert res.url == url_full
     assert res.path == path
     assert res.path.is_file()
     assert res.content == b"content"
     assert res.text == "content"
 
 
-def test_get(monkey_url: str):
+def test_get(monkey_url: str, caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.INFO)
     outfile = Path(Path(url_path).name)
     _test_response(dl.get(monkey_url), outfile)
+    assert url_full in caplog.text
+    caplog.clear()
+    _test_response(dl.get(monkey_url), outfile)  # cached
+    assert url_full not in caplog.text
+    assert caplog.text.count(str(outfile)) == 1
 
 
 def test_get_outfile(monkey_url: str):
