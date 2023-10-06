@@ -103,8 +103,9 @@ def rglob(pattern: str, species: str = ".") -> Iterator[Path]:
 
 def to_cram(link: Path, species: str) -> Path:
     outfile = link.parent / link.with_suffix(".cram")
+    maf = gunzip(link)
     reference = api.genome_fa(species)
-    return mafs2cram.maf2cram(link, outfile, reference)
+    return mafs2cram.maf2cram(maf, outfile, reference)
 
 
 def to_bigwig(link: Path, species: str) -> Path:
