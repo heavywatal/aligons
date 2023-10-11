@@ -66,6 +66,7 @@ def merge_crams(futures: list[confu.Future[Path]], outdir: Path):
 
 
 def maf2cram(infile: Path, outfile: Path, reference: Path):
+    """Supports sing.maf only: each alignment must have 2 sequences."""
     is_to_run = fs.is_outdated(outfile, infile)
     mafconv = subp.popen(
         ["maf-convert", "sam", infile], if_=is_to_run, stdout=subp.PIPE

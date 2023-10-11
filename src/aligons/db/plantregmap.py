@@ -158,8 +158,8 @@ class FTPplantregmap(dl.LazyFTP):
         self.ls_cache(species)
         for bedgraph in self.download_conservation(species):
             fts.append(cli.thread_submit(to_bigwig, bedgraph, species))  # noqa: PERF401
-        for maf in self.download_multiple_alignments(species):
-            fts.append(cli.thread_submit(to_cram, maf, species))  # noqa: PERF401
+        for _ in self.download_multiple_alignments(species):
+            pass
         for _ in self.download_pairwise_alignments(sp):
             pass
         return fts
