@@ -68,19 +68,13 @@ class LazyFTP(FTP):
         self.host = host
         self.slug = slug
         self.prefix = prefix
-        self.sizes: dict[str, int] = {}
-        self.size_cache_toml = self.prefix / ".ftp_size_cache.toml"
-        if self.size_cache_toml.exists():
-            with self.size_cache_toml.open("rb") as fin:
-                self.sizes = tomllib.load(fin)
+        self._size_cache: dict[str, int] = {}
+        self._size_cache_toml = self.prefix / ".ftp_size_cache.toml"
         super().__init__(
             timeout=timeout or None  # pyright: ignore[reportGeneralTypeIssues]
         )
 
     def quit(self):  # noqa: A003
-        if self.sizes:
-            with self.size_cache_toml.open("wb") as fout:
-                tomli_w.dump(self.sizes, fout)
         _log.info(f"os.chdir({self.orig_wd})")
         os.chdir(self.orig_wd)
         _log.info("ftp.quit()")
@@ -118,20 +112,25 @@ class LazyFTP(FTP):
                 fout.write("\n".join([Path(x).name for x in lst]) + "\n")
         return lst
 
-    def size_cache(self, relpath: str):
-        size = self.sizes.get(relpath, 0)
+    def size(self, filename: str):
+        if not self._size_cache and self._size_cache_toml.exists():
+            with self._size_cache_toml.open("rb") as fin:
+                self._size_cache = tomllib.load(fin)
+        size = self._size_cache.get(filename, 0)
         if not size:
             self._lazy_init()
-            size = self.size(relpath)
+            size = super().size(filename)
             assert size
-            self.sizes[relpath] = size
+            self._size_cache[filename] = size
+            with self._size_cache_toml.open("wb") as fout:
+                tomli_w.dump(self._size_cache, fout)
         return size
 
     def retrieve(self, path: str, *, checksize: bool = False):
         outfile = self.prefix / path
         size_obs = outfile.stat().st_size if outfile.exists() else 0
         if checksize:
-            size_exp = self.size_cache(path)
+            size_exp = self.size(path)
             assert size_exp
             is_to_run = size_obs != size_exp
         else:
