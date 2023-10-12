@@ -14,9 +14,9 @@ from . import tools
 _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"
 
-_longer = {
-    "Osj": "Oryza_sativa_Japonica_Group",
-    "Sly": "Solanum_lycopersicum",
+_shorter = {
+    "Oryza_sativa_Japonica_Group": "Osj",
+    "Solanum_lycopersicum": "Sly",
 }
 
 
@@ -128,9 +128,15 @@ def download_via_ftp() -> list[cli.FuturePath]:
     fts: list[cli.FuturePath] = []
     with FTPplantregmap() as ftp:
         for entry in tools.iter_dataset("plantregmap.toml"):
-            sp = entry["label"]
-            fts.extend(ftp.download(sp))
+            species = entry["species"]
+            fts.extend(ftp.download(species))
     return fts
+
+
+def species_abbr_list() -> Path:
+    with FTPplantregmap() as ftp:
+        orig = ftp.species_abbr_list()
+    return fs.symlink(orig, db_prefix() / orig.name)
 
 
 class FTPplantregmap(dl.LazyFTP):
@@ -140,7 +146,7 @@ class FTPplantregmap(dl.LazyFTP):
             host,
             "/pub/database/PlantRegMap",
             db.path_mirror(host) / "plantregmap",
-            timeout=65535,
+            timeout=3600,
         )
 
     def ls_cache(self, species: str = ""):
@@ -150,24 +156,26 @@ class FTPplantregmap(dl.LazyFTP):
         self.nlst_cache("08-download/FTP/pairwise_alignments")
         if species:
             self.nlst_cache(f"08-download/{species}")
-        self.retrieve("Species_abbr.list")
 
-    def download(self, sp: str) -> list[cli.FuturePath]:
+    def species_abbr_list(self):
+        return self.retrieve("Species_abbr.list")
+
+    def download(self, species: str) -> list[cli.FuturePath]:
         fts: list[cli.FuturePath] = []
-        species = _longer[sp]
         self.ls_cache(species)
         for bedgraph in self.download_conservation(species):
             fts.append(cli.thread_submit(to_bigwig, bedgraph, species))  # noqa: PERF401
         for _ in self.download_multiple_alignments(species):
             pass
-        for _ in self.download_pairwise_alignments(sp):
+        for _ in self.download_pairwise_alignments(species):
             pass
         return fts
 
     def download_pairwise_alignments(self, species: str) -> Iterator[Path]:
-        relpath = f"08-download/FTP/pairwise_alignments/{species}"
+        sp = _shorter[species]
+        relpath = f"08-download/FTP/pairwise_alignments/{sp}"
         nlst = self.nlst_cache(relpath)
-        yield from (self.retrieve_symlink(x, _longer[species]) for x in nlst)
+        yield from (self.retrieve_symlink(x, species) for x in nlst)
 
     def download_multiple_alignments(self, species: str) -> Iterator[Path]:
         relpath = f"08-download/{species}/multiple_alignments"
