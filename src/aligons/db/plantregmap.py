@@ -7,17 +7,12 @@ from pathlib import Path
 from aligons import db
 from aligons.db import api
 from aligons.extern import htslib, kent, mafs2cram
-from aligons.util import cli, dl, fs, subp
+from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
 
 from . import tools
 
 _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"
-
-_shorter = {
-    "Oryza_sativa_Japonica_Group": "Osj",
-    "Solanum_lycopersicum": "Sly",
-}
 
 
 def main(argv: list[str] | None = None):
@@ -133,10 +128,30 @@ def download_via_ftp() -> list[cli.FuturePath]:
     return fts
 
 
-def species_abbr_list() -> Path:
-    with FTPplantregmap() as ftp:
-        orig = ftp.species_abbr_list()
-    return fs.symlink(orig, db_prefix() / orig.name)
+def shorten(species: str) -> str:
+    try:
+        return shorten.abbr[species]  # pyright: ignore[reportFunctionMemberAccess]
+    except AttributeError:
+        shorten.abbr = species_abbr()  # pyright: ignore[reportFunctionMemberAccess]
+        return shorten(species)
+
+
+def species_abbr() -> dict[str, str]:
+    toml = db_prefix() / "Species_abbr.toml"
+    _log.info(f"{toml}")
+    if toml.exists():
+        with toml.open("rb") as fin:
+            obj = tomllib.load(fin)
+    else:
+        with FTPplantregmap() as ftp, ftp.species_abbr_list().open() as fin:
+            lines = fin.readlines()
+        obj: dict[str, str] = {"Oryza_sativa_Japonica_Group": "Osj"}
+        for line in lines[1:]:
+            (short, long) = line.split("\t")
+            obj[long.strip().replace(" ", "_")] = short
+        with toml.open("wb") as fout:
+            tomli_w.dump(obj, fout)
+    return obj
 
 
 class FTPplantregmap(dl.LazyFTP):
@@ -172,7 +187,7 @@ class FTPplantregmap(dl.LazyFTP):
         return fts
 
     def download_pairwise_alignments(self, species: str) -> Iterator[Path]:
-        sp = _shorter[species]
+        sp = shorten(species)
         relpath = f"08-download/FTP/pairwise_alignments/{sp}"
         nlst = self.nlst_cache(relpath)
         yield from (self.retrieve_symlink(x, species) for x in nlst)
