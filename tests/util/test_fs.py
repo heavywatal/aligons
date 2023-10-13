@@ -32,6 +32,20 @@ def test_sorted_naturally(capsys: pytest.CaptureFixture[str]):
     assert captured.out == "\n".join(names) + "\n"
 
 
+def test_relpath(tmp_path: Path):
+    child = fs.relpath(tmp_path / "noexist", tmp_path)
+    assert child == Path("noexist")
+    parent = fs.relpath(tmp_path, tmp_path / "noexist")
+    assert parent == Path("..")
+    sib = fs.relpath(tmp_path / "sib", tmp_path / "noexist")
+    assert sib == Path("../sib")
+    empty_file = tmp_path / "empty"
+    empty_file.open("w").close()
+    with pytest.raises(AssertionError) as e:
+        _ = fs.relpath(tmp_path, empty_file)
+    assert str(e.value) == str(empty_file)
+
+
 def test_symlink(tmp_path: Path):
     newlink = tmp_path / "link"
     assert fs.symlink(tmp_path, newlink) == newlink
@@ -43,6 +57,10 @@ def test_symlink(tmp_path: Path):
     assert broken.is_symlink()
     assert not broken.exists()
     assert fs.symlink(newlink, broken).exists()
+    relsib = fs.symlink(tmp_path / "noexist", tmp_path / "relsib", relative=True)
+    assert relsib.readlink() == Path("noexist")
+    relparent = fs.symlink(tmp_path, tmp_path / "relparenrt", relative=True)
+    assert relparent.readlink() == Path("..")
 
 
 def test_compress(tmp_path: Path):

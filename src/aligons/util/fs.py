@@ -26,8 +26,16 @@ def main(argv: list[str] | None = None):
         print(x)
 
 
-def symlink(path: Path, link: Path):
+def relpath(path: Path, start: Path = Path()):
+    assert start.is_dir() or not start.exists(), start
+    return Path(os.path.relpath(path, start))
+
+
+def symlink(path: Path, link: Path, *, relative: bool = False):
     if is_outdated(link, path) and not cli.dry_run:
+        if relative:
+            start = link if path.is_dir() else link.parent
+            path = relpath(path, start)
         _log.info(f"ln -s {path} {link}")
         if link.is_symlink():
             link.unlink()
