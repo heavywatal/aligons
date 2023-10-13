@@ -14,7 +14,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from aligons import db
-from aligons.db import ensemblgenomes, phylo
+from aligons.db import ensemblgenomes, phylo, plantregmap
 from aligons.util import cli, config, fs
 
 _log = logging.getLogger(__name__)
@@ -30,6 +30,13 @@ def main(argv: list[str] | None = None):
             print(p)
     else:
         print_stats(args.clade)
+
+
+def shorten(species: str):
+    try:
+        return plantregmap.shorten(species)
+    except KeyError:
+        return phylo.shorten(species)
 
 
 @functools.cache

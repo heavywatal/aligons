@@ -10,7 +10,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from aligons.db import api, phylo
+from aligons.db import api
 from aligons.util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
@@ -131,21 +131,22 @@ def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path):
     return syntenic_net
 
 
-def net_axt_maf(syntenic_net: Path, pre_chain: Path, target: str, query: str):
-    sing_maf = syntenic_net.parent / "sing.maf"
+def net_to_maf(net: Path, chain_gz: Path, sing_maf: Path, target: str, query: str):
     target_2bit = api.genome_2bit(target)
     query_2bit = api.genome_2bit(query)
     target_sizes = api.fasize(target)
     query_sizes = api.fasize(query)
-    is_to_run = fs.is_outdated(sing_maf, [syntenic_net, pre_chain])
+    tprefix = api.shorten(target)
+    qprefix = api.shorten(query)
+    is_to_run = fs.is_outdated(sing_maf, [net, chain_gz])
     toaxt_cmd = "netToAxt"
     toaxt_cmd += subp.optjoin(config["netToAxt"], "-")
-    toaxt_cmd += f" {syntenic_net} stdin {target_2bit} {query_2bit} stdout"
+    toaxt_cmd += f" {net} stdin {target_2bit} {query_2bit} stdout"
     toaxt = subp.popen(toaxt_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=subp.PIPE)
     assert toaxt.stdin
     assert toaxt.stdout
     if is_to_run and not cli.dry_run:
-        with gzip.open(pre_chain, "rb") as fout:
+        with gzip.open(chain_gz, "rb") as fout:
             shutil.copyfileobj(fout, toaxt.stdin)
             toaxt.stdin.close()
     sort = subp.popen(
@@ -153,15 +154,13 @@ def net_axt_maf(syntenic_net: Path, pre_chain: Path, target: str, query: str):
     )
     toaxt.stdout.close()
     assert sort.stdout
-    tprefix = phylo.shorten(target)
-    qprefix = phylo.shorten(query)
     axttomaf_cmd = (
         f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
         f" {target_sizes} {query_sizes} {sing_maf}"
     )
-    atm = subp.popen(axttomaf_cmd, if_=is_to_run, stdin=sort.stdout)
+    axttomaf = subp.popen(axttomaf_cmd, if_=is_to_run, stdin=sort.stdout)
     sort.stdout.close()
-    atm.communicate()
+    axttomaf.communicate()
     return sing_maf
 
 
