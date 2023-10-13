@@ -63,7 +63,7 @@ def trf(infile: Path):
         "maxperiod": 500,
     }
     params = [str(x) for x in param_defaults.values()]
-    dat = infile.parent / ".".join([infile.name, *params, "dat.gz"])
+    dat = infile.with_name(".".join([infile.name, *params, "dat.gz"]))
     args: subp.Args = ["trf", infile]
     args.extend(params)
     args.extend(["-d", "-h", "-l", "10"])

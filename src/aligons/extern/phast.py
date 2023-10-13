@@ -95,11 +95,11 @@ def make_noncons_mod(maf: Path, gff: Path, tree: str):
 def msa_view_features(maf: Path, gff: Path, *, conserved: bool):
     cmd = f"msa_view {maf!s} --in-format MAF --features <(gunzip -c {gff!s})"
     if conserved:
-        outfile = maf.parent / "codons.ss"
+        outfile = maf.with_name("codons.ss")
         cmd += " --catmap 'NCATS = 3; CDS 1-3' --out-format SS --unordered-ss"
         cmd += " --reverse-groups transcript_id"
     else:
-        outfile = maf.parent / "4d-codons.ss"
+        outfile = maf.with_name("4d-codons.ss")
         cmd += " --4d"
     is_to_run = fs.is_outdated(outfile, maf)
     p = subp.run(
@@ -111,7 +111,7 @@ def msa_view_features(maf: Path, gff: Path, *, conserved: bool):
 
 
 def msa_view_ss(codons_ss: Path):
-    outfile = codons_ss.parent / "4d-sites.ss"
+    outfile = codons_ss.with_name("4d-sites.ss")
     s = f"msa_view {codons_ss!s} --in-format SS --out-format SS --tuple-size 1"
     is_to_run = fs.is_outdated(outfile, codons_ss)
     p = subp.run(s, if_=is_to_run, stdout=subp.PIPE)
@@ -122,11 +122,11 @@ def msa_view_ss(codons_ss: Path):
 
 def phyloFit(ss: Path, tree: str, *, conserved: bool):  # noqa: N802
     if conserved:
-        out_root = str(ss.parent / "codons")
+        out_root = str(ss.with_name("codons"))
         outfiles = [Path(f"{out_root}.{i}.mod") for i in range(1, 4)]
         option = "--do-cats 1,2,3"
     else:
-        out_root = str(ss.parent / "4d-sites")
+        out_root = str(ss.with_name("4d-sites"))
         outfiles = [Path(f"{out_root}.mod")]
         option = ""
     cmd = (
@@ -146,7 +146,7 @@ def phyloBoot(mods: list[Path], outfile: Path):  # noqa: N802
 
 
 def most_conserved_mod(mods: list[Path]):
-    outfile = mods[0].parent / "cons.mod"
+    outfile = mods[0].with_name("cons.mod")
     if not fs.is_outdated(outfile, mods) or cli.dry_run:
         return outfile
     shortest_length = sys.float_info.max

@@ -70,7 +70,7 @@ def faToTwoBit(fa_gz: Path):  # noqa: N802
 def faSize(genome_fa_gz: Path):  # noqa: N802
     if not genome_fa_gz.name.endswith("genome.fa.gz"):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
-    outfile = genome_fa_gz.parent / "fasize.chrom.sizes"
+    outfile = genome_fa_gz.with_name("fasize.chrom.sizes")
     if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
         with outfile.open("wb") as fout:
             subp.run(["faSize", "-detailed", genome_fa_gz], stdout=fout)
@@ -114,7 +114,7 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
 
 
 def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path):
-    syntenic_net = pre_chain.parent / "syntenic.net"
+    syntenic_net = pre_chain.with_name("syntenic.net")
     is_to_run = fs.is_outdated(syntenic_net, pre_chain)
     cn_cmd = "chainNet"
     cn_cmd += subp.optjoin(config["chainNet"], "-")

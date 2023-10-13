@@ -21,7 +21,7 @@ def split(path: Path, *, compress: bool = True):
 
     dir/seq.fa.gz -> dir/_work/seq.part_{id}.fasta.gz
     """
-    outdir = path.parent / "_work"
+    outdir = path.with_name("_work")
     args: subp.Args = ["seqkit", "split", "--by-id", "-2"]
     if compress:
         args.extend(["-e", ".gz"])

@@ -97,7 +97,7 @@ def rglob(pattern: str, species: str = ".") -> Iterator[Path]:
 
 
 def to_cram(link: Path, species: str) -> Path:
-    outfile = link.parent / link.with_suffix(".cram")
+    outfile = link.with_suffix(".cram")
     maf = gunzip(link)
     reference = api.genome_fa(species)
     return mafs2cram.maf2cram(maf, outfile, reference)
@@ -112,7 +112,7 @@ def to_bigwig(link: Path, species: str) -> Path:
 
 
 def gunzip(infile: Path):
-    outfile = infile.parent / infile.name.removesuffix(".gz")
+    outfile = infile.with_name(infile.name.removesuffix(".gz"))
     if fs.is_outdated(outfile, infile):
         subp.run(["gunzip", "-fk", infile])
         subp.run(["touch", outfile])

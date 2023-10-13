@@ -29,7 +29,7 @@ def split_by_seqid(path: Path):
         if seqid.startswith("scaffold"):
             _log.debug(f"ignoring scaffold: {seqid}")
             continue
-        outfile = path.parent / f"{stem}.chromosome.{seqid}.gff3.gz"
+        outfile = path.with_name(f"{stem}.chromosome.{seqid}.gff3.gz")
         files.append(outfile)
         _log.info(f"{outfile}")
         if cli.dry_run or not fs.is_outdated(outfile, path):

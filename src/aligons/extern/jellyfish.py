@@ -42,7 +42,7 @@ def run(species: str) -> list[Path]:
 
 def count(infile: Path):
     opts = config["jellyfish"]["count"]
-    outfile = infile.parent / "kmer" / "mer_counts.jf"
+    outfile = infile.with_name("kmer") / "mer_counts.jf"
     args: subp.Args = ["jellyfish", "count", "--canonical"]
     args.extend(["-m", str(opts["mer_len"])])
     args.extend(["-s", str(opts["size"])])
@@ -104,7 +104,7 @@ def calc_threshold(histofile: Path) -> int:
 
 
 def log_config(histofile: Path, freq: int):
-    config_log = histofile.parent / "config.toml"
+    config_log = histofile.with_name("config.toml")
     opts = {}
     opts["jellyfish"] = config["jellyfish"]
     opts["dCNS"] = {"freq": freq}
@@ -119,7 +119,7 @@ def mask_genome(infile: Path, kmer_fa: Path, freq: int = 50):
     dump_lower_count = config["jellyfish"]["dump"]["lower_count"]
     if freq < dump_lower_count:
         _log.warning(f"threshold frequency: {freq} < {dump_lower_count=}")
-    output = kmer_fa.parent / infile.name
+    output = kmer_fa.with_name(infile.name)
     tmp_fa = output.with_suffix("")
     args: subp.Args = ["dCNS", "maskGenome", "-d"]
     args.extend(["-i", "/dev/stdin"])

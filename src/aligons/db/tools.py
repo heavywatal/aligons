@@ -108,13 +108,13 @@ def _create_genome_bgzip(files: list[Path]):
     ext = files[0].with_suffix("").suffix
     (outname, count) = re.subn(rf"\.chromosome\..+{ext}", rf".genome{ext}", name)
     assert count == 1, name
-    outfile = files[0].parent / outname
+    outfile = files[0].with_name(outname)
     return htslib.concat_bgzip(files, outfile)
 
 
 def _split_toplevel_fa_work(fa_gz: Path) -> list[cli.FuturePath]:
     fmt = "{stem}.{seqid}.fa"
-    outdir = fa_gz.parent / "_work"
+    outdir = fa_gz.with_name("_work")
     return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"), outdir)
 
 

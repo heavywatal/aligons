@@ -43,7 +43,7 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
     - .out.gff lacks some information stored in .out.
     """
     assert infile.suffix != ".gz", infile
-    outfile = infile.parent / (infile.name + ".out.gff")
+    outfile = infile.with_suffix(infile.suffix + ".out.gff")
     parallel: int = 2
     args: subp.Args = ["RepeatMasker", "-e", "rmblast", "-gff"]
     if soft:

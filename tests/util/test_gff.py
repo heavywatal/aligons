@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from aligons.util import gff
 
-data_dir = Path(__file__).parent / "data"
+data_dir = Path(__file__).with_name("data")
 
 
 def test_split(tmp_path: Path, caplog: pytest.LogCaptureFixture):

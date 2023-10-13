@@ -14,7 +14,7 @@ def test_is_outdated(tmp_path: Path):
     assert tmp_file.exists()
     assert fs.is_outdated(tmp_file)
     this_file = Path(__file__)
-    caches = list((this_file.parent / "__pycache__").iterdir())
+    caches = list((this_file.with_name("__pycache__")).iterdir())
     assert caches
     assert fs.is_outdated(this_file, caches)
     assert not fs.is_outdated(this_file)
@@ -91,7 +91,7 @@ def test_chdir(tmp_path: Path):
 
 
 def test_checksums(caplog: pytest.LogCaptureFixture):
-    data_dir = Path(__file__).parent / "data"
+    data_dir = Path(__file__).with_name("data")
     fs.checksums(data_dir / "CHECKSUMS")
     assert not caplog.text
     fs.checkline("42 1 sorted.gff3", data_dir)

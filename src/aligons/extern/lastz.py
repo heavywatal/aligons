@@ -71,7 +71,7 @@ class PairwiseAlignment:
         syntenic_net = kent.chain_net_syntenic(
             pre_chain, self._target_sizes, self._query_sizes
         )
-        sing_maf = syntenic_net.parent / "sing.maf"
+        sing_maf = syntenic_net.with_name("sing.maf")
         kent.net_to_maf(syntenic_net, pre_chain, sing_maf, self._target, self._query)
         if sing_maf.exists():
             print(sing_maf)

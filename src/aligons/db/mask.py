@@ -35,7 +35,7 @@ def submit(
     if outfile is None:
         (outname, count) = re.subn(r"\.dna\.", ".dna_sm.", infile.name)
         assert count == 1, infile
-        outfile = infile.parent / (outname + ".gz")
+        outfile = infile.with_name(outname + ".gz")
     assert outfile.suffix == ".gz", outfile
     fts: list[cli.FuturePath] = []
     fts.append(cli.thread_submit(repeatmasker.repeatmasker, infile, species))
