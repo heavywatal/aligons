@@ -64,7 +64,7 @@ def retrieve_deploy(query: str):
     if outfile.suffix == ".gz":
         future = cli.thread_submit(tools.compress, content, outfile)
     else:
-        future = cli.thread_submit(fs.symlink, rawfile, outfile)
+        future = cli.thread_submit(fs.symlink, rawfile, outfile, relative=True)
     return cli.thread_submit(htslib.try_index, future)
 
 
@@ -205,7 +205,7 @@ class FTPplantregmap(dl.LazyFTP):
     def retrieve_symlink(self, relpath: str, species: str) -> Path:
         orig = self.retrieve(relpath, checksize=True)
         outdir = db_prefix() / species / "compara"
-        return fs.symlink(orig, outdir / orig.name)
+        return fs.symlink(orig, outdir / orig.name, relative=True)
 
 
 if __name__ == "__main__":

@@ -63,7 +63,7 @@ def _ln_or_bgzip(src: Path, species: str, fmt: str = ""):
     dstname = src.name.replace("primary_assembly", "chromosome")
     dst = ensemblgenomes.prefix() / fmt / species / dstname
     if ".chromosome." in dstname:
-        fs.symlink(src, dst)
+        fs.symlink(src, dst, relative=True)
     elif fs.is_outdated(dst, src):
         with src.open("rb") as fin, dst.open("wb") as fout:
             fout.write(htslib.bgzip_compress(fs.gzip_decompress(fin.read())))

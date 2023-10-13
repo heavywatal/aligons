@@ -67,7 +67,7 @@ def prepare_fasta(species: str) -> cli.FuturePath:
 def _symlink_masked(ft: cli.FuturePath) -> Path:
     masked = ft.result()
     link = masked.parent.parent / masked.name
-    return fs.symlink(masked, link)
+    return fs.symlink(masked, link, relative=True)
 
 
 def bgzip_index(content: bytes, outfile: Path):

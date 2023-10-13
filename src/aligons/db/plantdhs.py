@@ -34,7 +34,7 @@ def retrieve_deploy(query: str):
     if outfile.suffix == ".gz":
         future = cli.thread_submit(tools.compress, content, outfile)
     else:
-        future = cli.thread_submit(fs.symlink, rawfile, outfile)
+        future = cli.thread_submit(fs.symlink, rawfile, outfile, relative=True)
     return cli.thread_submit(htslib.try_index, future)
 
 
