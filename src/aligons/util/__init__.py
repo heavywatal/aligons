@@ -1,8 +1,5 @@
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib  # pyright: ignore[reportMissingImports]
 import logging
+import tomllib
 from collections.abc import Mapping
 from importlib import resources
 from pathlib import Path
