@@ -5,13 +5,18 @@ dst: ./pairwise/{target}/{query}/cram/genome.cram
 """
 import concurrent.futures as confu
 import logging
+import os
 import re
 from pathlib import Path
 
-from aligons.db import api
+from aligons.db import api, path_mirror
 from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
+
+_ref_cache = str(path_mirror("hts-ref/%2s/%2s/%s"))
+os.environ["REF_CACHE"] = _ref_cache
+os.environ["REF_PATH"] = _ref_cache
 
 
 def main(argv: list[str] | None = None):
@@ -52,7 +57,7 @@ def mafs2cram(path: Path):
     return pool.submit(merge_crams, futures, outdir)
 
 
-def merge_crams(futures: list[confu.Future[Path]], outdir: Path):
+def merge_crams(futures: list[confu.Future[Path]], outdir: Path) -> Path:
     crams: list[Path] = [f.result() for f in futures]
     outfile = outdir / "genome.cram"
     is_to_run = bool(crams) and fs.is_outdated(outfile, crams)
@@ -65,7 +70,7 @@ def merge_crams(futures: list[confu.Future[Path]], outdir: Path):
     return outfile
 
 
-def maf2cram(infile: Path, outfile: Path, reference: Path):
+def maf2cram(infile: Path, outfile: Path, reference: Path) -> Path:
     """Supports sing.maf only: each alignment must have 2 sequences."""
     is_to_run = fs.is_outdated(outfile, infile)
     mafconv = subp.popen(
@@ -79,7 +84,7 @@ def maf2cram(infile: Path, outfile: Path, reference: Path):
     return outfile
 
 
-def sanitize_cram(reference: Path, sam: bytes, *, if_: bool):
+def sanitize_cram(reference: Path, sam: bytes, *, if_: bool) -> bytes:
     def repl(mobj: re.Match[bytes]):
         qstart = 0
         if int(mobj["flag"]) & 16:  # reverse strand
