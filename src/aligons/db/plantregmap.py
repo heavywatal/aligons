@@ -60,7 +60,7 @@ def retrieve_deploy(query: str):
         outfile = outfile.with_suffix(outfile.suffix + ".gz")
     elif outfile.name.endswith(".gtf.gz"):
         outfile = outfile.with_suffix("").with_suffix(".gff.gz")
-    content = dl.get(url, rawfile).content
+    content = dl.fetch(url, rawfile).content
     if outfile.suffix == ".gz":
         future = cli.thread_submit(tools.compress, content, outfile)
     else:
@@ -83,7 +83,7 @@ def iter_download_queries_all():
 def download_php() -> str:
     url = f"http://{_HOST}/download.php"
     cache = db.path_mirror(_HOST) / "download.php.html"
-    return dl.get(url, cache).text
+    return dl.fetch(url, cache).text
 
 
 def db_prefix():

@@ -30,7 +30,7 @@ def retrieve_deploy(query: str):
     outfile = db_prefix() / query
     if outfile.name.endswith(".zip"):
         outfile = outfile.with_suffix(".gz")
-    content = dl.get(url, rawfile).content
+    content = dl.fetch(url, rawfile).content
     if outfile.suffix == ".gz":
         future = cli.thread_submit(tools.compress, content, outfile)
     else:
@@ -53,7 +53,7 @@ def iter_download_queries_all():
 def download_page() -> str:
     url = f"http://{_HOST}/Download"
     cache = db.path_mirror(_HOST) / "Download.html"
-    return dl.get(url, cache).text
+    return dl.fetch(url, cache).text
 
 
 def db_prefix():

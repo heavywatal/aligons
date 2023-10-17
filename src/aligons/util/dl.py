@@ -89,7 +89,7 @@ class Response:
 _global_session = LazySession()
 
 
-def get(url: str, outfile: Path | None = None) -> Response:
+def fetch(url: str, outfile: Path | None = None) -> Response:
     return _global_session.fetch(url, outfile)
 
 

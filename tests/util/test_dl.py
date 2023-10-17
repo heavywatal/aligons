@@ -42,17 +42,17 @@ def _test_response(res: dl.Response, path: Path):
 def test_get(monkey_url: str, caplog: pytest.LogCaptureFixture):
     caplog.set_level(logging.INFO)
     outfile = Path(Path(url_path).name)
-    _test_response(dl.get(monkey_url), outfile)
+    _test_response(dl.fetch(monkey_url), outfile)
     assert url_full in caplog.text
     caplog.clear()
-    _test_response(dl.get(monkey_url), outfile)  # cached
+    _test_response(dl.fetch(monkey_url), outfile)  # cached
     assert url_full not in caplog.text
     assert caplog.text.count(str(outfile)) == 1
 
 
 def test_get_outfile(monkey_url: str):
     outfile = Path("outfile.txt")
-    _test_response(dl.get(monkey_url, outfile), outfile)
+    _test_response(dl.fetch(monkey_url, outfile), outfile)
 
 
 def test_mirror(monkey_url: str):
