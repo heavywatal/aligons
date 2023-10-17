@@ -1,13 +1,12 @@
 import concurrent.futures as confu
 import logging
 import re
-from collections.abc import Iterator
 from pathlib import Path
 
 from aligons import db
 from aligons.db import DataSet, jgi, mask
 from aligons.extern import htslib, jellyfish, kent
-from aligons.util import cli, dl, fs, gff, resources_data, tomllib
+from aligons.util import cli, dl, fs, gff
 
 _log = logging.getLogger(__name__)
 
@@ -17,15 +16,6 @@ def main(argv: list[str] | None = None):
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
     gff.split_by_seqid(args.infile)
-
-
-def iter_dataset(filename: str) -> Iterator[DataSet]:
-    with resources_data(filename).open("rb") as fin:
-        meta = tomllib.load(fin)
-    for dic in meta["dataset"]:
-        if dic.get("draft", False):
-            continue
-        yield DataSet(dic)
 
 
 def fetch_and_bgzip(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:

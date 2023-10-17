@@ -36,7 +36,7 @@ def main(argv: list[str] | None = None):
 
 def fetch_and_bgzip():
     fts: list[cli.FuturePath] = []
-    for entry in tools.iter_dataset("plantregmap.toml"):
+    for entry in db.iter_builtin_dataset("plantregmap.toml"):
         fts.extend(tools.fetch_and_bgzip(entry, db_prefix()))
     return fts
 
@@ -112,7 +112,7 @@ def gunzip(infile: Path):
 def download_via_ftp() -> list[cli.FuturePath]:
     fts: list[cli.FuturePath] = []
     with FTPplantregmap() as ftp:
-        for entry in tools.iter_dataset("plantregmap.toml"):
+        for entry in db.iter_builtin_dataset("plantregmap.toml"):
             species = entry["species"]
             fts.extend(ftp.download(species))
     return fts
