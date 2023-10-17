@@ -49,7 +49,7 @@ def as_dict(efolder: ElementTree.Element) -> dict[str, str | list[str]]:
     _log.debug(f"{efolder.attrib}")
     elem_assem = search_filename(efolder, r"softmasked\.fa\.gz$")
     elem_annot = search_filename(efolder, r"repeatmasked.+\.gff3\.gz$")
-    if not elem_assem or not elem_annot:
+    if elem_assem is None or elem_annot is None:
         return {}
     fa_url = _simplify_url(elem_assem.attrib["url"])
     gff_url = _simplify_url(elem_annot.attrib["url"])
