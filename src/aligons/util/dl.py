@@ -74,7 +74,7 @@ class Response:
     @property
     def content(self) -> bytes:
         if not self._content and not cli.dry_run:
-            _log.info(f"{self._path}")
+            _log.info(f"{self.path}")
             with self.path.open("rb") as fin:
                 self._content = fin.read()
         return self._content
