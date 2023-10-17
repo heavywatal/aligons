@@ -1,10 +1,12 @@
 import logging
 import os
-import urllib.request
+from collections.abc import Mapping
 from ftplib import FTP
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
+import requests
 import tomli_w
 
 from aligons.util import cli, tomllib
@@ -12,24 +14,53 @@ from aligons.util import cli, tomllib
 _log = logging.getLogger(__name__)
 
 
+class LazySession:
+    def __init__(self, url: str = "", data: Mapping[str, str] = {}):
+        self._url = url
+        self._data = data
+        self._req_session = None
+
+    def _lazy_init(self):
+        if self._req_session is None:
+            self._req_session = requests.Session()
+            if self._url:
+                _log.info(self._url)
+                self._req_session.post(self._url, data=self._data)
+
+    def get(self, url: str, **kwargs: Any):
+        self._lazy_init()
+        _log.info(url)
+        assert self._req_session
+        return self._req_session.get(url, **kwargs)
+
+    def fetch(self, url: str, outfile: Path | None = None):
+        if outfile is None:
+            urlp = urlparse(url)
+            outfile = Path(Path(urlp.path).name)
+        return Response(self, url, outfile)
+
+    def mirror(self, url: str, outdir: Path = Path()):
+        urlp = urlparse(url)
+        return self.fetch(url, outdir / (urlp.netloc + urlp.path))
+
+
 class Response:
-    def __init__(self, url: str, path: Path | None = None):
-        self._content = b""
+    def __init__(self, session: LazySession, url: str, path: Path | None = None):
+        self._session = session
         self._url = url
         if path is None:
             urlp = urlparse(url)
             path = Path(Path(urlp.path).name)
         self._path = path
-        if not self._path.exists() and not cli.dry_run:
-            self._fetch()
+        self._content = b""
 
     def _fetch(self):
         _log.info(self.url)
-        with urllib.request.urlopen(self.url) as response:  # noqa: S310
-            self._content = response.read()
-        _log.info(f"{self.path}")
-        self.path.parent.mkdir(0o755, parents=True, exist_ok=True)
-        with self.path.open("wb") as fout:
+        response = self._session.get(self._url)
+        self._content = response.content
+        _log.info(f"{self._path}")
+        self._path.parent.mkdir(0o755, parents=True, exist_ok=True)
+        with self._path.open("wb") as fout:
             fout.write(self._content)
 
     @property
@@ -38,11 +69,13 @@ class Response:
 
     @property
     def path(self) -> Path:
+        if not self._path.exists() and not cli.dry_run:
+            self._fetch()
         return self._path
 
     @property
     def content(self) -> bytes:
-        if not self._content:
+        if not self._content and not cli.dry_run:
             _log.info(f"{self.path}")
             with self.path.open("rb") as fin:
                 self._content = fin.read()
@@ -53,13 +86,15 @@ class Response:
         return self.content.decode()
 
 
+_global_session = LazySession()
+
+
 def get(url: str, outfile: Path | None = None) -> Response:
-    return Response(url, outfile)
+    return _global_session.fetch(url, outfile)
 
 
 def mirror(url: str, outdir: Path = Path()) -> Response:
-    urlp = urlparse(url)
-    return Response(url, outdir / (urlp.netloc + urlp.path))
+    return _global_session.mirror(url, outdir)
 
 
 class LazyFTP(FTP):

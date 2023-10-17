@@ -1,11 +1,8 @@
-import email
-import io
 import logging
-import urllib.request
-import urllib.response
 from pathlib import Path
 
 import pytest
+import requests
 from aligons.util import dl
 
 url_netloc = "localhost"
@@ -21,14 +18,17 @@ def tmp_path_module(tmp_path_factory: pytest.TempPathFactory):
 @pytest.fixture()
 def monkey_url(tmp_path_module: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path_module)
-    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    monkeypatch.setattr(requests.Session, "get", mock_session_get)
     return url_full
 
 
-def mock_urlopen(url: str):
-    fp = io.BytesIO(b"content")
-    msg = email.message_from_string("Content-Type: text/plain\n")
-    return urllib.response.addinfourl(fp, msg, url, 200)
+class MockResponse:
+    def __init__(self):
+        self.content = b"content"
+
+
+def mock_session_get(_self: requests.Session, _url: str):
+    return MockResponse()
 
 
 def _test_response(res: dl.Response, path: Path):

@@ -18,6 +18,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
   "polars",
+  "requests",
   "tomli-w"
 ]
 
