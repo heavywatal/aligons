@@ -46,6 +46,9 @@ def fetch_and_bgzip(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
         content_fa = b"".join(chr_fa)
     else:
         content_fa = dl_mirror_db(url_prefix + sequences[0]).content
+    if content_fa and not content_fa.startswith(b">"):
+        msg = f"invalid fasta: {url_prefix + sequences[0]}"
+        raise ValueError(msg)
     fts.append(cli.thread_submit(bgzip_index, content_fa, out_fa))
     if not fs.is_outdated(out_gff):
         content_gff = b""
