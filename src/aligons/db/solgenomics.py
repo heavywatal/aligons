@@ -2,7 +2,6 @@
 import logging
 
 from aligons import db
-from aligons.db import api
 from aligons.util import cli
 
 from . import phylo, tools
@@ -17,28 +16,18 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     _test_newick()
     if args.download:
-        fts = download()
+        fts = fetch_and_bgzip()
         cli.wait_raise(fts)
     if args.mask:
-        fts = split_mask_index()
+        fts = tools.index_as_completed(fetch_and_bgzip())
         cli.wait_raise(fts)
 
 
-def download():
+def fetch_and_bgzip():
     fts: list[cli.FuturePath] = []
     for entry in tools.iter_dataset("solgenomics.toml"):
         entry["url_prefix"] = "https://solgenomics.net/ftp/genomes/"
-        fts.extend(tools.retrieve(entry, db_prefix()))
-    return fts
-
-
-def split_mask_index():
-    fts: list[cli.FuturePath] = []
-    for entry in tools.iter_dataset("solgenomics.toml"):
-        species = entry["species"]
-        fts.append(tools.prepare_fasta(species))
-        gff3_gz = api.get_file_nolabel("*.gff3.gz", species)
-        fts.append(cli.thread_submit(tools.index_gff3, [gff3_gz]))
+        fts.extend(tools.fetch_and_bgzip(entry, db_prefix()))
     return fts
 
 

@@ -1,10 +1,11 @@
+import concurrent.futures as confu
 import logging
 import re
 from collections.abc import Iterator
 from pathlib import Path
 
 from aligons import db
-from aligons.db import DataSet, api, mask
+from aligons.db import DataSet, mask
 from aligons.extern import htslib, jellyfish, kent
 from aligons.util import cli, dl, fs, gff, resources_data, tomllib
 
@@ -27,13 +28,15 @@ def iter_dataset(filename: str) -> Iterator[DataSet]:
         yield DataSet(dic)
 
 
-def retrieve(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
+def fetch_and_bgzip(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
     url_prefix = entry["url_prefix"]
     species = entry["species"]
     annotation = entry["annotation"]
     sequences = entry["sequences"]
+    softmasked = "softmasked" in sequences[0]
+    dna_sm = "dna_sm" if softmasked else "dna"
     stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
-    out_fa = prefix / f"fasta/{species}/{stem}.dna.toplevel.fa.gz"
+    out_fa = prefix / f"fasta/{species}/{stem}.{dna_sm}.toplevel.fa.gz"
     out_gff = prefix / f"gff3/{species}/{stem}.gff3.gz"
     fts: list[cli.FuturePath] = []
     if not fs.is_outdated(out_fa):
@@ -56,8 +59,20 @@ def dl_mirror_db(url: str) -> dl.Response:
     return dl.mirror(url, db.path_mirror())
 
 
-def prepare_fasta(species: str) -> cli.FuturePath:
-    toplevel_fa_gz = api.get_file("*.dna.toplevel.fa.gz", species)
+def index_as_completed(futures: list[cli.FuturePath]) -> list[cli.FuturePath]:
+    fts: list[cli.FuturePath] = []
+    for ft in confu.as_completed(futures):
+        file = ft.result()
+        if file.name.endswith("dna.toplevel.fa.gz"):
+            fts.append(split_mask_index(file))
+        elif file.name.endswith("dna_sm.toplevel.fa.gz"):
+            fts.append(cli.thread_submit(index_fasta, [file]))
+        elif file.name.endswith("gff3.gz"):
+            fts.append(cli.thread_submit(index_gff3, [file]))
+    return fts
+
+
+def split_mask_index(toplevel_fa_gz: Path) -> cli.FuturePath:
     future_chromosomes = _split_toplevel_fa_work(toplevel_fa_gz)
     future_masked = [mask.submit(f) for f in future_chromosomes]
     links = [_symlink_masked(f) for f in future_masked]

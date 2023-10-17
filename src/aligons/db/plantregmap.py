@@ -27,27 +27,17 @@ def main(argv: list[str] | None = None):
         fts.extend(retrieve_deploy(q) for q in iter_download_queries())
         cli.wait_raise(fts)
     elif args.genome:
-        cli.wait_raise(download_genome())
-        cli.wait_raise(split_mask_index())
+        fts = tools.index_as_completed(fetch_and_bgzip())
+        cli.wait_raise(fts)
     else:
         for x in fs.sorted_naturally(db_prefix().rglob(args.pattern)):
             print(x)
 
 
-def download_genome():
+def fetch_and_bgzip():
     fts: list[cli.FuturePath] = []
     for entry in tools.iter_dataset("plantregmap.toml"):
-        fts.extend(tools.retrieve(entry, db_prefix()))
-    return fts
-
-
-def split_mask_index():
-    fts: list[cli.FuturePath] = []
-    for entry in tools.iter_dataset("plantregmap.toml"):
-        species = entry["species"]
-        fts.append(tools.prepare_fasta(species))
-        gff3_gz = api.get_file_nolabel("*.gff3.gz", species)
-        fts.append(cli.thread_submit(tools.index_gff3, [gff3_gz]))
+        fts.extend(tools.fetch_and_bgzip(entry, db_prefix()))
     return fts
 
 
