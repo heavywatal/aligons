@@ -11,10 +11,7 @@ _HOST = "genome.jgi.doe.gov"
 
 session = dl.LazySession(
     "https://signon.jgi.doe.gov/signon/create",
-    data={
-        "login": config["jgi"]["login"],
-        "password": config["jgi"]["password"],
-    },
+    data=config["jgi"].get("auth", {}),
 )
 
 
@@ -22,22 +19,20 @@ def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     _args = parser.parse_args(argv or None)
-    for x in ["PhytozomeV11", "PhytozomeV12"]:
-        make_dataset_toml(x)
+    make_dataset_toml(config["jgi"]["organism"])
 
 
-def make_dataset_toml(organism: str = "PhytozomeV12"):
+def make_dataset_toml(organism: str):
     outfile = db.path(_HOST) / (organism + ".toml")
-    _log.info(f"{outfile}")
     if not outfile.exists():
         xml = fetch_xml(organism).path
-        _log.info(f"{xml}")
         tree = ElementTree.parse(xml)  # noqa: S314
         dataset = gather_dataset(tree.getroot())
         if not cli.dry_run:
             outfile.parent.mkdir(0o755, exist_ok=True)
             with outfile.open("wb") as fout:
                 tomli_w.dump(dataset, fout)
+    _log.info(f"{outfile}")
     return outfile
 
 
@@ -95,7 +90,7 @@ def search_filename(
     return None
 
 
-def fetch_xml(organism: str = "PhytozomeV12"):
+def fetch_xml(organism: str):
     outfile = db.path_mirror(_HOST) / (organism + ".xml")
     query = f"?organism={organism}"
     url = f"https://{_HOST}/portal/ext-api/downloads/get-directory"

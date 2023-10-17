@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Any
 
 import pytest
 import requests
@@ -18,17 +19,34 @@ def tmp_path_module(tmp_path_factory: pytest.TempPathFactory):
 @pytest.fixture()
 def monkey_url(tmp_path_module: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path_module)
-    monkeypatch.setattr(requests.Session, "get", mock_session_get)
+    monkeypatch.setattr(requests.Session, "request", mock_session_request)
     return url_full
 
 
 class MockResponse:
-    def __init__(self):
+    def __init__(self, url: str, **kwargs: dict[str, Any]):
+        self.status_code = 200
+        self.url = url
+        self.data = kwargs.get("data", {})
         self.content = b"content"
 
+    def raise_for_status(self):
+        pass
 
-def mock_session_get(_self: requests.Session, _url: str):
-    return MockResponse()
+
+def mock_session_request(
+    _self: requests.Session, _method: str, url: str, **kwargs: dict[str, Any]
+):
+    return MockResponse(url, **kwargs)
+
+
+def test_session(monkey_url: str, caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.INFO)
+    session = dl.LazySession(url_full, data={"key": "value"})
+    assert not caplog.text
+    assert session.get(monkey_url).content == b"content"
+    assert f"POST {monkey_url}" in caplog.text
+    assert f"GET {monkey_url}" in caplog.text
 
 
 def _test_response(res: dl.Response, path: Path):

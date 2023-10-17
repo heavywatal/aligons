@@ -33,6 +33,9 @@ expected-length = 12
 [ensemblgenomes]
 version = 49
 
+[jgi]
+organism = "PhytozomeV12"
+
 [db]
 root = "~/db/aligons"
 mirror = "~/db"

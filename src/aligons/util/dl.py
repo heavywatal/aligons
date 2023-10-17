@@ -24,13 +24,14 @@ class LazySession:
         if self._req_session is None:
             self._req_session = requests.Session()
             if self._url:
-                _log.info(self._url)
-                self._req_session.post(self._url, data=self._data)
+                _log.info(f"POST {self._url}")
+                response = self._req_session.post(self._url, data=self._data)
+                response.raise_for_status()
 
     def get(self, url: str, **kwargs: Any):
         self._lazy_init()
-        _log.info(url)
         assert self._req_session
+        _log.info(f"GET {url}")
         return self._req_session.get(url, **kwargs)
 
     def fetch(self, url: str, outfile: Path | None = None):
@@ -45,18 +46,15 @@ class LazySession:
 
 
 class Response:
-    def __init__(self, session: LazySession, url: str, path: Path | None = None):
+    def __init__(self, session: LazySession, url: str, path: Path):
         self._session = session
         self._url = url
-        if path is None:
-            urlp = urlparse(url)
-            path = Path(Path(urlp.path).name)
         self._path = path
         self._content = b""
 
     def _fetch(self):
-        _log.info(self.url)
         response = self._session.get(self._url)
+        response.raise_for_status()
         self._content = response.content
         _log.info(f"{self._path}")
         self._path.parent.mkdir(0o755, parents=True, exist_ok=True)
@@ -76,7 +74,7 @@ class Response:
     @property
     def content(self) -> bytes:
         if not self._content and not cli.dry_run:
-            _log.info(f"{self.path}")
+            _log.info(f"{self._path}")
             with self.path.open("rb") as fin:
                 self._content = fin.read()
         return self._content
