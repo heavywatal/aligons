@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from aligons import db
-from aligons.db import DataSet, mask
+from aligons.db import DataSet, jgi, mask
 from aligons.extern import htslib, jellyfish, kent
 from aligons.util import cli, dl, fs, gff, resources_data, tomllib
 
@@ -56,6 +56,8 @@ def fetch_and_bgzip(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
 
 
 def dl_mirror_db(url: str) -> dl.Response:
+    if "jgi.doe.gov" in url:
+        return jgi.session.mirror(url, db.path_mirror())
     return dl.mirror(url, db.path_mirror())
 
 
