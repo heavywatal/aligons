@@ -36,7 +36,7 @@ def fetch_and_bgzip(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
         content_fa = b"".join(chr_fa)
     else:
         content_fa = dl_mirror_db(url_prefix + sequences[0]).content
-    if content_fa and not content_fa.startswith(b">"):
+    if content_fa and not looks_like_fasta(content_fa):
         msg = f"invalid fasta: {url_prefix + sequences[0]}"
         raise ValueError(msg)
     fts.append(cli.thread_submit(bgzip_index, content_fa, out_fa))
@@ -165,6 +165,12 @@ def compress(content: bytes, outfile: Path) -> Path:
             fout.write(content)
     _log.info(f"{outfile}")
     return outfile
+
+
+def looks_like_fasta(content: bytes):
+    if fs.is_gz(content):
+        return True  # TODO: test first few bytes
+    return content.startswith(b">")
 
 
 if __name__ == "__main__":
