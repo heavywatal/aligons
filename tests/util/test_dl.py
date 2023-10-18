@@ -66,6 +66,9 @@ def test_get(monkey_url: str, caplog: pytest.LogCaptureFixture):
     _test_response(dl.fetch(monkey_url), outfile)  # cached
     assert url_full not in caplog.text
     assert caplog.text.count(str(outfile)) == 1
+    response = dl.fetch(monkey_url, outfile.with_suffix(".gz"))
+    with pytest.raises(ValueError, match="^gzip mismatch"):
+        _ = response.path
 
 
 def test_get_outfile(monkey_url: str):

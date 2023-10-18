@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import requests
 import tomli_w
 
-from aligons.util import cli, tomllib
+from aligons.util import cli, fs, tomllib
 
 _log = logging.getLogger(__name__)
 
@@ -56,6 +56,9 @@ class Response:
         response = self._session.get(self._url)
         response.raise_for_status()
         self._content = response.content
+        if fs.is_gz(self._content) ^ (self._path.suffix == ".gz"):
+            msg = f"gzip mismatch: '{self._url}' content vs filename '{self._path}'"
+            raise ValueError(msg)
         _log.info(f"{self._path}")
         self._path.parent.mkdir(0o755, parents=True, exist_ok=True)
         with self._path.open("wb") as fout:
