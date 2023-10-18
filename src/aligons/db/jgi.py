@@ -19,10 +19,10 @@ def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     _args = parser.parse_args(argv or None)
-    make_dataset_toml(config["jgi"]["organism"])
+    dataset_toml()
 
 
-def make_dataset_toml(organism: str):
+def dataset_toml(organism: str = config["jgi"]["organism"]):
     outfile = db.path(_HOST) / (organism + ".toml")
     if not outfile.exists():
         xml = fetch_xml(organism).path

@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from aligons import db
-from aligons.db import api
+from aligons.db import api, jgi
 from aligons.extern import htslib, kent, mafs2cram
 from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
 
@@ -13,6 +13,11 @@ from . import tools
 
 _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"
+
+
+from_jgi = {
+    "Bdistachyon": "Brachypodium_distachyon",
+}
 
 
 def main(argv: list[str] | None = None):
@@ -38,7 +43,19 @@ def fetch_and_bgzip():
     fts: list[cli.FuturePath] = []
     for entry in db.iter_builtin_dataset("plantregmap.toml"):
         fts.extend(tools.fetch_and_bgzip(entry, db_prefix()))
+    for entry in iter_jgi_dataset():
+        fts.extend(tools.fetch_and_bgzip(entry, db_prefix()))
     return fts
+
+
+def iter_jgi_dataset():
+    keys = from_jgi.keys()
+    for entry in db.iter_dataset(jgi.dataset_toml()):
+        if (jgi_sp := entry["species"]) in keys:
+            prm_sp = from_jgi[jgi_sp]
+            entry["species"] = prm_sp
+            entry["label"] = shorten(prm_sp)
+            yield entry
 
 
 def retrieve_deploy(query: str):
