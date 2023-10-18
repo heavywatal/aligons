@@ -24,6 +24,7 @@ def main(argv: list[str] | None = None):
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("-G", "--genome", action="store_true")
+    parser.add_argument("-C", "--to-cram", type=Path)
     parser.add_argument("pattern", nargs="?", default="*")
     args = parser.parse_args(argv or None)
     if args.download:
@@ -34,6 +35,9 @@ def main(argv: list[str] | None = None):
     elif args.genome:
         fts = tools.index_as_completed(fetch_and_bgzip())
         cli.wait_raise(fts)
+    elif args.to_cram:
+        maf = net_to_maf(args.to_cram)
+        to_cram(maf)
     else:
         for x in fs.sorted_naturally(db_prefix().rglob(args.pattern)):
             print(x)
@@ -103,10 +107,18 @@ def rglob(pattern: str, species: str = ".") -> Iterator[Path]:
             yield from species_dir.rglob(pattern)
 
 
-def to_cram(link: Path, species: str) -> Path:
-    outfile = link.with_suffix(".cram")
-    maf = gunzip(link)
-    reference = api.genome_fa(species)
+def net_to_maf(net_gz: Path) -> Path:
+    stem = net_gz.with_suffix("").stem
+    target, query = extract_species(stem)
+    sing_maf = net_gz.parent / (stem + ".maf")
+    chain_gz = sing_maf.with_suffix(".chain.gz")
+    return kent.net_to_maf(net_gz, chain_gz, sing_maf, target, query)
+
+
+def to_cram(maf: Path) -> Path:
+    target, _query = extract_species(maf.stem)
+    outfile = maf.with_suffix(".cram")
+    reference = api.genome_fa(target)
     return mafs2cram.maf2cram(maf, outfile, reference)
 
 
@@ -133,6 +145,23 @@ def download_via_ftp() -> list[cli.FuturePath]:
             species = entry["species"]
             fts.extend(ftp.download(species))
     return fts
+
+
+def extract_species(stem: str) -> tuple[str, str]:
+    short_target, short_query = stem.split("_")
+    target = lengthen(short_target)
+    query = lengthen(short_query)
+    return (target, query)
+
+
+def lengthen(species: str) -> str:
+    try:
+        return lengthen.abbr[species]  # pyright: ignore[reportFunctionMemberAccess]
+    except AttributeError:
+        rev_abbr = {v: k for k, v in species_abbr().items()}
+        rev_abbr["Osj"] = "Oryza_sativa_Japonica_Group"
+        lengthen.abbr = rev_abbr  # pyright: ignore[reportFunctionMemberAccess]
+        return lengthen(species)
 
 
 def shorten(species: str) -> str:
