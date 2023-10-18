@@ -39,6 +39,9 @@ def split_fa_gz(
         seqids = [line.split()[0] for line in fin]
     fts: list[cli.FuturePath] = []
     for seqid in seqids:
+        if re.search(r"scaffold|contig", seqid):
+            _log.debug("ignoring {seqid} in {bgz}")
+            continue
         outfile = outdir / fmt.format(stem=stem, seqid=seqid)
         fts.append(cli.thread_submit(faidx_query, bgz, seqid, outfile))
     return fts

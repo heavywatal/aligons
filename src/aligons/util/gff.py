@@ -28,8 +28,8 @@ def split_by_seqid(path: Path) -> list[Path]:
     body = _read_body(path)
     for name, data in body.group_by("seqid", maintain_order=True):
         seqid = str(name)
-        if seqid.startswith("scaffold"):
-            _log.debug(f"ignoring scaffold: {seqid}")
+        if re.search(r"scaffold|contig", seqid):
+            _log.debug(f"ignoring {seqid} in {path}")
             continue
         outfile = path.with_name(f"{stem}.chromosome.{seqid}.gff3.gz")
         files.append(outfile)
