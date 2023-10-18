@@ -7,6 +7,7 @@ https://github.com/ucscGenomeBrowser/kent
 """
 import gzip
 import logging
+import os
 import shutil
 from pathlib import Path
 
@@ -68,7 +69,7 @@ def faToTwoBit(fa_gz: Path):  # noqa: N802
 
 
 def faSize(genome_fa_gz: Path):  # noqa: N802
-    if not genome_fa_gz.name.endswith("genome.fa.gz"):
+    if not str(genome_fa_gz).endswith(("genome.fa.gz", os.devnull)):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
     outfile = genome_fa_gz.with_name("fasize.chrom.sizes")
     if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:

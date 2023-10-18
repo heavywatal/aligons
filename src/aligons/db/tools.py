@@ -1,5 +1,6 @@
 import concurrent.futures as confu
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -113,7 +114,7 @@ def _create_genome_bgzip(files: list[Path]):
     files = fs.sorted_naturally(files)
     _log.debug(str(files))
     if cli.dry_run and not files:
-        return Path("/dev/null")
+        return Path(os.devnull)
     name = files[0].name
     ext = files[0].with_suffix("").suffix
     (outname, count) = re.subn(rf"\.chromosome\..+{ext}", rf".genome{ext}", name)
