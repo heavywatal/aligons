@@ -1,5 +1,6 @@
 import logging
 import re
+from collections.abc import Iterator
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -45,11 +46,12 @@ def gather_dataset(root: ElementTree.Element):
     return {"dataset": datasets}
 
 
-def as_dict(efolder: ElementTree.Element) -> dict[str, str | list[str]]:
-    _log.debug(f"{efolder.attrib}")
-    elem_assem = search_filename(efolder, r"softmasked\.fa\.gz$")
-    elem_annot = search_filename(efolder, r"repeatmasked.+\.gff3\.gz$")
-    if elem_assem is None or elem_annot is None:
+def as_dict(folder: ElementTree.Element) -> dict[str, str | list[str]]:
+    _log.debug(f"{folder.attrib}")
+    try:
+        elem_assem = next(finditer(r"softmasked\.fa\.gz$", folder, "filename"))
+        elem_annot = next(finditer(r"gene\.gff3?\.gz$", folder, "filename"))
+    except StopIteration:
         return {}
     fa_url = _simplify_url(elem_assem.attrib["url"])
     gff_url = _simplify_url(elem_annot.attrib["url"])
@@ -81,13 +83,12 @@ def parse_filename_fa(name: str):
     return stem.split("_", 1)
 
 
-def search_filename(
-    folder: ElementTree.Element, pattern: str
-) -> ElementTree.Element | None:
+def finditer(
+    pattern: str, folder: ElementTree.Element, attrib: str
+) -> Iterator[ElementTree.Element]:
     for elem in folder.iter("file"):
-        if re.search(pattern, elem.attrib["filename"]):
-            return elem
-    return None
+        if re.search(pattern, elem.attrib[attrib]):
+            yield elem
 
 
 def fetch_xml(organism: str):
