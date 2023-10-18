@@ -18,12 +18,14 @@ def main(argv: list[str] | None = None):
     split_by_seqid(args.infile)
 
 
-def split_by_seqid(path: Path):
+def split_by_seqid(path: Path) -> list[Path]:
     regions = _read_sequence_region(path)
-    body = _read_body(path)
     stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
+    if cli.dry_run:
+        return [path.with_name(f"{stem}.chromosome.{x}.gff3.gz") for x in regions]
     files: list[Path] = []
     _log.debug(f"{stem=}")
+    body = _read_body(path)
     for name, data in body.group_by("seqid", maintain_order=True):
         seqid = str(name)
         if seqid.startswith("scaffold"):
@@ -32,7 +34,7 @@ def split_by_seqid(path: Path):
         outfile = path.with_name(f"{stem}.chromosome.{seqid}.gff3.gz")
         files.append(outfile)
         _log.info(f"{outfile}")
-        if cli.dry_run or not fs.is_outdated(outfile, path):
+        if not fs.is_outdated(outfile, path):
             continue
         with gzip.open(outfile, "wt") as fout:
             fout.write("##gff-version 3\n")
@@ -47,6 +49,8 @@ def sort(content: bytes) -> bytes:
 
 def _read_sequence_region(path: Path) -> dict[str, str]:
     lines: list[str] = []
+    if not path.exists():
+        return {}
     with gzip.open(path, "rt") as fin:
         for line in fin:
             if not line.startswith("#"):
