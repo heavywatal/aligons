@@ -24,7 +24,7 @@ def fetch_and_bgzip(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
     species = entry["species"]
     annotation = entry["annotation"]
     sequences = entry["sequences"]
-    softmasked = "softmasked" in sequences[0]
+    softmasked = re.search(r"dna_sm|softmasked", sequences[0])
     dna_sm = "dna_sm" if softmasked else "dna"
     stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
     out_fa = prefix / f"fasta/{species}/{stem}.{dna_sm}.toplevel.fa.gz"
