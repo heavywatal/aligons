@@ -6,3 +6,12 @@ label = "Osj"
 clade = "bep"
 sequences = ["version_7.0/all.dir/all.con"]
 annotation = "version_7.0/all.dir/all.gff3"
+
+[[dataset]]
+url_prefix = "http://ftp.ensemblgenomes.org/pub/plants/release-26/"
+species = "Hordeum_vulgare"
+version = "082214v1.26"
+label = "Hvu"
+clade = "bep"
+sequences = ["fasta/hordeum_vulgare/dna/Hordeum_vulgare.082214v1.26.dna_sm.toplevel.fa.gz"]
+annotation = "gff3/hordeum_vulgare/Hordeum_vulgare.082214v1.26.gff3.gz"
