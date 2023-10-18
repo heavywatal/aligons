@@ -165,5 +165,16 @@ def net_to_maf(net: Path, chain_gz: Path, sing_maf: Path, target: str, query: st
     return sing_maf
 
 
+def chain_net_filter(file: Path, **kwargs: str) -> bytes:
+    options = [f"-{k}={v}".removesuffix("=True") for k, v in kwargs.items()]
+    if file.name.removesuffix(".gz").endswith(".net"):
+        program = "netFilter"
+    else:
+        program = "chainFilter"
+    cmd = [program, *options, file]
+    p = subp.run(cmd, stdout=subp.PIPE)
+    return p.stdout
+
+
 if __name__ == "__main__":
     main()

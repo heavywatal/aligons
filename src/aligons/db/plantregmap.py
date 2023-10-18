@@ -241,7 +241,42 @@ class FTPplantregmap(dl.LazyFTP):
     def retrieve_symlink(self, relpath: str, species: str) -> Path:
         orig = self.retrieve(relpath, checksize=True)
         outdir = db_prefix() / species / "compara"
+        if re.match(r"Osj_Hvu\.(chain|net)\.gz", orig.name):
+            return sanitize_hvu_chainnet(orig, outdir / orig.name)
         return fs.symlink(orig, outdir / orig.name, relative=True)
+
+
+def sanitize_hvu_chainnet(infile: Path, outfile: Path) -> Path:
+    notq = [
+        "morex_contig_137999",
+        "morex_contig_1587688",
+        "morex_contig_159532",
+        "morex_contig_164803",
+        "morex_contig_244380",
+        "morex_contig_2549682",
+        "morex_contig_41360",
+        "morex_contig_41603",
+        "morex_contig_42365",
+        "morex_contig_43017",
+        "morex_contig_43925",
+        "morex_contig_44379",
+        "morex_contig_61860",
+        "morex_contig_68624",
+        "morex_contig_68638",
+        "morex_contig_68864",
+        "morex_contig_70023",
+        "morex_contig_70567",
+        "morex_contig_70976",
+        "morex_contig_71199",
+        "morex_contig_72677",
+        "morex_contig_73216",
+    ]
+    content = kent.chain_net_filter(infile, notQ=",".join(notq))
+    content = content.replace(b"_unordered", b"")
+    content = fs.gzip_compress(content)
+    with outfile.open("wb") as fout:
+        fout.write(content)
+    return outfile
 
 
 if __name__ == "__main__":
