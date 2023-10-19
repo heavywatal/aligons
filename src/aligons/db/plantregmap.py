@@ -141,10 +141,13 @@ def gunzip(infile: Path):
 
 
 def download_via_ftp() -> list[cli.FuturePath]:
+    targets = [
+        "Oryza_sativa_Japonica_Group",
+        "Solanum_lycopersicum",
+    ]
     fts: list[cli.FuturePath] = []
     with FTPplantregmap() as ftp:
-        for entry in db.iter_builtin_dataset("plantregmap.toml"):
-            species = entry["species"]
+        for species in targets:
             fts.extend(ftp.download(species))
     return fts
 
