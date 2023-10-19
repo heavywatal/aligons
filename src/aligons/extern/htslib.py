@@ -142,6 +142,16 @@ def tabix(bgz: Path | cli.FuturePath):
     return outfile
 
 
+def index(cram: Path | cli.FuturePath):
+    """https://www.htslib.org/doc/samtools-index.html."""
+    if isinstance(cram, confu.Future):
+        cram = cram.result()
+    outfile = cram.with_suffix(cram.suffix + ".crai")
+    subp.run(["samtools", "index", cram], if_=fs.is_outdated(outfile, cram))
+    _log.info(f"{outfile}")
+    return outfile
+
+
 def to_be_bgzipped(filename: str):
     return to_be_faidxed(filename) or to_be_tabixed(filename)
 

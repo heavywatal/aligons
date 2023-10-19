@@ -119,7 +119,9 @@ def to_cram(maf: Path) -> Path:
     target, _query = extract_species(maf.stem)
     outfile = maf.with_suffix(".cram")
     reference = api.genome_fa(target)
-    return mafs2cram.maf2cram(maf, outfile, reference)
+    mafs2cram.maf2cram(maf, outfile, reference)
+    htslib.index(outfile)
+    return outfile
 
 
 def to_bigwig(link: Path, species: str) -> Path:
