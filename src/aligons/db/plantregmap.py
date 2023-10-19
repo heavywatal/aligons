@@ -252,6 +252,8 @@ class FTPplantregmap(dl.LazyFTP):
 
 
 def sanitize_hvu_chainnet(infile: Path, outfile: Path) -> Path:
+    if not fs.is_outdated(outfile, infile):
+        return outfile
     notq = [
         "morex_contig_137999",
         "morex_contig_1587688",
