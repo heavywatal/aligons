@@ -105,10 +105,10 @@ class JBrowseConfig:
                 self.add_track(cram, "alignment", trackid=query, subdir=query)
         for query, cram in crams.items():
             self.add_track(cram, "alignment", trackid=query, subdir=query)
+        self.add_plantregmap(species)
         if self.target.name == "oryza_sativa":
             self.add_papers_data()
             self.add_plantdhs()
-        self.add_plantregmap(species)
         self.set_default_session()
 
     def add_papers_data(self):
@@ -128,6 +128,12 @@ class JBrowseConfig:
             self.add_track(path, "plantdhs", trackid=path.stem)
 
     def add_plantregmap(self, species: str):
+        for path in fs.sorted_naturally(plantregmap.rglob("*.bw", species)):
+            trackid = path.with_suffix(".bedGraph").name
+            self.add_track(path, "plantregmap", trackid=trackid)
+        for path in fs.sorted_naturally(plantregmap.rglob("*.cram", species)):
+            trackid = path.with_suffix(".net").name
+            self.add_track(path, "plantregmap", trackid=trackid)
         for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
             trackid = re.sub(r"_[^_]+\.gff\.gz$", "", path.name)
             self.add_track(path, "plantregmap", trackid=trackid)
