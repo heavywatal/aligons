@@ -223,10 +223,11 @@ class JBrowseConfig:
 
     def make_refnamealiases(self):
         species = self.target.name
-        filename = f"chromAlias/{species}.chromAlias.txt"
-        resources_alias = resources_data(filename)
+        path = f"chromAlias/{species}.chromAlias.txt"
+        resources_alias = resources_data(path)
         if not resources_alias.is_file():
             return None
+        filename = Path(path).name
         with (self.target / filename).open("w") as fout:
             fout.write(resources_alias.read_text())
         return {
