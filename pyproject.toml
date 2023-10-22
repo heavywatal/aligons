@@ -47,7 +47,6 @@ ignore = [
   "T201", # print
   "S101", # assert
   "S603", # subprocess
-  "S604", # shell=True
   "COM",  # trailing comma
   "TD",   # todo
   "FIX",  # todo

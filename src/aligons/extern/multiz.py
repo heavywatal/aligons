@@ -67,7 +67,7 @@ def multiz(path: Path, tree: str):
         comp = subp.run(
             script,
             if_=is_to_run,
-            shell=True,
+            shell=True,  # noqa: S604
             cwd=path,
             stdout=subp.PIPE,
             stderr=subp.STDOUT,

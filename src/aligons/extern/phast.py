@@ -103,7 +103,11 @@ def msa_view_features(maf: Path, gff: Path, *, conserved: bool):
         cmd += " --4d"
     is_to_run = fs.is_outdated(outfile, maf)
     p = subp.run(
-        cmd, if_=is_to_run, stdout=subp.PIPE, shell=True, executable="/bin/bash"
+        cmd,
+        if_=is_to_run,
+        stdout=subp.PIPE,
+        shell=True,  # noqa: S604,
+        executable="/bin/bash",
     )
     with devnull_if(not is_to_run, outfile).open("wb") as fout:
         fout.write(p.stdout)

@@ -12,7 +12,7 @@ def test_run(cmd: str | list[str]):
     assert subp.run(cmd, if_=False, stdout=subp.PIPE).stdout == b""
     assert subp.run(cmd, if_=True, stdout=subp.PIPE).stdout == b"hello"
     assert subp.run(cmd, stdout=subp.PIPE).stdout == b"hello"
-    assert subp.run(cmd, shell=True, stdout=subp.PIPE).stdout == b"hello"
+    assert subp.run(cmd, shell=True, stdout=subp.PIPE).stdout == b"hello"  # noqa: S604
 
 
 @pytest.mark.parametrize("cmd", [hello, hello.split()])
