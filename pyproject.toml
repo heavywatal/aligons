@@ -19,7 +19,7 @@ requires-python = ">=3.11"
 dependencies = [
   "polars",
   "requests",
-  "tomli-w"
+  "tomli-w",
 ]
 
 [project.optional-dependencies]
@@ -28,7 +28,6 @@ dev = [
   "pytest",
   "pytest-cov",
   "ruff",
-  "tomli", # to silence Pylance false positive
 ]
 
 [project.urls]
@@ -49,11 +48,9 @@ ignore = [
   "S101", # assert
   "S603", # subprocess
   "S604", # shell=True
-  "DTZ",  # timezone
   "COM",  # trailing comma
   "TD",   # todo
   "FIX",  # todo
-  "RUF013", # implicit optional (false positive on TypeAlias)
 ]
 
 [tool.pytest.ini_options]
