@@ -131,7 +131,9 @@ def checkline(line: str, directory: Path):
     (e_sum, e_blocks, name) = line.split()
     if (path := directory / name).exists():
         cmd = ["/usr/bin/sum", path]
-        p = subprocess.run(cmd, stdout=subprocess.PIPE, text=True, check=True)
+        p = subprocess.run(
+            cmd, stdout=subprocess.PIPE, text=True, check=True  # noqa: S603
+        )
         try:
             (o_sum, o_blocks, _) = p.stdout.split()
         except ValueError:  # pragma: no cover; old coreutils

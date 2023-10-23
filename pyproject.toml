@@ -46,7 +46,6 @@ ignore = [
   "ANN",  # annotation
   "T201", # print
   "S101", # assert
-  "S603", # subprocess
   "COM",  # trailing comma
   "TD",   # todo
   "FIX",  # todo

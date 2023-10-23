@@ -35,7 +35,7 @@ def popen(
         _log.debug(cmd)
     else:
         _log.info(cmd)
-    return subprocess.Popen(args, stdin=stdin, stdout=stdout)
+    return subprocess.Popen(args, stdin=stdin, stdout=stdout)  # noqa: S603
 
 
 def run(  # noqa: PLR0913
@@ -67,7 +67,7 @@ def run(  # noqa: PLR0913
         input=input,
         stdout=stdout,
         stderr=stderr,
-        shell=shell,
+        shell=shell,  # noqa: S603
         cwd=cwd,
         text=text,
         check=check,
