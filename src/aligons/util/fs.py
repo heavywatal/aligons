@@ -108,6 +108,16 @@ def is_zip(content: bytes):
     return content.startswith(b"\x50\x4b")
 
 
+def expect_suffix(file: Path, suffix: str, *, negate: bool = False) -> None:
+    if negate:
+        if file.suffix == suffix:
+            msg = f"{file}: unexpected suffix {suffix}"
+            raise ValueError(msg)
+    elif file.suffix != suffix:
+        msg = f"{file}: expected suffix is {suffix}"
+        raise ValueError(msg)
+
+
 def checksums(file: Path):
     if cli.dry_run:  # pragma: no cover
         return

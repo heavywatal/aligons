@@ -79,7 +79,7 @@ def consolidate_compara_mafs(indir: Path):
             sed = subp.popen(cmd, stdin=subp.PIPE, stdout=subp.PIPE)
             maff = subp.popen("mafFilter stdin", stdin=sed.stdout, stdout=fout)
             # for padding, not for filtering
-            assert sed.stdout, cmd
+            assert sed.stdout is not None, cmd
             sed.stdout.close()
             sed.communicate("".join(lines).encode())
             maff.communicate()

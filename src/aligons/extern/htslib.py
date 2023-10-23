@@ -64,7 +64,7 @@ def concat_bgzip(infiles: list[Path], outfile: Path):
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         with outfile.open("wb") as fout:
             bgzip = subp.popen("bgzip -@2", stdin=subp.PIPE, stdout=fout)
-            assert bgzip.stdin
+            assert bgzip.stdin is not None
             if ".gff" in outfile.name:
                 header = collect_gff3_header(infiles)
                 bgzip.stdin.write(header)

@@ -55,7 +55,7 @@ def count(infile: Path):
         outfile.parent.mkdir(0o755, exist_ok=True)
     p = subp.popen(args, if_=is_to_run, stdin=subp.PIPE)
     if is_to_run:
-        assert p.stdin
+        assert p.stdin is not None
         with gzip.open(infile, "rb") as fin:
             p.stdin.write(fin.read())
     p.communicate()

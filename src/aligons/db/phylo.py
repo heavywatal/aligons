@@ -253,8 +253,9 @@ def _column_generator(top: str, bottom: str) -> StrGen:
 
 
 def parse_newick(newick: str, inner: str = "") -> Node:
-    if inner:
-        assert inner in newick, f"{inner} not found in {newick}"
+    if inner not in newick:
+        msg = f"{inner} not in {newick}"
+        raise ValueError(msg)
     nodes = {}
     newick_old = ""
     while newick != newick_old:
@@ -263,7 +264,9 @@ def parse_newick(newick: str, inner: str = "") -> Node:
         if inner and (clade := nodes.get(inner, None)):
             return clade
     root = nodes.popitem()[1]
-    assert not nodes, nodes
+    if nodes:
+        msg = f"{newick} may have multiple roots: {nodes}"
+        raise ValueError(msg)
     return root
 
 

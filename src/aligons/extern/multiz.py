@@ -40,7 +40,9 @@ def run(indir: Path, query: Sequence[str]):
     tree = phylo.get_subtree(query)
     if len(query) > 1:
         dirname = "-".join(phylo.shorten(x) for x in query)
-        assert target in query, f"{target=} not in {query=}"
+        if target not in query:
+            msg = f"{target=} not in {query=}"
+            raise ValueError(msg)
     else:
         dirname = query[0]
         query = phylo.extract_names(tree)
@@ -107,7 +109,9 @@ def roast(sing_mafs: list[Path], tmpdir: str, outfile: str, tree: str):
 
 def prepare(indir: Path, outdir: Path, queries: Sequence[str]):
     target = indir.name
-    assert target in queries, f"{target=} not in {queries=}"
+    if target not in queries:
+        msg = f"{target=} not in {queries=}"
+        raise ValueError(msg)
     if not cli.dry_run:
         outdir.mkdir(0o755, parents=True, exist_ok=True)
     for query in queries:

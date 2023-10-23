@@ -29,14 +29,14 @@ def submit(
 ) -> cli.FuturePath:
     if isinstance(infile, confu.Future):
         infile = infile.result()
-    assert infile.suffix != ".gz", infile
+    fs.expect_suffix(infile, ".gz", negate=True)
     if not species:
         species = "angiosperms"
     if outfile is None:
         (outname, count) = re.subn(r"\.dna\.", ".dna_sm.", infile.name)
         assert count == 1, infile
         outfile = infile.with_name(outname + ".gz")
-    assert outfile.suffix == ".gz", outfile
+    fs.expect_suffix(outfile, ".gz")
     fts: list[cli.FuturePath] = []
     fts.append(cli.thread_submit(repeatmasker.repeatmasker, infile, species))
     fts.append(cli.thread_submit(sdust.run, infile))

@@ -27,9 +27,9 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv or None)
     if args.test:
         if args.species:
-            assert test_species(args.species)
+            test_species(args.species)
         else:
-            assert test_famdb_angiosperms()
+            test_famdb_angiosperms()
         return
     for infile in args.infile:
         cli.thread_submit(repeatmasker, infile, args.species)
@@ -42,7 +42,7 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
     - Prints verbose log to stdout, not stderr.
     - .out.gff lacks some information stored in .out.
     """
-    assert infile.suffix != ".gz", infile
+    fs.expect_suffix(infile, ".gz", negate=True)
     outfile = infile.with_suffix(infile.suffix + ".out.gff")
     parallel: int = 2
     args: subp.Args = ["RepeatMasker", "-e", "rmblast", "-gff"]
@@ -57,13 +57,15 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
     if not cli.dry_run:
         with outfile.open("r") as fin:  # raise FileNotFoundError if failed
             line1 = fin.readline()
-            assert line1.startswith("##gff-version 3"), line1
+            if not line1.startswith("##gff-version 3"):
+                msg = f"RepeatMasker produced incomplete {outfile}:\n{line1}"
+                raise ValueError(msg)
     _log.info(f"{outfile}")
     return outfile
 
 
 def read_out(infile: Path):
-    assert infile.suffix == ".out", infile
+    fs.expect_suffix(infile, ".out")
     with infile.open("rb") as fin:
         content = re.sub(rb" *\n *", rb"\n", fin.read())
         content = re.sub(rb" +", rb"\t", content)

@@ -20,17 +20,13 @@ class LazySession:
         self._data = data
         self._req_session = None
 
-    def _lazy_init(self):
+    def get(self, url: str, **kwargs: Any):
         if self._req_session is None:
             self._req_session = requests.Session()
             if self._url:
                 _log.info(f"POST {self._url}")
                 response = self._req_session.post(self._url, data=self._data)
                 response.raise_for_status()
-
-    def get(self, url: str, **kwargs: Any):
-        self._lazy_init()
-        assert self._req_session
         _log.info(f"GET {url}")
         return self._req_session.get(url, **kwargs)
 
@@ -156,7 +152,9 @@ class LazyFTP(FTP):
         if not size:
             self._lazy_init()
             size = super().size(filename)
-            assert size
+            if size is None:
+                _log.warning(f"size not available for {filename}")
+                size = -1
             self._size_cache[filename] = size
             with self._size_cache_toml.open("wb") as fout:
                 tomli_w.dump(self._size_cache, fout)
@@ -167,7 +165,6 @@ class LazyFTP(FTP):
         size_obs = outfile.stat().st_size if outfile.exists() else 0
         if checksize:
             size_exp = self.size(path)
-            assert size_exp
             is_to_run = size_obs != size_exp
         else:
             size_exp = 0

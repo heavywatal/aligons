@@ -102,7 +102,8 @@ def index_fasta(paths: list[Path]):
 def index_gff3(paths: list[Path]):  # gff3/{species}
     """Create bgzipped and indexed genome.gff3."""
     if len(paths) == 1:
-        assert "chromosome" not in paths[0].name, paths[0]
+        if "chromosome" in paths[0].name:
+            _log.warning(f"splitting chromosome? {paths[0]}")
         paths = gff.split_by_seqid(paths[0])
     genome = _create_genome_bgzip(paths)
     htslib.tabix(genome)
@@ -130,7 +131,8 @@ def _split_toplevel_fa_work(fa_gz: Path) -> list[cli.FuturePath]:
 
 
 def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:
-    assert "toplevel" in fa_gz.name, fa_gz
+    if "toplevel" not in fa_gz.name:
+        _log.warning(f"'toplevel' not in {fa_gz.name}")
     fmt = "{stem}.{seqid}.fa.gz"
     return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
 
@@ -151,10 +153,10 @@ def compress(content: bytes, outfile: Path) -> Path:
     """
     if not cli.dry_run and fs.is_outdated(outfile):
         if fs.is_zip(content):
-            assert outfile.suffix != ".zip", outfile
+            fs.expect_suffix(outfile, ".zip", negate=True)
             content = fs.zip_decompress(content)
         if htslib.to_be_bgzipped(outfile.name):
-            assert outfile.suffix == ".gz", outfile
+            fs.expect_suffix(outfile, ".gz")
             content = fs.gzip_decompress(content)
             if ".gff" in outfile.name:
                 content = gff.sort(content)

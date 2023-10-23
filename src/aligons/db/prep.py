@@ -31,7 +31,6 @@ def main(argv: list[str] | None = None):
 
 
 def prepare_ensemblgenomes(species: list[str]):
-    assert species
     with ensemblgenomes.FTPensemblgenomes() as ftp:
         species = ftp.remove_unavailable(species)
         pool = cli.ThreadPool()
@@ -59,7 +58,9 @@ def prepare_ensemblgenomes(species: list[str]):
 def _ln_or_bgzip(src: Path, species: str, fmt: str = ""):
     if not fmt:
         fmt = "fasta" if src.name.removesuffix(".gz").endswith(".fa") else "gff3"
-    assert fmt in ("fasta", "gff3"), fmt
+    if fmt not in ("fasta", "gff3"):
+        msg = f"unexpected format: {fmt}"
+        raise ValueError(msg)
     dstname = src.name.replace("primary_assembly", "chromosome")
     dst = ensemblgenomes.prefix() / fmt / species / dstname
     if ".chromosome." in dstname:

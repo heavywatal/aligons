@@ -82,7 +82,9 @@ def get_file(pattern: str, species: str, subdir: str = ""):
     if not found:
         msg = f"{pattern} not found in {species}/{subdir}"
         raise FileNotFoundError(msg)
-    assert len(found) == 1, found
+    if len(found) > 1:
+        msg = f"{pattern} is not unique in {species}/{subdir}: {found}"
+        raise ValueError(msg)
     return found[0]
 
 
@@ -93,18 +95,22 @@ def get_file_nolabel(pattern: str, species: str, subdir: str = ""):
     if not found:
         msg = f"{pattern} not found in {species}/{subdir}"
         raise FileNotFoundError(msg)
-    assert len(found) == 1, found
+    if len(found) > 1:
+        msg = f"{pattern} is not unique in {species}/{subdir}: {found}"
+        raise ValueError(msg)
     return found[0]
 
 
 def sanitize_queries(target: str, queries: list[str]):
-    queries = list(dict.fromkeys(queries))
-    with suppress(ValueError):
-        queries.remove(target)
-    assert queries, target
-    _log.debug(f"{queries=}")
-    assert set(queries) <= set(species_names()), f"{queries} vs {species_names()}"
-    return queries
+    query_set = set(queries)
+    with suppress(KeyError):
+        query_set.remove(target)
+    _log.debug(f"{query_set=}")
+    not_in_db = query_set - set(species_names())
+    if not_in_db:
+        msg = f"{not_in_db} not in {species_names()}"
+        raise ValueError(msg)
+    return list(query_set)
 
 
 def _species_dirs(fmt: str = "fasta") -> Iterable[Path]:

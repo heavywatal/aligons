@@ -52,7 +52,7 @@ def trf(infile: Path):
 
     https://github.com/Benson-Genomics-Lab/TRF/tree/master/src
     """
-    assert infile.suffix != ".gz", infile
+    fs.expect_suffix(infile, ".gz", negate=True)
     param_defaults = {
         "match": 2,
         "mismatch": 5,

@@ -41,7 +41,7 @@ def integrate_wigs(clade: Path):
     args = ["wigToBigWig", "stdin", chrom_sizes, outfile]
     p = subp.popen(args, if_=is_to_run, stdin=subp.PIPE)
     if is_to_run:
-        assert p.stdin
+        assert p.stdin is not None
         for wig in wigs:
             with gzip.open(wig, "rb") as fin:
                 p.stdin.write(fin.read())
@@ -87,7 +87,7 @@ def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path):
     is_to_run = fs.is_outdated(chain, axtgz)
     p = subp.popen(cmd, if_=is_to_run, stdin=subp.PIPE)
     if is_to_run and not cli.dry_run:
-        assert p.stdin
+        assert p.stdin is not None
         with gzip.open(axtgz, "rb") as fin:
             shutil.copyfileobj(fin, p.stdin)
             p.stdin.close()
@@ -103,7 +103,7 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
     is_to_run = fs.is_outdated(pre_chain, chains)
     merge_cmd = ["chainMergeSort"] + [str(x) for x in chains]
     merge = subp.popen(merge_cmd, if_=is_to_run, stdout=subp.PIPE)
-    assert merge.stdout
+    assert merge.stdout is not None
     pre_cmd = f"chainPreNet stdin {target_sizes} {query_sizes} stdout"
     pre = subp.popen(pre_cmd, if_=is_to_run, stdin=merge.stdout, stdout=subp.PIPE)
     merge.stdout.close()
@@ -144,8 +144,8 @@ def net_to_maf(net: Path, chain_gz: Path, sing_maf: Path, target: str, query: st
     toaxt_cmd += subp.optjoin(config["netToAxt"], "-")
     toaxt_cmd += f" {net} stdin {target_2bit} {query_2bit} stdout"
     toaxt = subp.popen(toaxt_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=subp.PIPE)
-    assert toaxt.stdin
-    assert toaxt.stdout
+    assert toaxt.stdin is not None
+    assert toaxt.stdout is not None
     if is_to_run and not cli.dry_run:
         with gzip.open(chain_gz, "rb") as fout:
             shutil.copyfileobj(fout, toaxt.stdin)
@@ -154,7 +154,7 @@ def net_to_maf(net: Path, chain_gz: Path, sing_maf: Path, target: str, query: st
         "axtSort stdin stdout", if_=is_to_run, stdin=toaxt.stdout, stdout=subp.PIPE
     )
     toaxt.stdout.close()
-    assert sort.stdout
+    assert sort.stdout is not None
     axttomaf_cmd = (
         f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
         f" {target_sizes} {query_sizes} {sing_maf}"

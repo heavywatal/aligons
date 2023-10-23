@@ -35,8 +35,7 @@ class ArgumentParser(argparse.ArgumentParser):
         args: Sequence[str] | None = None,
         namespace: argparse.Namespace | None = None,
     ):
-        res = super().parse_args(args, namespace)
-        assert res is not None
+        res = super().parse_args(args, namespace or argparse.Namespace())
         global dry_run  # noqa: PLW0603
         dry_run = res.dry_run
         verbosity = res.verbosity
@@ -65,11 +64,9 @@ class ConfigLogging(argparse.Action):
         self,
         parser: argparse.ArgumentParser,  # noqa: ARG002
         namespace: argparse.Namespace,
-        values: str | Sequence[Any] | None,
-        option_string: str | None = None,
-    ):
-        assert not values, values
-        assert option_string
+        values: str | Sequence[Any] | None,  # noqa: ARG002
+        option_string: str | None = None,  # noqa: ARG002
+    ) -> None:
         value = getattr(namespace, self.dest, 0)
         setattr(namespace, self.dest, max(value + self.const, -2))
 
