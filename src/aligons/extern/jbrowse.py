@@ -7,6 +7,7 @@ dst: {document_root}/{jbrowse_XYZ}/{vNN}/{species}
 import json
 import logging
 import re
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +18,7 @@ from aligons.util import cli, config, fs, resources_data, subp
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-a", "--admin", action="store_true")
     parser.add_argument("-u", "--upgrade", action="store_true")
@@ -34,13 +35,13 @@ def main(argv: list[str] | None = None):
 
 
 class JBrowse:
-    def __init__(self):
+    def __init__(self) -> None:
         self.version = config["jbrowse"]["version"]
         document_root = Path(config["jbrowse"]["document_root"]).expanduser()
         self.slug = f"jbrowse-{self.version}"
         self.root = document_root / self.slug
 
-    def create(self):
+    def create(self) -> None:
         if not self.root.exists():
             args = ["create", self.root]
             args.append(f"--tag=v{self.version}")
@@ -51,13 +52,13 @@ class JBrowse:
                 msg = f"{version_txt=} != {self.version=}"
                 raise ValueError(msg)
 
-    def admin_server(self):
+    def admin_server(self) -> None:
         jbrowse(["admin-server", "--root", self.root])
 
-    def upgrade(self):
+    def upgrade(self) -> None:
         jbrowse(["upgrade", self.root])
 
-    def config(self, indir: Path):
+    def config(self, indir: Path) -> None:
         self.create()
         jbc = JBrowseConfig(self.root, indir)
         jbc.add()
@@ -66,7 +67,7 @@ class JBrowse:
 
 
 class JBrowseConfig:
-    def __init__(self, root: Path, multialign_species: Path):
+    def __init__(self, root: Path, multialign_species: Path) -> None:
         self.load = config["jbrowse"]["load"]
         self.multiple_dir = multialign_species
         species_name = self.multiple_dir.name
@@ -77,14 +78,14 @@ class JBrowseConfig:
         self.tracks: list[str] = []
         _log.info(f"{self.target}")
 
-    def write_redirect_html(self, slug: str):
+    def write_redirect_html(self, slug: str) -> None:
         url = f"/{slug}/?config={self.relpath}/config.json"
         if not cli.dry_run:
             with (self.target / "index.html").open("w") as fout:
                 fout.write(redirect_html(url))
         print(f"http://localhost/{Path(slug, self.relpath)}/ -> {url}")
 
-    def add(self):
+    def add(self) -> None:
         self.target.mkdir(0o755, parents=True, exist_ok=True)
         species = self.multiple_dir.name
         self.add_assembly(species)
@@ -111,7 +112,7 @@ class JBrowseConfig:
             self.add_plantdhs()
         self.set_default_session()
 
-    def add_papers_data(self):
+    def add_papers_data(self) -> None:
         for path in fs.sorted_naturally(db.path("papers").glob("*.bed.gz")):
             self.add_track(path, "papers", trackid=path.with_suffix("").stem)
         suzuemon = db.path("suzuemon")
@@ -120,14 +121,14 @@ class JBrowseConfig:
         if (f := suzuemon / "SV.bed.gz").exists():
             self.add_track(f, "papers", trackid="SV_all-qin2021", subdir="suzuemon")
 
-    def add_plantdhs(self):
+    def add_plantdhs(self) -> None:
         for path in fs.sorted_naturally(plantdhs.db_prefix().glob("Rice_*.bw")):
             trackid = path.stem.removeprefix("Rice_")
             self.add_track(path, "plantdhs", trackid=trackid)
         for path in fs.sorted_naturally(plantdhs.db_prefix().glob("*.gff.gz")):
             self.add_track(path, "plantdhs", trackid=path.stem)
 
-    def add_plantregmap(self, species: str):
+    def add_plantregmap(self, species: str) -> None:
         for path in fs.sorted_naturally(plantregmap.rglob("*.bw", species)):
             trackid = path.with_suffix(".bedGraph").name
             self.add_track(path, "plantregmap", trackid=trackid)
@@ -141,7 +142,7 @@ class JBrowseConfig:
             trackid = re.sub(r"(_normal)?\.bed\.gz$", "", path.name)
             self.add_track(path, "plantregmap", trackid=trackid)
 
-    def add_assembly(self, species: str):
+    def add_assembly(self, species: str) -> None:
         # --alias, --name, --displayName
         genome = api.genome_fa(species)
         args: subp.Args = ["add-assembly"]
@@ -151,7 +152,7 @@ class JBrowseConfig:
         if not (self.target / genome.name).exists():
             jbrowse(args)
 
-    def add_track_gff(self, species: str):
+    def add_track_gff(self, species: str) -> None:
         gff = api.genome_gff3(species)
         ngff = gff.with_suffix("").with_suffix("").with_suffix(".name.gff3.gz")
         if ngff.exists():
@@ -161,7 +162,7 @@ class JBrowseConfig:
 
     def add_track(
         self, file: Path, category: str = "", trackid: str = "", subdir: str = ""
-    ):
+    ) -> None:
         # --description, --config
         args: subp.Args = ["add-track"]
         args.extend(["--target", self.target])
@@ -179,13 +180,13 @@ class JBrowseConfig:
         if not (self.target / subdir / file.name).exists():
             jbrowse(args)
 
-    def text_index(self):
+    def text_index(self) -> None:
         # --attributes, --exclude, --file,  --perTrack, --tracks, --dryrun
         args: subp.Args = ["text-index"]
         args.extend(["--target", self.target])
         jbrowse(args)
 
-    def set_default_session(self):
+    def set_default_session(self) -> None:
         args: subp.Args = ["set-default-session"]
         args.extend(["--target", self.target])
         args.extend(["--name", f"New {self.target.name} session"])
@@ -198,7 +199,7 @@ class JBrowseConfig:
         args.extend(["--tracks", ",".join(tracks)])
         jbrowse(args)
 
-    def configure(self):
+    def configure(self) -> None:
         chrom_sizes = api.chrom_sizes(self.target.name)
         config_json = self.target / "config.json"
         with config_json.open() as fin:
@@ -304,17 +305,17 @@ def make_theme():
     }
 
 
-def jbrowse(args: subp.Args):
+def jbrowse(args: subp.Args) -> None:
     subp.run(["jbrowse", *args])
 
 
-def npx_jbrowse(args: subp.Args, version: str = ""):
+def npx_jbrowse(args: subp.Args, version: str = "") -> None:
     pkg = "@jbrowse/cli"
     pkg = f"{pkg}@{version}" if version else pkg
     subp.run(["npx", pkg, *args])
 
 
-def iter_targets(path: Path):
+def iter_targets(path: Path) -> Iterable[Path]:
     for config_json in path.rglob("config.json"):
         if "test_data" in str(config_json):
             continue
@@ -323,7 +324,7 @@ def iter_targets(path: Path):
             yield abs_config_json.parent
 
 
-def redirect_html(url: str):
+def redirect_html(url: str) -> str:
     meta = f"""<meta http-equiv="refresh" content="1; URL={url}">"""
     return f"""<html><head>{meta}</head><body>Redirecting</body></html>"""
 

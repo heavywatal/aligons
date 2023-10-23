@@ -18,7 +18,7 @@ from . import kent
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("target", choices=api.species_names())
@@ -29,7 +29,7 @@ def main(argv: list[str] | None = None):
     run(args.target, args.query)
 
 
-def run(target: str, queries: list[str]):
+def run(target: str, queries: list[str]) -> Path:
     queries = api.sanitize_queries(target, queries)
     futures: list[confu.Future[Path]] = []
     for query in queries:
@@ -40,14 +40,14 @@ def run(target: str, queries: list[str]):
 
 
 class PairwiseAlignment:
-    def __init__(self, target: str, query: str):
+    def __init__(self, target: str, query: str) -> None:
         self._target = target
         self._query = query
         self._target_sizes = api.fasize(target)
         self._query_sizes = api.fasize(query)
         self._outdir = Path("pairwise") / target / query
 
-    def run(self):
+    def run(self) -> list[cli.FuturePath]:
         pool = cli.ThreadPool()
         if not cli.dry_run:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
@@ -59,14 +59,14 @@ class PairwiseAlignment:
         ]
         return [pool.submit(self.wait_integrate, futures) for futures in flists]
 
-    def align_chr(self, t2bit: Path, q2bit: Path):
+    def align_chr(self, t2bit: Path, q2bit: Path) -> Path:
         axtgz = lastz(t2bit, q2bit, self._outdir)
         return kent.axt_chain(t2bit, q2bit, axtgz)
 
-    def wait_integrate(self, futures: list[confu.Future[Path]]):
+    def wait_integrate(self, futures: list[confu.Future[Path]]) -> Path:
         return self.integrate([f.result() for f in futures])
 
-    def integrate(self, chains: list[Path]):
+    def integrate(self, chains: list[Path]) -> Path:
         pre_chain = kent.merge_sort_pre(chains, self._target_sizes, self._query_sizes)
         syntenic_net = kent.chain_net_syntenic(
             pre_chain, self._target_sizes, self._query_sizes
@@ -78,7 +78,7 @@ class PairwiseAlignment:
         return sing_maf
 
 
-def lastz(t2bit: Path, q2bit: Path, outdir: Path):
+def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:
     target_label = t2bit.stem.rsplit("dna_sm.", 1)[1]
     query_label = q2bit.stem.rsplit("dna_sm.", 1)[1]
     subdir = outdir / target_label

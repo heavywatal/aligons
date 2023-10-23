@@ -16,14 +16,14 @@ session = dl.LazySession(
 )
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     _args = parser.parse_args(argv or None)
     dataset_toml()
 
 
-def dataset_toml(organism: str = config["jgi"]["organism"]):
+def dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
     outfile = db.path(_HOST) / (organism + ".toml")
     if not outfile.exists():
         xml = fetch_xml(organism).path
@@ -37,7 +37,9 @@ def dataset_toml(organism: str = config["jgi"]["organism"]):
     return outfile
 
 
-def gather_dataset(root: ElementTree.Element):
+def gather_dataset(
+    root: ElementTree.Element,
+) -> dict[str, list[dict[str, str | list[str]]]]:
     datasets: list[dict[str, str | list[str]]] = []
     for efolder in iter_species_folder(root):
         d = as_dict(efolder)
@@ -67,18 +69,18 @@ def as_dict(folder: ElementTree.Element) -> dict[str, str | list[str]]:
     }
 
 
-def _simplify_url(url: str):
+def _simplify_url(url: str) -> str:
     return url.split("&url=", 1)[1]
 
 
-def iter_species_folder(root: ElementTree.Element):
+def iter_species_folder(root: ElementTree.Element) -> Iterator[ElementTree.Element]:
     _log.info(f"{root.attrib}")
     for elem in root.iter("folder"):
         if re.match("^[A-Z]", elem.attrib["name"]):
             yield elem
 
 
-def parse_filename_fa(name: str):
+def parse_filename_fa(name: str) -> list[str]:
     stem = name.split(".softmasked")[0]
     return stem.split("_", 1)
 
@@ -91,7 +93,7 @@ def finditer(
             yield elem
 
 
-def fetch_xml(organism: str):
+def fetch_xml(organism: str) -> dl.Response:
     outfile = db.path_mirror(_HOST) / (organism + ".xml")
     query = f"?organism={organism}"
     url = f"https://{_HOST}/portal/ext-api/downloads/get-directory"

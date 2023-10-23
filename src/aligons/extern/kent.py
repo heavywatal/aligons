@@ -17,20 +17,20 @@ from aligons.util import cli, config, fs, subp
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("clade", type=Path)
     args = parser.parse_args(argv or None)
     run(args.clade)
 
 
-def run(clade: Path):
+def run(clade: Path) -> None:
     if (bigwig := integrate_wigs(clade)).exists():
         print(bigwig)
         _log.info(bigWigInfo(bigwig).rstrip())
 
 
-def integrate_wigs(clade: Path):
+def integrate_wigs(clade: Path) -> Path:
     species = clade.parent.name
     chrom_sizes = api.fasize(species)
     name = "phastcons.wig.gz"
@@ -50,25 +50,25 @@ def integrate_wigs(clade: Path):
     return outfile
 
 
-def bigWigInfo(path: Path):  # noqa: N802
+def bigWigInfo(path: Path) -> bytes:  # noqa: N802
     args = ["bigWigInfo", path]
     return subp.run(args, stdout=subp.PIPE, text=True).stdout
 
 
-def bedGraphToBigWig(path: Path, chrom_sizes: Path):  # noqa: N802
+def bedGraphToBigWig(path: Path, chrom_sizes: Path) -> Path:  # noqa: N802
     # gz or stdin are not accepted
     outfile = path.with_suffix("").with_suffix(".bw")
     subp.run(["bedGraphToBigWig", path, chrom_sizes, outfile])
     return outfile
 
 
-def faToTwoBit(fa_gz: Path):  # noqa: N802
+def faToTwoBit(fa_gz: Path) -> Path:  # noqa: N802
     outfile = fa_gz.with_suffix("").with_suffix(".2bit")
     subp.run(["faToTwoBit", fa_gz, outfile], if_=fs.is_outdated(outfile, fa_gz))
     return outfile
 
 
-def faSize(genome_fa_gz: Path):  # noqa: N802
+def faSize(genome_fa_gz: Path) -> Path:  # noqa: N802
     if not str(genome_fa_gz).endswith(("genome.fa.gz", os.devnull)):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
     outfile = genome_fa_gz.with_name("fasize.chrom.sizes")
@@ -79,7 +79,7 @@ def faSize(genome_fa_gz: Path):  # noqa: N802
     return outfile
 
 
-def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path):
+def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path) -> Path:
     chain = axtgz.with_suffix("").with_suffix(".chain")
     cmd = "axtChain"
     cmd += subp.optjoin(config["axtChain"], "-")
@@ -95,7 +95,7 @@ def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path):
     return chain
 
 
-def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
+def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path) -> Path:
     parent = {x.parent for x in chains}
     subdir = parent.pop()
     assert not parent, "chains are in the same directory"
@@ -114,7 +114,7 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path):
     return pre_chain
 
 
-def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path):
+def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path) -> Path:
     syntenic_net = pre_chain.with_name("syntenic.net")
     is_to_run = fs.is_outdated(syntenic_net, pre_chain)
     cn_cmd = "chainNet"
@@ -132,7 +132,9 @@ def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path):
     return syntenic_net
 
 
-def net_to_maf(net: Path, chain_gz: Path, sing_maf: Path, target: str, query: str):
+def net_to_maf(
+    net: Path, chain_gz: Path, sing_maf: Path, target: str, query: str
+) -> Path:
     target_2bit = api.genome_2bit(target)
     query_2bit = api.genome_2bit(query)
     target_sizes = api.fasize(target)

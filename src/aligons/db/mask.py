@@ -14,7 +14,7 @@ from aligons.util import cli, fs
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-S", "--species")
     parser.add_argument("infile", type=Path, nargs="+")

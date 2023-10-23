@@ -17,7 +17,7 @@ from aligons.util import cli, config, fs, subp
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("species", type=str)
     args = parser.parse_args(argv or None)
@@ -40,7 +40,7 @@ def run(species: str) -> list[Path]:
     return [f.result() for f in fts]
 
 
-def count(infile: Path):
+def count(infile: Path) -> Path:
     opts = config["jellyfish"]["count"]
     outfile = infile.with_name("kmer") / "mer_counts.jf"
     args: subp.Args = ["jellyfish", "count", "--canonical"]
@@ -62,7 +62,7 @@ def count(infile: Path):
     return outfile
 
 
-def dump(jffile: Path):
+def dump(jffile: Path) -> Path:
     opts = config["jellyfish"]["dump"]
     outfile = jffile.with_suffix(".dump.fa")
     args: subp.Args = ["jellyfish", "dump"]
@@ -79,7 +79,7 @@ def dump(jffile: Path):
     return outfile
 
 
-def histo(jffile: Path):
+def histo(jffile: Path) -> Path:
     opts = config["jellyfish"]["histo"]
     outfile = jffile.with_suffix(".histo")
     args: subp.Args = ["jellyfish", "histo"]
@@ -103,7 +103,7 @@ def calc_threshold(histofile: Path) -> int:
     return int(x[i])
 
 
-def log_config(histofile: Path, freq: int):
+def log_config(histofile: Path, freq: int) -> None:
     config_log = histofile.with_name("config.toml")
     opts = {}
     opts["jellyfish"] = config["jellyfish"]
@@ -114,7 +114,7 @@ def log_config(histofile: Path, freq: int):
             tomli_w.dump(opts, fout)
 
 
-def mask_genome(infile: Path, kmer_fa: Path, freq: int = 50):
+def mask_genome(infile: Path, kmer_fa: Path, freq: int = 50) -> Path:
     """https://github.com/baoxingsong/dCNS."""
     dump_lower_count = config["jellyfish"]["dump"]["lower_count"]
     if freq < dump_lower_count:

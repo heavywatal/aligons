@@ -19,7 +19,7 @@ from aligons.util import cli, config, fs, read_config, subp
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     nodes_all = phylo.extract_names(phylo.get_tree())
     parser = cli.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None):
     run(args.indir, args.query)
 
 
-def run(indir: Path, query: Sequence[str]):
+def run(indir: Path, query: Sequence[str]) -> Path:
     target = indir.name
     tree = phylo.get_subtree(query)
     if len(query) > 1:
@@ -54,7 +54,7 @@ def run(indir: Path, query: Sequence[str]):
     return outdir
 
 
-def multiz(path: Path, tree: str):
+def multiz(path: Path, tree: str) -> Path:
     sing_mafs = list(path.glob("*.sing.maf"))
     tmpdir = path / "_tmp"
     outfile = path / "multiz.maf"
@@ -92,7 +92,9 @@ def multiz(path: Path, tree: str):
     return outfile
 
 
-def roast(sing_mafs: list[Path], tmpdir: str, outfile: str, tree: str):
+def roast(
+    sing_mafs: list[Path], tmpdir: str, outfile: str, tree: str
+) -> subp.subprocess.CompletedProcess[str]:
     """Generate shell script to execute multiz."""
     options = config["multiz"]
     radius = options.get("R", 30)
@@ -107,7 +109,7 @@ def roast(sing_mafs: list[Path], tmpdir: str, outfile: str, tree: str):
     return subp.run(args, stdout=subp.PIPE, text=True)
 
 
-def prepare(indir: Path, outdir: Path, queries: Sequence[str]):
+def prepare(indir: Path, outdir: Path, queries: Sequence[str]) -> Path:
     target = indir.name
     if target not in queries:
         msg = f"{target=} not in {queries=}"
@@ -134,7 +136,7 @@ def prepare(indir: Path, outdir: Path, queries: Sequence[str]):
     return outdir
 
 
-def clean(path: Path):
+def clean(path: Path) -> None:
     it = itertools.chain(
         path.rglob("multiz.maf"),
         path.rglob("roasted.sh"),
@@ -146,7 +148,7 @@ def clean(path: Path):
             rm_rf(entry)
 
 
-def rm_rf(path: Path):
+def rm_rf(path: Path) -> None:
     if path.is_dir():
         shutil.rmtree(path)
     else:

@@ -20,7 +20,7 @@ from aligons.util import cli, config, fs
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-S", "--species")
     parser.add_argument("-C", "--clade", default="angiospermae")
@@ -32,7 +32,7 @@ def main(argv: list[str] | None = None):
         print_stats(args.clade)
 
 
-def shorten(species: str):
+def shorten(species: str) -> str:
     try:
         return plantregmap.shorten(species)
     except KeyError:
@@ -40,7 +40,7 @@ def shorten(species: str):
 
 
 @functools.cache
-def species_names(fmt: str = "fasta"):
+def species_names(fmt: str = "fasta") -> list[str]:
     return [x.name for x in _species_dirs(fmt)]
 
 
@@ -77,7 +77,7 @@ def list_chromosome_gff3(species: str) -> Iterable[Path]:
     return fs.sorted_naturally(_glob("*.chromosome*.gff3.gz", species))
 
 
-def get_file(pattern: str, species: str, subdir: str = ""):
+def get_file(pattern: str, species: str, subdir: str = "") -> Path:
     found = list(_glob(pattern, species, subdir))
     if not found:
         msg = f"{pattern} not found in {species}/{subdir}"
@@ -88,7 +88,7 @@ def get_file(pattern: str, species: str, subdir: str = ""):
     return found[0]
 
 
-def get_file_nolabel(pattern: str, species: str, subdir: str = ""):
+def get_file_nolabel(pattern: str, species: str, subdir: str = "") -> Path:
     it = _glob(pattern, species, subdir)
     rex = re.compile(r"\.(chromosome|genome|toplevel)\.")
     found = [x for x in it if not rex.search(x.name)]
@@ -101,7 +101,7 @@ def get_file_nolabel(pattern: str, species: str, subdir: str = ""):
     return found[0]
 
 
-def sanitize_queries(target: str, queries: list[str]):
+def sanitize_queries(target: str, queries: list[str]) -> list[str]:
     query_set = set(queries)
     with suppress(KeyError):
         query_set.remove(target)
@@ -123,7 +123,7 @@ def _species_dirs(fmt: str = "fasta") -> Iterable[Path]:
                 yield path
 
 
-def _glob(pattern: str, species: str, subdir: str = ""):
+def _glob(pattern: str, species: str, subdir: str = "") -> Iterable[Path]:
     is_enough = False  # to allow duplicated species from multiple origins
     for prefix in _iter_prefix():
         for fmt in ("fasta", "gff3"):
@@ -143,7 +143,7 @@ def _prefix(origin: str) -> Path:
     return db.path(origin.format(version=ensemblgenomes.version()))
 
 
-def print_stats(clade: str):
+def print_stats(clade: str) -> None:
     newick = phylo.get_subtree([clade])
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangulate(phylo.render_tips(root, [])):
@@ -166,7 +166,7 @@ def chrom_sizes(species: str) -> dict[str, int]:
         return {x[0]: int(x[1]) for x in reader}
 
 
-def _gff3_size(species: str):
+def _gff3_size(species: str) -> float:
     path = genome_gff3(species)
     return path.stat().st_size / 1e6
 

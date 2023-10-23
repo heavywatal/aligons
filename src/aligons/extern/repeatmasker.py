@@ -19,7 +19,7 @@ from aligons.util import cli, fs, subp
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("--test", action="store_true")
     parser.add_argument("-S", "--species")
@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None):
         cli.thread_submit(repeatmasker, infile, args.species)
 
 
-def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
+def repeatmasker(infile: Path, species: str = "", *, soft: bool = True) -> Path:
     """Be careful of messy and dirty output from RepeatMasker.
 
     - Returns 0 even if aborted, e.g., "cannot read file".
@@ -64,7 +64,7 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True):
     return outfile
 
 
-def read_out(infile: Path):
+def read_out(infile: Path) -> pl.DataFrame:
     fs.expect_suffix(infile, ".out")
     with infile.open("rb") as fin:
         content = re.sub(rb" *\n *", rb"\n", fin.read())
@@ -94,7 +94,7 @@ def read_out(infile: Path):
     )
 
 
-def test_species(species: str):
+def test_species(species: str) -> bool:
     """Test if species is recognized by RepeatMasker.
 
     Existence in NCBI taxonomy does not suffice.
@@ -120,7 +120,7 @@ def test_species(species: str):
         return False
 
 
-def test_famdb_angiosperms():
+def test_famdb_angiosperms() -> bool:
     assert not famdb_families("angiosperms", descendants=True)
     fa = famdb_families("oryza_sativa", ancestors=True)
     for mobj in re.finditer(r">.+?\n", fa):

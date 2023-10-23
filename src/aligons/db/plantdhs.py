@@ -1,6 +1,8 @@
 """http://plantdhs.org."""
 import logging
 import re
+from collections.abc import Iterable
+from pathlib import Path
 
 from aligons import db
 from aligons.extern import htslib
@@ -12,7 +14,7 @@ _log = logging.getLogger(__name__)
 _HOST = "plantdhs.org"
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("pattern", nargs="?", default="*")
@@ -24,7 +26,7 @@ def main(argv: list[str] | None = None):
             print(x)
 
 
-def retrieve_deploy(query: str):
+def retrieve_deploy(query: str) -> cli.FuturePath:
     url = f"https://bioinfor.yzu.edu.cn/download/plantdhs/{query}"
     rawfile = db.path_mirror(_HOST) / query
     outfile = db_prefix() / query
@@ -38,13 +40,13 @@ def retrieve_deploy(query: str):
     return cli.thread_submit(htslib.try_index, future)
 
 
-def iter_download_queries():
+def iter_download_queries() -> Iterable[str]:
     for query in iter_download_queries_all():
         if re.search(r"Rice|TIGR7", query):
             yield query
 
 
-def iter_download_queries_all():
+def iter_download_queries_all() -> Iterable[str]:
     content = download_page()
     for mobj in re.finditer(r"/download/plantdhs/([^\"']+)", content):
         yield mobj[1]
@@ -56,7 +58,7 @@ def download_page() -> str:
     return dl.fetch(url, cache).text
 
 
-def db_prefix():
+def db_prefix() -> Path:
     return db.path("plantdhs")
 
 

@@ -15,12 +15,12 @@ _log = logging.getLogger(__name__)
 
 
 class LazySession:
-    def __init__(self, url: str = "", data: Mapping[str, str] = {}):
+    def __init__(self, url: str = "", data: Mapping[str, str] = {}) -> None:
         self._url = url
         self._data = data
         self._req_session = None
 
-    def get(self, url: str, **kwargs: Any):
+    def get(self, url: str, **kwargs: Any) -> requests.Response:
         if self._req_session is None:
             self._req_session = requests.Session()
             if self._url:
@@ -42,13 +42,13 @@ class LazySession:
 
 
 class Response:
-    def __init__(self, session: LazySession, url: str, path: Path):
+    def __init__(self, session: LazySession, url: str, path: Path) -> None:
         self._session = session
         self._url = url
         self._path = path
         self._content = b""
 
-    def _fetch(self):
+    def _fetch(self) -> None:
         response = self._session.get(self._url)
         response.raise_for_status()
         self._content = response.content
@@ -95,7 +95,7 @@ def mirror(url: str, outdir: Path = Path()) -> Response:
 
 
 class LazyFTP(FTP):
-    def __init__(self, host: str, slug: str, prefix: Path, timeout: float = 0):
+    def __init__(self, host: str, slug: str, prefix: Path, timeout: float = 0) -> None:
         _log.info("LazyFTP()")
         self.host = host
         self.slug = slug
@@ -106,7 +106,7 @@ class LazyFTP(FTP):
             timeout=timeout or None  # pyright: ignore[reportGeneralTypeIssues]
         )
 
-    def quit(self):  # noqa: A003
+    def quit(self) -> str:  # noqa: A003
         _log.info(f"os.chdir({self.orig_wd})")
         os.chdir(self.orig_wd)
         _log.info("ftp.quit()")
@@ -114,7 +114,7 @@ class LazyFTP(FTP):
         _log.info(resp)
         return resp
 
-    def _lazy_init(self):
+    def _lazy_init(self) -> None:
         if self.sock is not None:
             return
         self.orig_wd = Path.cwd()
@@ -128,7 +128,7 @@ class LazyFTP(FTP):
         self.prefix.mkdir(0o755, parents=True, exist_ok=True)
         os.chdir(self.prefix)  # for RETR only
 
-    def nlst_cache(self, relpath: str):
+    def nlst_cache(self, relpath: str) -> list[str]:
         cache = self.prefix / relpath / ".ftp_nlst_cache"
         if cache.exists():
             _log.info(f"{cache=}")
@@ -144,7 +144,7 @@ class LazyFTP(FTP):
                 fout.write("\n".join([Path(x).name for x in lst]) + "\n")
         return lst
 
-    def size(self, filename: str):
+    def size(self, filename: str) -> int:
         if not self._size_cache and self._size_cache_toml.exists():
             with self._size_cache_toml.open("rb") as fin:
                 self._size_cache = tomllib.load(fin)
@@ -160,7 +160,7 @@ class LazyFTP(FTP):
                 tomli_w.dump(self._size_cache, fout)
         return size
 
-    def retrieve(self, path: str, *, checksize: bool = False):
+    def retrieve(self, path: str, *, checksize: bool = False) -> Path:
         outfile = self.prefix / path
         size_obs = outfile.stat().st_size if outfile.exists() else 0
         if checksize:

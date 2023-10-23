@@ -10,7 +10,7 @@ from . import ensemblgenomes, phylo
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("-D", "--download", action="store_true")
@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None):
     prepare_ensemblgenomes(species)
 
 
-def prepare_ensemblgenomes(species: list[str]):
+def prepare_ensemblgenomes(species: list[str]) -> None:
     with ensemblgenomes.FTPensemblgenomes() as ftp:
         species = ftp.remove_unavailable(species)
         pool = cli.ThreadPool()
@@ -55,7 +55,7 @@ def prepare_ensemblgenomes(species: list[str]):
             ensemblgenomes.rsync(f"gff3/{sp}", options)
 
 
-def _ln_or_bgzip(src: Path, species: str, fmt: str = ""):
+def _ln_or_bgzip(src: Path, species: str, fmt: str = "") -> Path:
     if not fmt:
         fmt = "fasta" if src.name.removesuffix(".gz").endswith(".fa") else "gff3"
     if fmt not in ("fasta", "gff3"):

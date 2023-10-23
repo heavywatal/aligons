@@ -20,7 +20,7 @@ from_jgi = {
 }
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("-G", "--genome", action="store_true")
@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None):
             print(x)
 
 
-def fetch_and_bgzip():
+def fetch_and_bgzip() -> list[cli.FuturePath]:
     fts: list[cli.FuturePath] = []
     for entry in db.iter_builtin_dataset("plantregmap.toml"):
         fts.extend(tools.fetch_and_bgzip(entry, db_prefix()))
@@ -52,7 +52,7 @@ def fetch_and_bgzip():
     return fts
 
 
-def iter_jgi_dataset():
+def iter_jgi_dataset() -> Iterator[db.DataSet]:
     keys = from_jgi.keys()
     for entry in db.iter_dataset(jgi.dataset_toml()):
         if (jgi_sp := entry["species"]) in keys:
@@ -62,7 +62,7 @@ def iter_jgi_dataset():
             yield entry
 
 
-def retrieve_deploy(query: str):
+def retrieve_deploy(query: str) -> cli.FuturePath:
     url = f"http://{_HOST}/download_ftp.php?{query}"
     relpath = query.split("/", 1)[1]
     rawfile = db.path_mirror(_HOST) / relpath
@@ -79,13 +79,13 @@ def retrieve_deploy(query: str):
     return cli.thread_submit(htslib.try_index, future)
 
 
-def iter_download_queries():
+def iter_download_queries() -> Iterator[str]:
     for query in iter_download_queries_all():
         if re.search(r"Oryza_sativa_Japonica|Solanum_lycopersicum", query):
             yield query
 
 
-def iter_download_queries_all():
+def iter_download_queries_all() -> Iterator[str]:
     content = download_php()
     for mobj in re.finditer(r"download_ftp\.php\?([^\"']+)", content):
         yield mobj[1]
@@ -97,7 +97,7 @@ def download_php() -> str:
     return dl.fetch(url, cache).text
 
 
-def db_prefix():
+def db_prefix() -> Path:
     return db.path("plantregmap")
 
 
@@ -132,7 +132,7 @@ def to_bigwig(link: Path, species: str) -> Path:
     return bigwig
 
 
-def gunzip(infile: Path):
+def gunzip(infile: Path) -> Path:
     outfile = infile.with_name(infile.name.removesuffix(".gz"))
     if fs.is_outdated(outfile, infile):
         subp.run(["gunzip", "-fk", infile])
@@ -196,7 +196,7 @@ def species_abbr() -> dict[str, str]:
 
 
 class FTPplantregmap(dl.LazyFTP):
-    def __init__(self):
+    def __init__(self) -> None:
         host = "ftp.cbi.pku.edu.cn"
         super().__init__(
             host,
@@ -205,7 +205,7 @@ class FTPplantregmap(dl.LazyFTP):
             timeout=3600,
         )
 
-    def ls_cache(self, species: str = ""):
+    def ls_cache(self, species: str = "") -> None:
         self.nlst_cache("")
         self.nlst_cache("08-download")
         self.nlst_cache("08-download/FTP")
@@ -213,7 +213,7 @@ class FTPplantregmap(dl.LazyFTP):
         if species:
             self.nlst_cache(f"08-download/{species}")
 
-    def species_abbr_list(self):
+    def species_abbr_list(self) -> Path:
         return self.retrieve("Species_abbr.list")
 
     def download(self, species: str) -> list[cli.FuturePath]:

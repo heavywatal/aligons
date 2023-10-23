@@ -22,7 +22,7 @@ _verbosity_to_level = {
 
 
 class ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         group = self.add_mutually_exclusive_group()
         group.add_argument("-v", "--verbose", action=ConfigLogging, const=1)
@@ -56,7 +56,7 @@ class ConfigLogging(argparse.Action):
         nargs: int = 0,
         default: int = 0,
         **kwargs: Any,
-    ):
+    ) -> None:
         dest = "verbosity"
         super().__init__(option_strings, dest, nargs=nargs, default=default, **kwargs)
 
@@ -72,7 +72,7 @@ class ConfigLogging(argparse.Action):
 
 
 class ConsoleHandler(logging.StreamHandler):  # type: ignore[reportMissingTypeArgument]
-    def format(self, record: logging.LogRecord):  # noqa: A003
+    def format(self, record: logging.LogRecord) -> str:  # noqa: A003
         if record.levelno < logging.WARNING:
             return record.msg
         return super().format(record)
@@ -81,7 +81,7 @@ class ConsoleHandler(logging.StreamHandler):  # type: ignore[reportMissingTypeAr
 class ThreadPool:
     _instance = None
 
-    def __new__(cls, max_workers: int | None = None):
+    def __new__(cls, max_workers: int | None = None) -> confu.ThreadPoolExecutor:
         if cls._instance is None:
             cls._instance = confu.ThreadPoolExecutor(max_workers)
         elif max_workers is not None:
@@ -90,16 +90,18 @@ class ThreadPool:
         return cls._instance
 
 
-def thread_submit(fn: Callable[..., Any], /, *args: Any, **kwargs: Any):
+def thread_submit(
+    fn: Callable[..., Any], /, *args: Any, **kwargs: Any
+) -> confu.Future[Any]:
     return ThreadPool().submit(fn, *args, **kwargs)
 
 
-def wait_raise(futures: Iterable[confu.Future[Any]]):
+def wait_raise(futures: Iterable[confu.Future[Any]]) -> None:
     for f in confu.as_completed(futures):
         f.result()
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = ArgumentParser()
     args = parser.parse_args(argv)
     level = _log.getEffectiveLevel()

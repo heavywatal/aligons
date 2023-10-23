@@ -9,7 +9,7 @@ from .util import cli, log_config, read_config
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     tree = phylo.get_tree()
     parser = cli.ArgumentParser()
     parser.add_argument("-N", "--check-args", action="store_true")
@@ -28,7 +28,9 @@ def main(argv: list[str] | None = None):
     phastcons(args.target, args.clade, args.tips, args.max_bp, compara=args.compara)
 
 
-def phastcons(target: str, clade: str, tips: int, max_bp: float, *, compara: bool):
+def phastcons(
+    target: str, clade: str, tips: int, max_bp: float, *, compara: bool
+) -> None:
     lst_species = phylo.list_species(clade)
     lst_species = list(filter(lambda x: test_fasize(x, max_bp), lst_species))
     if compara:  # noqa: SIM108
@@ -49,7 +51,7 @@ def phastcons(target: str, clade: str, tips: int, max_bp: float, *, compara: boo
     cli.wait_raise(fts)
 
 
-def test_fasize(species: str, max_bp: float):
+def test_fasize(species: str, max_bp: float) -> bool:
     bp = sum(x for x in api.chrom_sizes(species).values())
     ret = bp < max_bp
     _log.info(f"{species:30}{round(bp / 1e6):>5} Mbp {ret}")

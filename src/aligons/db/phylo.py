@@ -12,7 +12,7 @@ from aligons.util import cli, config
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-N", "--name", action="store_true")
     parser.add_argument("-s", "--short", action="store_true")
@@ -33,11 +33,11 @@ def main(argv: list[str] | None = None):
         print(tree)
 
 
-def sorted_by_len_newicks(clades: list[str], *, reverse: bool = False):
+def sorted_by_len_newicks(clades: list[str], *, reverse: bool = False) -> list[str]:
     return sorted(clades, key=lambda x: len(get_subtree([x])), reverse=reverse)
 
 
-def extract_tip_names(newick: str):
+def extract_tip_names(newick: str) -> list[str]:
     return extract_names(remove_inner(newick))
 
 
@@ -45,36 +45,36 @@ def extract_inner_names(newick: str) -> list[str]:
     return re.findall(r"(?<=\))[^\s(),;:]+", newick)
 
 
-def extract_names(newick: str):
+def extract_names(newick: str) -> list[str]:
     names = (x.split(":")[0] for x in re.findall(r"[^\s(),;]+", newick))
     return list(filter(None, names))
 
 
-def extract_lengths(newick: str):
+def extract_lengths(newick: str) -> list[float]:
     return [float(x.lstrip()) for x in re.findall(r"(?<=:)\s*[\d.]+", newick)]
 
 
-def shorten_names(newick: str):
+def shorten_names(newick: str) -> str:
     return re.sub(r"[^\s(),:;]+_[^\s(),:;]+", lambda m: shorten(m.group(0)), newick)
 
 
-def remove_lengths(newick: str):
+def remove_lengths(newick: str) -> str:
     return re.sub(r":\s*[\d.]+", "", newick)
 
 
-def remove_inner(newick: str):
+def remove_inner(newick: str) -> str:
     return re.sub(r"\)[^(),;]+", ")", newick)
 
 
-def remove_inner_names(newick: str):
+def remove_inner_names(newick: str) -> str:
     return re.sub(r"\)[^(),:;]+", ")", newick)
 
 
-def remove_whitespace(x: str):
+def remove_whitespace(x: str) -> str:
     return "".join(x.split())
 
 
-def select(newick: str, queries: Sequence[str]):
+def select(newick: str, queries: Sequence[str]) -> str:
     if len(queries) == 1:
         newick = select_clade(newick, queries[0])
     elif len(queries) > 1:
@@ -82,12 +82,12 @@ def select(newick: str, queries: Sequence[str]):
     return newick
 
 
-def select_clade(newick: str, clade: str):
+def select_clade(newick: str, clade: str) -> str:
     return newickize(parse_newick(newick, clade))
 
 
-def select_tips(newick: str, tips: Sequence[str]):
-    def repl(mobj: re.Match[str]):
+def select_tips(newick: str, tips: Sequence[str]) -> str:
+    def repl(mobj: re.Match[str]) -> str:
         if (s := mobj.group(0)) in tips:
             return s
         return ""
@@ -100,7 +100,7 @@ def select_tips(newick: str, tips: Sequence[str]):
     return newickize(root)
 
 
-def get_subtree(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x):
+def get_subtree(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x) -> str:
     tree = fun(get_tree())
     return remove_inner(select(tree, queries))
 
@@ -147,15 +147,17 @@ def list_species(clade: str = "angiospermae") -> list[str]:
     return extract_names(get_subtree([clade]))
 
 
-def expand_shortnames(shortnames: list[str]):
+def expand_shortnames(shortnames: list[str]) -> Iterator[str]:
     return _filter_by_shortname(list_species(), shortnames)
 
 
-def _filter_by_shortname(species: Iterable[str], queries: Iterable[str]):
+def _filter_by_shortname(
+    species: Iterable[str], queries: Iterable[str]
+) -> Iterator[str]:
     return (x for x in species if shorten(x) in queries)
 
 
-def shorten(name: str):
+def shorten(name: str) -> str:
     """Oryza_sativa -> osat."""
     if name.lower() == "olea_europaea_sylvestris":
         return "oesy"
@@ -163,7 +165,7 @@ def shorten(name: str):
     return split[0][0] + split[1][:3]
 
 
-def print_graph(newick: str, graph: int = 0):
+def print_graph(newick: str, graph: int = 0) -> None:
     root = parse_newick(newick)
     if graph >= 4:  # noqa: PLR2004
         gen = rectangulate(render_tips(root, []))
@@ -270,7 +272,9 @@ def parse_newick(newick: str, inner: str = "") -> Node:
     return root
 
 
-def _extract_tip_clade(tree: str, nodes: dict[str, Node]):
+def _extract_tip_clade(
+    tree: str, nodes: dict[str, Node]
+) -> tuple[str, dict[str, Node]]:
     for mobj in re.finditer(r"\(([^(]+?)\)([^(),;]+)?", tree):
         children: list[Node] = []
         for label in mobj.group(1).split(","):
@@ -288,14 +292,14 @@ def _extract_tip_clade(tree: str, nodes: dict[str, Node]):
     return tree, nodes
 
 
-def _parse_node_label(label: str):
+def _parse_node_label(label: str) -> tuple[str, float | None]:
     if ":" in label:
         name, distance = label.split(":")
         return name.strip(), float(distance.strip())
     return label.strip(), None
 
 
-def rectangulate(renderer: GraphGen):
+def rectangulate(renderer: GraphGen) -> Iterable[tuple[str, str]]:
     lines = list(renderer)
     widest = max(lines, key=lambda p: len(p[0]) + len(p[1]))
     max_width = len(widest[0]) + len(widest[1])
@@ -303,7 +307,7 @@ def rectangulate(renderer: GraphGen):
         yield (prefix.ljust(max_width - len(label), "─"), label)
 
 
-def elongate(renderer: GraphGen):
+def elongate(renderer: GraphGen) -> Iterable[tuple[str, str]]:
     lines = list(renderer)
     deepest = max(lines, key=lambda p: len(p[0]))
     max_depth = len(deepest[0])

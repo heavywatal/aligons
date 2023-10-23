@@ -86,11 +86,11 @@ def prepare_args(args: _CMD, *, if_: bool):
     return (args, cmd)
 
 
-def optjoin(values: ConfDict, prefix: str = "--"):
+def optjoin(values: ConfDict, prefix: str = "--") -> str:
     return "".join([optstr(k, v, prefix) for k, v in values.items()])
 
 
-def optstr(key: str, value: Any, prefix: str = "--"):
+def optstr(key: str, value: Any, prefix: str = "--") -> str:
     if value is None or value is False:
         return ""
     if value is True:

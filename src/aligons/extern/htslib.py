@@ -10,7 +10,7 @@ from aligons.util import cli, fs, subp
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-O", "--outdir", type=Path)
     parser.add_argument("infile", type=Path)
@@ -47,7 +47,7 @@ def split_fa_gz(
     return fts
 
 
-def faidx_query(bgz: Path, region: str, outfile: Path):
+def faidx_query(bgz: Path, region: str, outfile: Path) -> Path:
     args: subp.Args = ["samtools", "faidx", bgz, region]
     p = subp.run(args, if_=fs.is_outdated(outfile, bgz), stdout=subp.PIPE)
     if p.stdout:
@@ -60,7 +60,7 @@ def faidx_query(bgz: Path, region: str, outfile: Path):
     return outfile
 
 
-def concat_bgzip(infiles: list[Path], outfile: Path):
+def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         with outfile.open("wb") as fout:
             bgzip = subp.popen("bgzip -@2", stdin=subp.PIPE, stdout=fout)
@@ -85,7 +85,7 @@ def concat_bgzip(infiles: list[Path], outfile: Path):
     return outfile
 
 
-def collect_gff3_header(infiles: Iterable[Path]):
+def collect_gff3_header(infiles: Iterable[Path]) -> bytes:
     header = b"##gff-version 3\n"
     for file in infiles:
         with gzip.open(file, "rt") as fin:
@@ -98,7 +98,7 @@ def collect_gff3_header(infiles: Iterable[Path]):
     return header
 
 
-def bgzip(path: Path):
+def bgzip(path: Path) -> Path:
     """https://www.htslib.org/doc/bgzip.html."""
     outfile = path.with_suffix(path.suffix + ".gz")
     subp.run(["bgzip", "-@2", path], if_=fs.is_outdated(outfile, path))
@@ -119,7 +119,7 @@ def try_index(bgz: Path | cli.FuturePath) -> Path:
     return bgz
 
 
-def faidx(bgz: Path | cli.FuturePath):
+def faidx(bgz: Path | cli.FuturePath) -> Path:
     """https://www.htslib.org/doc/samtools-faidx.html."""
     if isinstance(bgz, confu.Future):
         bgz = bgz.result()
@@ -129,7 +129,7 @@ def faidx(bgz: Path | cli.FuturePath):
     return outfile
 
 
-def tabix(bgz: Path | cli.FuturePath):
+def tabix(bgz: Path | cli.FuturePath) -> Path:
     """https://www.htslib.org/doc/tabix.html.
 
     Use .csi instead of .tbi for chromosomes >512 Mbp e.g., atau, hvul.
@@ -142,7 +142,7 @@ def tabix(bgz: Path | cli.FuturePath):
     return outfile
 
 
-def index(cram: Path | cli.FuturePath):
+def index(cram: Path | cli.FuturePath) -> Path:
     """https://www.htslib.org/doc/samtools-index.html."""
     if isinstance(cram, confu.Future):
         cram = cram.result()
@@ -152,21 +152,21 @@ def index(cram: Path | cli.FuturePath):
     return outfile
 
 
-def to_be_bgzipped(filename: str):
+def to_be_bgzipped(filename: str) -> bool:
     return to_be_faidxed(filename) or to_be_tabixed(filename)
 
 
-def to_be_faidxed(filename: str):
+def to_be_faidxed(filename: str) -> bool:
     ext = (".fa", ".fas", ".fasta", ".fna")
     return filename.removesuffix(".gz").removesuffix(".zip").endswith(ext)
 
 
-def to_be_tabixed(filename: str):
+def to_be_tabixed(filename: str) -> bool:
     ext = (".gff", ".gff3", ".gtf", ".bed")
     return filename.removesuffix(".gz").removesuffix(".zip").endswith(ext)
 
 
-def sort_clean_chromosome_gff3(infile: Path):
+def sort_clean_chromosome_gff3(infile: Path) -> subp.subprocess.Popen[bytes]:
     # TODO: jbrowse2 still needs billzt/gff3sort precision?
     p1 = subp.popen(f"zgrep -v '^#' {infile!s}", stdout=subp.PIPE, quiet=True)
     p2 = subp.popen(

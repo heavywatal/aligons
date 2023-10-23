@@ -18,7 +18,7 @@ StrPath = TypeVar("StrPath", str, Path)
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("path", nargs="+", type=Path)
     args = parser.parse_args(argv or None)
@@ -26,12 +26,12 @@ def main(argv: list[str] | None = None):
         print(x)
 
 
-def relpath(path: Path, start: Path = Path()):
+def relpath(path: Path, start: Path = Path()) -> Path:
     assert start.is_dir() or not start.exists(), start
     return Path(os.path.relpath(path, start))
 
 
-def symlink(path: Path, link: Path, *, relative: bool = False):
+def symlink(path: Path, link: Path, *, relative: bool = False) -> Path:
     if is_outdated(link, path) and not cli.dry_run:
         if relative:
             start = link if path.is_dir() else link.parent
@@ -45,7 +45,7 @@ def symlink(path: Path, link: Path, *, relative: bool = False):
     return link
 
 
-def is_outdated(product: Path, source: list[Path] | Path | None = None):
+def is_outdated(product: Path, source: list[Path] | Path | None = None) -> bool:
     if not product.exists():
         return True
     if product.stat().st_size == 0:
@@ -58,7 +58,7 @@ def is_outdated(product: Path, source: list[Path] | Path | None = None):
     return False
 
 
-def newest(files: list[Path]):
+def newest(files: list[Path]) -> Path:
     return max(files, key=lambda p: p.stat().st_mtime)
 
 
@@ -74,7 +74,7 @@ def name_if_path(x: StrPath) -> str:
     return x if isinstance(x, str) else x.name
 
 
-def try_zeropad(s: str):
+def try_zeropad(s: str) -> str:
     try:
         return f"{int(s):03}"
     except (ValueError, TypeError):
@@ -88,23 +88,23 @@ def zip_decompress(data: bytes) -> bytes:
         return zin.read(members[0])
 
 
-def gzip_compress(content: bytes):
+def gzip_compress(content: bytes) -> bytes:
     if not is_gz(content):
         content = gzip.compress(content)
     return content
 
 
-def gzip_decompress(content: bytes):
+def gzip_decompress(content: bytes) -> bytes:
     if is_gz(content):
         content = gzip.decompress(content)
     return content
 
 
-def is_gz(content: bytes):
+def is_gz(content: bytes) -> bool:
     return content.startswith(b"\x1f\x8b")
 
 
-def is_zip(content: bytes):
+def is_zip(content: bytes) -> bool:
     return content.startswith(b"\x50\x4b")
 
 
@@ -118,7 +118,7 @@ def expect_suffix(file: Path, suffix: str, *, negate: bool = False) -> None:
         raise ValueError(msg)
 
 
-def checksums(file: Path):
+def checksums(file: Path) -> None:
     if cli.dry_run:  # pragma: no cover
         return
     with confu.ThreadPoolExecutor() as pool:
@@ -127,7 +127,7 @@ def checksums(file: Path):
         pool.map(checkline, lines, itertools.repeat(file.parent))
 
 
-def checkline(line: str, directory: Path):
+def checkline(line: str, directory: Path) -> None:
     (e_sum, e_blocks, name) = line.split()
     if (path := directory / name).exists():
         cmd = ["/usr/bin/sum", path]

@@ -19,7 +19,7 @@ from aligons.util import cli, fs, subp
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("infile", type=Path, nargs="+")
     args = parser.parse_args(argv or None)
@@ -38,7 +38,7 @@ def run(infile: Path) -> Path:
     return outfile
 
 
-def trf(infile: Path):
+def trf(infile: Path) -> Path:
     """Be careful of messy and dirty output from trf.
 
     - without `-ngs`
@@ -103,7 +103,7 @@ def _block_to_bed(block: bytes) -> str:
     )
 
 
-def _read_dat_body(source: Path | str | bytes):
+def _read_dat_body(source: Path | str | bytes) -> pl.DataFrame:
     return pl.read_csv(
         source,
         has_header=False,

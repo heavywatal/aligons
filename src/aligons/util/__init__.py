@@ -2,6 +2,7 @@ import logging
 import tomllib
 from collections.abc import Mapping
 from importlib import resources
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, TypeAlias
@@ -13,12 +14,12 @@ _log = logging.getLogger(__name__)
 ConfDict: TypeAlias = MappingProxyType[str, Any]
 
 
-def read_config(path: Path):
+def read_config(path: Path) -> None:
     with path.open("rb") as fin:
         update_nested(_config_src, tomllib.load(fin))
 
 
-def log_config(path: Path = Path(".log.aligons.toml")):
+def log_config(path: Path = Path(".log.aligons.toml")) -> None:
     _log.info(f"{config}")
     if path.exists():
         with path.open("rb") as fin:
@@ -31,7 +32,7 @@ def log_config(path: Path = Path(".log.aligons.toml")):
             tomli_w.dump(_config_src, fout)
 
 
-def update_nested(x: dict[str, Any], other: Mapping[str, Any]):
+def update_nested(x: dict[str, Any], other: Mapping[str, Any]) -> dict[str, Any]:
     for key, value in other.items():
         if isinstance(x_val := x.get(key), dict):
             update_nested(x_val, value)  # type: ignore[reportUnknownArgumentType]
@@ -40,7 +41,7 @@ def update_nested(x: dict[str, Any], other: Mapping[str, Any]):
     return x
 
 
-def resources_data(child: str = ""):
+def resources_data(child: str = "") -> Traversable:
     return resources.files("aligons.data").joinpath(child)
 
 
@@ -58,7 +59,7 @@ config = ConfDict(_config_src)
 empty_options = ConfDict({})
 
 
-def _diff(lhs: Mapping[str, Any], rhs: Mapping[str, Any]):
+def _diff(lhs: Mapping[str, Any], rhs: Mapping[str, Any]) -> int:
     n = 0
     for key, lvalue in lhs.items():
         rvalue = rhs.get(key, {})

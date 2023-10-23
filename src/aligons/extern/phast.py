@@ -20,7 +20,7 @@ from aligons.util import ConfDict, cli, config, empty_options, fs, read_config, 
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("-c", "--config", type=Path)
@@ -34,7 +34,7 @@ def main(argv: list[str] | None = None):
     run(args.clade)
 
 
-def run(path_clade: Path):
+def run(path_clade: Path) -> None:
     (cons_mod, noncons_mod) = prepare_mods(path_clade)
     opts = config.get("phastCons", empty_options)
     pool = cli.ThreadPool()
@@ -45,7 +45,7 @@ def run(path_clade: Path):
 
 def phastCons(  # noqa: N802
     path: Path, cons_mod: Path, noncons_mod: Path, options: ConfDict = empty_options
-):
+) -> Path:
     maf = str(path / "multiz.maf")
     seqname = path.name.split(".", 1)[1]  # remove "chromosome."
     cmd = "phastCons"
@@ -61,7 +61,7 @@ def phastCons(  # noqa: N802
     return wig
 
 
-def prepare_mods(clade: Path):
+def prepare_mods(clade: Path) -> tuple[Path, Path]:
     target = clade.parent.name
     prepare_labeled_gff3(target)
     cons_mod = clade / "cons.mod"
@@ -80,19 +80,19 @@ def prepare_mods(clade: Path):
     return (cons_mod, noncons_mod)
 
 
-def make_cons_mod(maf: Path, gff: Path, tree: str):
+def make_cons_mod(maf: Path, gff: Path, tree: str) -> Path:
     codons_ss = msa_view_features(maf, gff, conserved=True)
     codons_mods = phyloFit(codons_ss, tree, conserved=True)
     return most_conserved_mod(codons_mods)
 
 
-def make_noncons_mod(maf: Path, gff: Path, tree: str):
+def make_noncons_mod(maf: Path, gff: Path, tree: str) -> Path:
     _4d_codons_ss = msa_view_features(maf, gff, conserved=False)
     _4d_sites_ss = msa_view_ss(_4d_codons_ss)
     return phyloFit(_4d_sites_ss, tree, conserved=False)[0]
 
 
-def msa_view_features(maf: Path, gff: Path, *, conserved: bool):
+def msa_view_features(maf: Path, gff: Path, *, conserved: bool) -> Path:
     cmd = f"msa_view {maf!s} --in-format MAF --features <(gunzip -c {gff!s})"
     if conserved:
         outfile = maf.with_name("codons.ss")
@@ -114,7 +114,7 @@ def msa_view_features(maf: Path, gff: Path, *, conserved: bool):
     return outfile
 
 
-def msa_view_ss(codons_ss: Path):
+def msa_view_ss(codons_ss: Path) -> Path:
     outfile = codons_ss.with_name("4d-sites.ss")
     s = f"msa_view {codons_ss!s} --in-format SS --out-format SS --tuple-size 1"
     is_to_run = fs.is_outdated(outfile, codons_ss)
@@ -124,7 +124,7 @@ def msa_view_ss(codons_ss: Path):
     return outfile
 
 
-def phyloFit(ss: Path, tree: str, *, conserved: bool):  # noqa: N802
+def phyloFit(ss: Path, tree: str, *, conserved: bool) -> list[Path]:  # noqa: N802
     if conserved:
         out_root = str(ss.with_name("codons"))
         outfiles = [Path(f"{out_root}.{i}.mod") for i in range(1, 4)]
@@ -141,7 +141,7 @@ def phyloFit(ss: Path, tree: str, *, conserved: bool):  # noqa: N802
     return outfiles
 
 
-def phyloBoot(mods: list[Path], outfile: Path):  # noqa: N802
+def phyloBoot(mods: list[Path], outfile: Path) -> None:  # noqa: N802
     read_mods = ",".join(str(x) for x in mods)
     subp.run(
         f"phyloBoot --read-mods {read_mods} --output-average {outfile}",
@@ -149,7 +149,7 @@ def phyloBoot(mods: list[Path], outfile: Path):  # noqa: N802
     )
 
 
-def most_conserved_mod(mods: list[Path]):
+def most_conserved_mod(mods: list[Path]) -> Path:
     outfile = mods[0].with_name("cons.mod")
     if not fs.is_outdated(outfile, mods) or cli.dry_run:
         return outfile
@@ -170,16 +170,16 @@ def most_conserved_mod(mods: list[Path]):
     return outfile
 
 
-def extract_tree(mod: str):
+def extract_tree(mod: str) -> str:
     assert (m := re.search(r"TREE: (.+;)", mod)), mod
     return m.group(1)
 
 
-def path_labeled_gff3(species: str, chromosome: str):
+def path_labeled_gff3(species: str, chromosome: str) -> Path:
     return Path("gff3") / species / f"labeled-{chromosome}.gff3.gz"
 
 
-def prepare_labeled_gff3(species: str):
+def prepare_labeled_gff3(species: str) -> None:
     """Deploy labeled copies of GFF3.
 
     src: {db.api.prefix}/gff3/{species}/*.{chromosome}.gff3.gz
@@ -195,7 +195,7 @@ def prepare_labeled_gff3(species: str):
             add_label_to_chr(infile, outfile, shortname + ".")
 
 
-def add_label_to_chr(infile: Path, outfile: Path, label: str):
+def add_label_to_chr(infile: Path, outfile: Path, label: str) -> None:
     """Modify GFF3 for msa_view.
 
     - Add species name to chromosome name, e.g., osat.1, zmay.2
@@ -219,7 +219,7 @@ def add_label_to_chr(infile: Path, outfile: Path, label: str):
                 writer.writerow(row)
 
 
-def clean(path: Path):
+def clean(path: Path) -> None:
     it = itertools.chain(
         path.glob("*.mod"),
         path.glob("*.ss"),
@@ -233,7 +233,7 @@ def clean(path: Path):
             file.unlink()
 
 
-def devnull_if(cond: bool, file: Path):  # noqa: FBT001
+def devnull_if(cond: bool, file: Path) -> Path:  # noqa: FBT001
     if cond:
         return Path(os.devnull)
     return file

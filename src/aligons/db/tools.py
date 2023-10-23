@@ -12,7 +12,7 @@ from aligons.util import cli, dl, fs, gff
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
@@ -81,12 +81,12 @@ def _symlink_masked(ft: cli.FuturePath) -> Path:
     return fs.symlink(masked, link, relative=True)
 
 
-def bgzip_index(content: bytes, outfile: Path):
+def bgzip_index(content: bytes, outfile: Path) -> Path:
     htslib.try_index(compress(content, outfile))
     return outfile
 
 
-def index_fasta(paths: list[Path]):
+def index_fasta(paths: list[Path]) -> Path:
     """Create bgzipped and indexed genome.fa."""
     if len(paths) == 1:
         paths = [f.result() for f in _split_toplevel_fa(paths[0])]
@@ -99,7 +99,7 @@ def index_fasta(paths: list[Path]):
     return genome
 
 
-def index_gff3(paths: list[Path]):  # gff3/{species}
+def index_gff3(paths: list[Path]) -> Path:  # gff3/{species}
     """Create bgzipped and indexed genome.gff3."""
     if len(paths) == 1:
         if "chromosome" in paths[0].name:
@@ -110,7 +110,7 @@ def index_gff3(paths: list[Path]):  # gff3/{species}
     return genome
 
 
-def _create_genome_bgzip(files: list[Path]):
+def _create_genome_bgzip(files: list[Path]) -> Path:
     """Combine chromosome files and bgzip it."""
     files = fs.sorted_naturally(files)
     _log.debug(str(files))
@@ -137,7 +137,7 @@ def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:
     return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
 
 
-def softmask(species: str):
+def softmask(species: str) -> Path:
     masked = jellyfish.run(species)
     return index_fasta(masked)
 
@@ -170,7 +170,7 @@ def compress(content: bytes, outfile: Path) -> Path:
     return outfile
 
 
-def looks_like_fasta(content: bytes):
+def looks_like_fasta(content: bytes) -> bool:
     if fs.is_gz(content):
         return True  # TODO: test first few bytes
     return content.startswith(b">")

@@ -19,7 +19,7 @@ os.environ["REF_CACHE"] = _ref_cache
 os.environ["REF_PATH"] = _ref_cache
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-t", "--test", action="store_true")
     parser.add_argument("query", nargs="*", type=Path)  # pairwise/{target}/{query}
@@ -34,12 +34,12 @@ def main(argv: list[str] | None = None):
     cli.wait_raise([mafs2cram(path) for path in args.query])
 
 
-def run(target: Path, species: list[str]):
+def run(target: Path, species: list[str]) -> list[cli.FuturePath]:
     query_names = api.sanitize_queries(target.name, species)
     return [mafs2cram(target / q) for q in query_names]
 
 
-def mafs2cram(path: Path):
+def mafs2cram(path: Path) -> cli.FuturePath:
     target_species = path.parent.name
     reference = api.genome_fa(target_species)
     outdir = path / "cram"
@@ -85,7 +85,7 @@ def maf2cram(infile: Path, outfile: Path, reference: Path) -> Path:
 
 
 def sanitize_cram(reference: Path, sam: bytes, *, if_: bool) -> bytes:
-    def repl(mobj: re.Match[bytes]):
+    def repl(mobj: re.Match[bytes]) -> bytes:
         qstart = 0
         if int(mobj["flag"]) & 16:  # reverse strand
             if tail := mobj["tail_cigar"]:

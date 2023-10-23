@@ -11,7 +11,7 @@ from aligons.util import cli, fs
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
@@ -95,7 +95,7 @@ def _sort_body(content: bytes) -> bytes:
     return bio.getvalue()
 
 
-def _read_body(source: Path | str | bytes):
+def _read_body(source: Path | str | bytes) -> pl.DataFrame:
     if isinstance(source, bytes):
         source = re.sub(rb"\n\n+", rb"\n", source)
     return pl.read_csv(

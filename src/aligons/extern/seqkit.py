@@ -9,14 +9,14 @@ from aligons.util import cli, fs, subp
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("file", type=Path)
     args = parser.parse_args(argv or None)
     split(args.file)
 
 
-def split(path: Path, *, compress: bool = True):
+def split(path: Path, *, compress: bool = True) -> Path:
     """https://bioinf.shenwei.me/seqkit/usage/#split.
 
     dir/seq.fa.gz -> dir/_work/seq.part_{id}.fasta.gz
@@ -36,7 +36,7 @@ def seq_line_width(infile: Path, width: int) -> bytes:
     return subp.run(args, stdout=subp.PIPE).stdout
 
 
-def read_fasta_line_width(infile: Path):
+def read_fasta_line_width(infile: Path) -> int:
     if infile.suffix == ".gz":
         with gzip.open(infile, "rt") as fin:
             return _fasta_line_width(fin)
@@ -44,7 +44,7 @@ def read_fasta_line_width(infile: Path):
         return _fasta_line_width(fin)
 
 
-def _fasta_line_width(lines: Iterable[str]):
+def _fasta_line_width(lines: Iterable[str]) -> int:
     for line in lines:
         if not line.startswith(">"):
             return len(line.rstrip())

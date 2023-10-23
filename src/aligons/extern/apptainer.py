@@ -36,7 +36,7 @@ _galaxy_apps = {
 }
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-a", "--all", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None):
         pull_galaxy(args.prefix)
 
 
-def pull_galaxy(prefix: Path):
+def pull_galaxy(prefix: Path) -> None:
     tsv = galaxy_index()
     table = pl.read_csv(tsv, separator="\t")
     imgdir = prefix / "biocontainers"
@@ -67,7 +67,7 @@ def pull_galaxy(prefix: Path):
             _log.info(f"{sh}")
 
 
-def make_sh(sif: Path, command: str = "", outdir: Path = Path()):
+def make_sh(sif: Path, command: str = "", outdir: Path = Path()) -> Path:
     if not command:
         command = sif.name.split(":", 1)[0]
     name = Path(command).name
@@ -81,7 +81,7 @@ def make_sh(sif: Path, command: str = "", outdir: Path = Path()):
     return outfile
 
 
-def latest_apps(table: pl.DataFrame):
+def latest_apps(table: pl.DataFrame) -> list[str]:
     return (
         table.filter(pl.col("app").is_in(_galaxy_apps.keys()))
         .select(
@@ -103,7 +103,7 @@ def galaxy_index() -> Path:
     return cache_tsv
 
 
-def _parse_galaxy_index_html(content: bytes):
+def _parse_galaxy_index_html(content: bytes) -> pl.DataFrame:
     tsv = re.sub(rb"(</a>| ) +", rb"\t", content)
     cols = ["anchor", "time", "size"]
     raw = pl.read_csv(
@@ -132,7 +132,7 @@ def _parse_galaxy_index_html(content: bytes):
     )
 
 
-def _cache_dir():
+def _cache_dir() -> Path:
     return db.path_mirror(_galaxy_domain)
 
 

@@ -19,7 +19,7 @@ from . import phylo
 _log = logging.getLogger(__name__)
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-V", "--versions", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
@@ -46,7 +46,7 @@ def _list_versions() -> Iterable[Path]:
     return _prefix_mirror_root().glob("release-*")
 
 
-def consolidate_compara_mafs(indir: Path):
+def consolidate_compara_mafs(indir: Path) -> Path:
     _log.debug(f"{indir=}")
     mobj = re.search(r"([^_]+)_.+?\.v\.([^_]+)", indir.name)
     assert mobj, indir.name
@@ -87,7 +87,7 @@ def consolidate_compara_mafs(indir: Path):
     return outdir
 
 
-def readlines_compara_maf(file: Path):
+def readlines_compara_maf(file: Path) -> Iterable[str]:
     """MAF files of ensembl compara have broken "a" lines.
 
     a# id: 0000000
@@ -106,7 +106,7 @@ def readlines_compara_maf(file: Path):
 
 
 class FTPensemblgenomes(dl.LazyFTP):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             "ftp.ensemblgenomes.org",
             f"/pub/plants/release-{version()}",
@@ -126,7 +126,7 @@ class FTPensemblgenomes(dl.LazyFTP):
     def available_species(self) -> list[str]:
         return [Path(x).name for x in self.nlst_cache("fasta")]
 
-    def download_fasta(self, species: str):
+    def download_fasta(self, species: str) -> list[Path]:
         relpath = f"fasta/{species}/dna"
         outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
@@ -134,7 +134,7 @@ class FTPensemblgenomes(dl.LazyFTP):
         fs.checksums(outdir / "CHECKSUMS")
         return [f for f in files if f.suffix == ".gz"]
 
-    def download_gff3(self, species: str):
+    def download_gff3(self, species: str) -> list[Path]:
         relpath = f"gff3/{species}"
         outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
@@ -142,7 +142,7 @@ class FTPensemblgenomes(dl.LazyFTP):
         fs.checksums(outdir / "CHECKSUMS")
         return [f for f in files if f.suffix == ".gz"]
 
-    def download_maf(self, species: str):
+    def download_maf(self, species: str) -> list[Path]:
         relpath = "maf/ensembl-compara/pairwise_alignments"
         outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
@@ -160,7 +160,7 @@ class FTPensemblgenomes(dl.LazyFTP):
             dirs.append(expanded.resolve())
         return dirs
 
-    def remove_duplicates(self, nlst: list[str], substr: str = ""):
+    def remove_duplicates(self, nlst: list[str], substr: str = "") -> list[str]:
         matched = [x for x in nlst if "chromosome" in x]
         if not matched:
             matched = [x for x in nlst if "primary_assembly" in x]
@@ -176,7 +176,7 @@ class FTPensemblgenomes(dl.LazyFTP):
         return matched + misc
 
 
-def rsync(relpath: str, options: str = ""):
+def rsync(relpath: str, options: str = "") -> subp.subprocess.CompletedProcess[bytes]:
     server = "ftp.ensemblgenomes.org"
     remote_prefix = f"rsync://{server}/all/pub/plants/release-{version()}"
     src = f"{remote_prefix}/{relpath}/"
@@ -184,19 +184,19 @@ def rsync(relpath: str, options: str = ""):
     return subp.run(f"rsync -auv {options} {src} {dst}")
 
 
-def prefix():
+def prefix() -> Path:
     return db.path(f"ensembl-{version()}")
 
 
-def _prefix_mirror():
+def _prefix_mirror() -> Path:
     return _prefix_mirror_root() / f"release-{version()}"
 
 
-def _prefix_mirror_root():
+def _prefix_mirror_root() -> Path:
     return db.path_mirror("ensemblgenomes.org/plants")
 
 
-def version():
+def version() -> int:
     return int(os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"]))
 
 
