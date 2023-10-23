@@ -101,6 +101,14 @@ def test_zipfile(tmp_path: Path):
     assert decompressed == content
 
 
+def test_expect_suffix():
+    fs.expect_suffix(Path("hello.txt"), ".txt")
+    with pytest.raises(ValueError, match="expected suffix is .gz"):
+        fs.expect_suffix(Path("hello.txt"), ".gz")
+    with pytest.raises(ValueError, match="unexpected suffix .gz"):
+        fs.expect_suffix(Path("hello.txt.gz"), ".gz", negate=True)
+
+
 def test_chdir(tmp_path: Path):
     assert Path.cwd() != tmp_path
     with fs.chdir(tmp_path):
