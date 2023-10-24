@@ -7,7 +7,7 @@ from pathlib import Path
 from aligons import db
 from aligons.db import api, jgi
 from aligons.extern import htslib, kent, mafs2cram
-from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
+from aligons.util import cli, dl, fs, tomli_w, tomllib
 
 from . import tools
 
@@ -122,22 +122,6 @@ def to_cram(maf: Path) -> Path:
     return outfile
 
 
-def to_bigwig(link: Path, species: str) -> Path:
-    bedgraph = gunzip(link)
-    bigwig = bedgraph.with_suffix(".bw")
-    if fs.is_outdated(bigwig, bedgraph):
-        kent.bedGraphToBigWig(bedgraph, api.fasize(species))
-    return bigwig
-
-
-def gunzip(infile: Path) -> Path:
-    outfile = infile.with_name(infile.name.removesuffix(".gz"))
-    if fs.is_outdated(outfile, infile):
-        subp.run(["gunzip", "-fk", infile])
-        subp.run(["touch", outfile])
-    return outfile
-
-
 def download_via_ftp() -> list[cli.FuturePath]:
     targets = [
         "Oryza_sativa_Japonica_Group",
@@ -218,7 +202,8 @@ class FTPplantregmap(dl.LazyFTP):
         fts: list[cli.FuturePath] = []
         self.ls_cache(species)
         for bedgraph in self.download_conservation(species):
-            fts.append(cli.thread_submit(to_bigwig, bedgraph, species))  # noqa: PERF401
+            fasize = api.fasize(species)
+            fts.append(cli.thread_submit(kent.bedGraphToBigWig, bedgraph, fasize))
         for _ in self.download_multiple_alignments(species):
             pass
         for _ in self.download_pairwise_alignments(species):

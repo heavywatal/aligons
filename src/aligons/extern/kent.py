@@ -55,10 +55,17 @@ def bigWigInfo(path: Path) -> bytes:  # noqa: N802
     return subp.run(args, stdout=subp.PIPE, text=True).stdout
 
 
-def bedGraphToBigWig(path: Path, chrom_sizes: Path) -> Path:  # noqa: N802
+def bedGraphToBigWig(infile: Path, chrom_sizes: Path) -> Path:  # noqa: N802
     # gz or stdin are not accepted
-    outfile = path.with_suffix("").with_suffix(".bw")
-    subp.run(["bedGraphToBigWig", path, chrom_sizes, outfile])
+    is_compressed = infile.suffix == ".gz"
+    bedgraph = infile.with_suffix("") if is_compressed else infile
+    outfile = bedgraph.with_suffix(".bw")
+    if fs.is_outdated(outfile, infile):
+        if is_compressed:
+            gunzip(infile)
+        subp.run(["bedGraphToBigWig", bedgraph, chrom_sizes, outfile])
+        if is_compressed:
+            bedgraph.unlink()
     return outfile
 
 
@@ -176,6 +183,14 @@ def chain_net_filter(file: Path, **kwargs: str) -> bytes:
     cmd = [program, *options, file]
     p = subp.run(cmd, stdout=subp.PIPE)
     return p.stdout
+
+
+def gunzip(infile: Path) -> Path:
+    outfile = infile.with_name(infile.name.removesuffix(".gz"))
+    if fs.is_outdated(outfile, infile):
+        subp.run(["gunzip", "-fk", infile])
+        subp.run(["touch", outfile])
+    return outfile
 
 
 if __name__ == "__main__":
