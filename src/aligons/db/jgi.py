@@ -1,6 +1,6 @@
 import logging
 import re
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -21,6 +21,22 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-D", "--download", action="store_true")
     _args = parser.parse_args(argv or None)
     dataset_toml()
+
+
+def iter_dataset(queries: Iterable[str]) -> Iterator[db.DataSet]:
+    yet_to_find = set(queries)
+    for entry in db.iter_dataset(dataset_toml()):
+        if queries:
+            try:
+                yet_to_find.remove(entry["species"])
+                yield entry
+            except KeyError:
+                pass
+        else:
+            yield entry
+    if yet_to_find:
+        msg = f"{yet_to_find} not found in {dataset_toml()}"
+        raise ValueError(msg)
 
 
 def dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
@@ -98,6 +114,11 @@ def fetch_xml(organism: str) -> dl.Response:
     query = f"?organism={organism}"
     url = f"https://{_HOST}/portal/ext-api/downloads/get-directory"
     return session.fetch(url + query, outfile)
+
+
+def shorten(species: str) -> str:
+    (genus, specific_epithet) = species.replace("_", " ", 1).split(maxsplit=1)
+    return f"{genus[0]}{specific_epithet}"
 
 
 if __name__ == "__main__":

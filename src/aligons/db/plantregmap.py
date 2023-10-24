@@ -15,11 +15,6 @@ _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"
 
 
-from_jgi = {
-    "Bdistachyon": "Brachypodium_distachyon",
-}
-
-
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
@@ -53,13 +48,16 @@ def fetch_and_bgzip() -> list[cli.FuturePath]:
 
 
 def iter_jgi_dataset() -> Iterator[db.DataSet]:
-    keys = from_jgi.keys()
-    for entry in db.iter_dataset(jgi.dataset_toml()):
-        if (jgi_sp := entry["species"]) in keys:
-            prm_sp = from_jgi[jgi_sp]
-            entry["species"] = prm_sp
-            entry["label"] = shorten(prm_sp)
-            yield entry
+    long_species = [
+        "Brachypodium_distachyon",
+        "Solanum_lycopersicum",
+    ]
+    from_jgi = {jgi.shorten(x): x for x in long_species}
+    for entry in jgi.iter_dataset(from_jgi.keys()):
+        prm_species = from_jgi[entry["species"]]
+        entry["species"] = prm_species
+        entry["label"] = shorten(prm_species)
+        yield entry
 
 
 def retrieve_deploy(query: str) -> cli.FuturePath:
