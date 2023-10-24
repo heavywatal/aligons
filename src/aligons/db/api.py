@@ -113,26 +113,28 @@ def sanitize_queries(target: str, queries: list[str]) -> list[str]:
     return list(query_set)
 
 
-def _species_dirs(fmt: str = "fasta") -> Iterable[Path]:
+def _species_dirs(fmt: str = "fasta", species: str = "") -> Iterable[Path]:
     for prefix in _iter_prefix():
         if not (fmt_dir := prefix / fmt).exists():
             _log.warning(f"{fmt_dir} does not exist")
             continue
         for path in fmt_dir.iterdir():
             if path.is_dir():
+                if species and (species.lower() != path.name.lower()):
+                    continue
                 yield path
 
 
 def _glob(pattern: str, species: str, subdir: str = "") -> Iterable[Path]:
     is_enough = False  # to allow duplicated species from multiple origins
-    for prefix in _iter_prefix():
-        for fmt in ("fasta", "gff3"):
-            d = prefix / fmt / species / subdir
+    for fmt in ("fasta", "gff3"):
+        for sp_dir in _species_dirs(fmt, species):
+            d = sp_dir / subdir
             for x in fs.sorted_naturally(d.glob(pattern)):
                 is_enough = True
                 yield x
-        if is_enough:
-            break
+            if is_enough:
+                break
 
 
 def _iter_prefix() -> Iterable[Path]:
