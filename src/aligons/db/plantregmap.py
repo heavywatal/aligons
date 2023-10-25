@@ -92,7 +92,7 @@ def iter_download_queries_all() -> Iterator[str]:
 def download_php() -> str:
     url = f"http://{_HOST}/download.php"
     cache = db.path_mirror(_HOST) / "download.php.html"
-    return dl.fetch(url, cache).text
+    return dl.fetch(url, cache).text_force
 
 
 def db_prefix() -> Path:

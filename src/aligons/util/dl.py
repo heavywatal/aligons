@@ -72,7 +72,13 @@ class Response:
 
     @property
     def content(self) -> bytes:
-        if not self._content and not cli.dry_run:
+        if cli.dry_run:
+            return self._content
+        return self.content_force
+
+    @property
+    def content_force(self) -> bytes:
+        if not self._content and self.path.exists():
             _log.info(f"{self.path}")
             with self.path.open("rb") as fin:
                 self._content = fin.read()
@@ -81,6 +87,10 @@ class Response:
     @property
     def text(self) -> str:
         return self.content.decode()
+
+    @property
+    def text_force(self) -> str:
+        return self.content_force.decode()
 
 
 _global_session = LazySession()
