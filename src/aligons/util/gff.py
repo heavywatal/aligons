@@ -73,7 +73,7 @@ def _read_sequence_region(path: Path) -> dict[str, str]:
     if not regions:
         _log.info(f"{path}:unfriendly GFF without ##sequence-region")
     if comments:
-        ignored = "\n".join(comments)
+        ignored = "".join(comments)
         _log.warning(f"{path}:ignoring comments in GFF:\n{ignored}")
     return regions
 
