@@ -8,6 +8,7 @@ https://github.com/ucscGenomeBrowser/kent
 import gzip
 import logging
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -56,16 +57,12 @@ def bigWigInfo(path: Path) -> bytes:  # noqa: N802
 
 
 def bedGraphToBigWig(infile: Path, chrom_sizes: Path) -> Path:  # noqa: N802
-    # gz or stdin are not accepted
-    is_compressed = infile.suffix == ".gz"
-    bedgraph = infile.with_suffix("") if is_compressed else infile
-    outfile = bedgraph.with_suffix(".bw")
+    name = re.sub(r"\.bedgraph(\.gz)?$", ".bw", infile.name, flags=re.I)
+    outfile = infile.with_name(name)
     if fs.is_outdated(outfile, infile):
-        if is_compressed:
-            gunzip(infile)
+        bedgraph = gunzip(infile)
+        # gz or stdin are not accepted
         subp.run(["bedGraphToBigWig", bedgraph, chrom_sizes, outfile])
-        if is_compressed:
-            bedgraph.unlink()
     return outfile
 
 
@@ -186,7 +183,10 @@ def chain_net_filter(file: Path, **kwargs: str) -> bytes:
 
 
 def gunzip(infile: Path) -> Path:
-    outfile = infile.with_name(infile.name.removesuffix(".gz"))
+    if infile.suffix != ".gz":
+        _log.debug(f"non-gz {infile}")
+        return infile
+    outfile = infile.with_suffix("")
     if fs.is_outdated(outfile, infile):
         subp.run(["gunzip", "-fk", infile])
         subp.run(["touch", outfile])
