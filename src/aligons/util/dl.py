@@ -176,7 +176,7 @@ class LazyFTP(FTP):
                 self._lazy_init()
                 _log.info(f"ftp.retrbinary({cmd}) {size_exp}")
                 _log.info(self.retrbinary(cmd, fout.write))
-            if size_exp and (size_obs := outfile.stat().st_size) != size_exp:
-                _log.warning(f"{outfile} {size_obs} != {size_exp}")
+        if size_exp and (size_obs := outfile.stat().st_size) != size_exp:
+            _log.warning(f"{outfile} ({size_obs=} != {size_exp=})")
         _log.info(f"{outfile}")
         return outfile
