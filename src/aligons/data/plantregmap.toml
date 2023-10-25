@@ -15,3 +15,12 @@ label = "Hvu"
 clade = "bep"
 sequences = ["fasta/hordeum_vulgare/dna/Hordeum_vulgare.082214v1.26.dna_sm.toplevel.fa.gz"]
 annotation = "gff3/hordeum_vulgare/Hordeum_vulgare.082214v1.26.gff3.gz"
+
+[[dataset]]
+url_prefix = "https://solgenomics.net/ftp/genomes/"
+species = "Solanum_lycopersicum"
+version = "2.40"
+label = "tomato"
+clade = "Solanum"
+sequences = ["Solanum_lycopersicum/assembly/build_2.40/S_lycopersicum_chromosomes.2.40.fa.gz"]
+annotation = "Solanum_lycopersicum/annotation/ITAG2.3_release/ITAG2.3_gene_models.gff3"

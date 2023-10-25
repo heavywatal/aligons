@@ -50,7 +50,6 @@ def fetch_and_bgzip() -> list[cli.FuturePath]:
 def iter_jgi_dataset() -> Iterator[db.DataSet]:
     long_species = [
         "Brachypodium_distachyon",
-        "Solanum_lycopersicum",
     ]
     from_jgi = {jgi.shorten(x): x for x in long_species}
     for entry in jgi.iter_dataset(from_jgi.keys()):

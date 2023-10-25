@@ -89,6 +89,7 @@ def _sort_body(content: bytes) -> bytes:
     bio = io.BytesIO()
     (
         _read_body(content)
+        .filter(pl.col("start") < pl.col("end"))  # SL2.40: end 338074 < begin 338105
         .sort(["seqid", "start"])
         .write_csv(bio, has_header=False, separator="\t")
     )
