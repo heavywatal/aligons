@@ -13,29 +13,29 @@ from . import tools
 
 _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"
+_FTP_HOST = "ftp.cbi.pku.edu.cn"
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
+    parser.add_argument("-F", "--ftp", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("-G", "--genome", action="store_true")
     parser.add_argument("-C", "--to-cram", type=Path)
     parser.add_argument("pattern", nargs="?", default="*")
     args = parser.parse_args(argv or None)
-    if args.download:
-        fts: list[cli.FuturePath] = []
-        fts.extend(download_via_ftp())
-        fts.extend(retrieve_deploy(q) for q in iter_download_queries())
+    if args.ftp:
+        fts = download_via_ftp()
         cli.wait_raise(fts)
-    elif args.genome:
+    if args.download:
+        fts = [retrieve_deploy(q) for q in iter_download_queries()]
+        cli.wait_raise(fts)
+    if args.genome:
         fts = tools.index_as_completed(fetch_and_bgzip())
         cli.wait_raise(fts)
-    elif args.to_cram:
+    if args.to_cram:
         maf = net_to_maf(args.to_cram)
         to_cram(maf)
-    else:
-        for x in fs.sorted_naturally(db_prefix().rglob(args.pattern)):
-            print(x)
 
 
 def fetch_and_bgzip() -> list[cli.FuturePath]:
@@ -62,9 +62,9 @@ def iter_jgi_dataset() -> Iterator[db.DataSet]:
 
 def retrieve_deploy(query: str) -> cli.FuturePath:
     url = f"http://{_HOST}/download_ftp.php?{query}"
-    relpath = query.split("/", 1)[1]
-    rawfile = db.path_mirror(_HOST) / relpath
-    outfile = db_prefix() / relpath
+    relpath = query.split("=", 1)[1]
+    rawfile = _prefix_mirror() / relpath
+    outfile = db_prefix() / relpath.removeprefix("08-download/")
     if outfile.suffix in (".bed", ".gff"):
         outfile = outfile.with_suffix(outfile.suffix + ".gz")
     elif outfile.name.endswith(".gtf.gz"):
@@ -91,12 +91,16 @@ def iter_download_queries_all() -> Iterator[str]:
 
 def download_php() -> str:
     url = f"http://{_HOST}/download.php"
-    cache = db.path_mirror(_HOST) / "download.php.html"
+    cache = _prefix_mirror() / "download.php.html"
     return dl.fetch(url, cache).text_force
 
 
 def db_prefix() -> Path:
     return db.path("plantregmap")
+
+
+def _prefix_mirror() -> Path:
+    return db.path_mirror(_FTP_HOST) / "plantregmap"
 
 
 def rglob(pattern: str, species: str = ".") -> Iterator[Path]:
@@ -179,11 +183,10 @@ def species_abbr() -> dict[str, str]:
 
 class FTPplantregmap(dl.LazyFTP):
     def __init__(self) -> None:
-        host = "ftp.cbi.pku.edu.cn"
         super().__init__(
-            host,
+            _FTP_HOST,
             "/pub/database/PlantRegMap",
-            db.path_mirror(host) / "plantregmap",
+            _prefix_mirror(),
             timeout=3600,
         )
 
