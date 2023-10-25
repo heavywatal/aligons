@@ -30,22 +30,15 @@ def fetch_and_bgzip(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
     out_fa = prefix / f"fasta/{species}/{stem}.{dna_sm}.toplevel.fa.gz"
     out_gff = prefix / f"gff3/{species}/{stem}.gff3.gz"
     fts: list[cli.FuturePath] = []
-    if not fs.is_outdated(out_fa):
-        content_fa = b""
-    elif len(sequences) > 1:
+    if len(sequences) == 1:
+        response_fa = dl_mirror_db(url_prefix + sequences[0])
+        fts.append(cli.thread_submit(index_compress, response_fa, out_fa))
+    elif fs.is_outdated(out_fa):
         chr_fa = [dl_mirror_db(url_prefix + s).content for s in sequences]
         content_fa = b"".join(chr_fa)
-    else:
-        content_fa = dl_mirror_db(url_prefix + sequences[0]).content
-    if content_fa and not looks_like_fasta(content_fa):
-        msg = f"invalid fasta: {url_prefix + sequences[0]}"
-        raise ValueError(msg)
-    fts.append(cli.thread_submit(bgzip_index, content_fa, out_fa))
-    if not fs.is_outdated(out_gff):
-        content_gff = b""
-    else:
-        content_gff = dl_mirror_db(url_prefix + annotation).content
-    fts.append(cli.thread_submit(bgzip_index, content_gff, out_gff))
+        fts.append(cli.thread_submit(bgzip_index, content_fa, out_fa))
+    response_gff = dl_mirror_db(url_prefix + annotation)
+    fts.append(cli.thread_submit(index_compress, response_gff, out_gff))
     return fts
 
 
@@ -79,6 +72,11 @@ def _symlink_masked(ft: cli.FuturePath) -> Path:
     masked = ft.result()
     link = masked.parent.parent / masked.name
     return fs.symlink(masked, link, relative=True)
+
+
+def index_compress(response: dl.Response, outfile: Path) -> Path:
+    htslib.try_index(compress_lazy(response, outfile))
+    return outfile
 
 
 def bgzip_index(content: bytes, outfile: Path) -> Path:
@@ -142,6 +140,12 @@ def softmask(species: str) -> Path:
     return index_fasta(masked)
 
 
+def compress_lazy(response: dl.Response, outfile: Path) -> Path:
+    if cli.dry_run or not fs.is_outdated(outfile, response.path):
+        return outfile
+    return compress(response.content, outfile)
+
+
 def compress(content: bytes, outfile: Path) -> Path:
     """Uncompress/compress depending on file names.
 
@@ -160,6 +164,9 @@ def compress(content: bytes, outfile: Path) -> Path:
             content = fs.gzip_decompress(content)
             if ".gff" in outfile.name:
                 content = gff.sort(content)
+            if outfile.name.endswith(".fa.gz") and not looks_like_fasta(content):
+                msg = f"invalid fasta: {outfile} not written"
+                raise ValueError(msg)
             content = htslib.bgzip_compress(content)
         elif outfile.suffix == ".gz":
             content = fs.gzip_compress(content)
