@@ -42,9 +42,7 @@ def iter_dataset(queries: Iterable[str]) -> Iterator[db.DataSet]:
 def dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
     outfile = db.path(_HOST) / (organism + ".toml")
     if not outfile.exists():
-        xml = fetch_xml(organism).path
-        tree = ElementTree.parse(xml)  # noqa: S314
-        dataset = gather_dataset(tree.getroot())
+        dataset = {"dataset": list(iter_dataset_xml(organism))}
         if not cli.dry_run:
             outfile.parent.mkdir(0o755, exist_ok=True)
             with outfile.open("wb") as fout:
@@ -53,15 +51,13 @@ def dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
     return outfile
 
 
-def gather_dataset(
-    root: ElementTree.Element,
-) -> dict[str, list[dict[str, str | list[str]]]]:
-    datasets: list[dict[str, str | list[str]]] = []
-    for efolder in iter_species_folder(root):
+def iter_dataset_xml(organism: str) -> Iterable[dict[str, str | list[str]]]:
+    xml = fetch_xml(organism).path
+    tree = ElementTree.parse(xml)  # noqa: S314
+    for efolder in iter_species_folder(tree.getroot()):
         d = as_dict(efolder)
         if d:
-            datasets.append(d)
-    return {"dataset": datasets}
+            yield d
 
 
 def as_dict(folder: ElementTree.Element) -> dict[str, str | list[str]]:
@@ -92,7 +88,7 @@ def _simplify_url(url: str) -> str:
 def iter_species_folder(root: ElementTree.Element) -> Iterator[ElementTree.Element]:
     _log.info(f"{root.attrib}")
     for elem in root.iter("folder"):
-        if re.match("^[A-Z]", elem.attrib["name"]):
+        if elem.attrib["name"].split("_", 1)[0].istitle():
             yield elem
 
 
