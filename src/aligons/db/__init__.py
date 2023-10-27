@@ -36,8 +36,8 @@ def _expand_path(s: str) -> Path:
 
 
 def path(relpath: str | Path = "") -> Path:
-    return _expand_path(config["db"]["root"]) / relpath
+    return path_mirror("aligons") / relpath
 
 
 def path_mirror(relpath: str | Path = "") -> Path:
-    return _expand_path(config["db"]["mirror"]) / relpath
+    return _expand_path(config["db"]["root"]) / relpath

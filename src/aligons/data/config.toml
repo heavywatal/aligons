@@ -37,8 +37,7 @@ version = 49
 organism = "PhytozomeV12"
 
 [db]
-root = "~/db/aligons"
-mirror = "~/db"
+root = "~/db"
 origin = ["ensembl-{version}", "solgenomics", "plantregmap"]
 kmer = false
 # tree = ""  # string in newick format or path to newick file
