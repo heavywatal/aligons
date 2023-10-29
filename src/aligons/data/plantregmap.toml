@@ -24,3 +24,12 @@ label = "tomato"
 clade = "Solanum"
 sequences = ["Solanum_lycopersicum/assembly/build_2.40/S_lycopersicum_chromosomes.2.40.fa.gz"]
 annotation = "Solanum_lycopersicum/annotation/ITAG2.3_release/ITAG2.3_gene_models.gff3"
+
+[[dataset]]
+url_prefix = "http://spuddb.uga.edu/data/"
+species = "Solanum_tuberosum"
+version = "4.04"
+label = "potato"
+clade = "Solanum"
+sequences = ["potato_dm_v404_all_pm_un.fasta.zip"]
+annotation = "PGSC_DM_V403_genes.gff.zip"
