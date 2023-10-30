@@ -136,19 +136,27 @@ def softmask(species: str) -> Path:
     return index_fasta(masked)
 
 
+def recompress(infile: Path, outfile: Path) -> Path:
+    if fs.is_outdated(outfile, infile) and not cli.dry_run:
+        with infile.open("rb") as fin:
+            content = fin.read()
+        compress(content, outfile)
+    return outfile
+
+
 def compress_lazy(response: dl.Response, outfile: Path) -> Path:
-    if cli.dry_run or not fs.is_outdated(outfile, response.path):
-        return outfile
-    return compress(response.content, outfile)
+    if fs.is_outdated(outfile, response.path) and not cli.dry_run:
+        compress(response.content, outfile)
+    return outfile
 
 
 def compress(content: bytes, outfile: Path) -> Path:
-    """Uncompress/compress depending on file names.
+    """Decompress/compress depending on file names.
 
-    - .gff |> uncompress |> sort |> bgzip
-    - .bed |> uncompress |> bgzip
-    - .fa |> uncompress |> bgzip
-    - .zip |> uncompress
+    - .gff |> decompress |> sort |> bgzip
+    - .bed |> decompress |> bgzip
+    - .fa |> decompress |> bgzip
+    - .zip |> decompress
     - gzip if outfile has new .gz
     """
     if not cli.dry_run and fs.is_outdated(outfile):
