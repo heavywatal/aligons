@@ -53,11 +53,6 @@ def genome_fa(species: str) -> Path:
     return get_file("*.genome.fa.gz", species, subdir)
 
 
-def genome_2bit(species: str) -> Path:
-    subdir = "kmer" if config["db"]["kmer"] else ""
-    return get_file("*.genome.2bit", species, subdir)
-
-
 def genome_gff3(species: str) -> Path:
     subdir = "kmer" if config["db"]["kmer"] else ""
     return get_file("*.genome.gff3.gz", species, subdir)
@@ -65,12 +60,6 @@ def genome_gff3(species: str) -> Path:
 
 def list_chromosome_fa(species: str) -> Iterable[Path]:
     return fs.sorted_naturally(_glob("*.chromosome.*.fa.gz", species))
-
-
-def list_chromosome_2bit(species: str) -> list[Path]:
-    patt = "*.chromosome.*.2bit"
-    subdir = "kmer" if config["db"]["kmer"] else ""
-    return fs.sorted_naturally(_glob(patt, species, subdir))
 
 
 def list_chromosome_gff3(species: str) -> Iterable[Path]:

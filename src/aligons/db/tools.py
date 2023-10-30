@@ -88,12 +88,9 @@ def index_fasta(paths: list[Path]) -> Path:
     """Create bgzipped and indexed genome.fa."""
     if len(paths) == 1:
         paths = [f.result() for f in _split_toplevel_fa(paths[0])]
-    fts = [cli.thread_submit(kent.faToTwoBit, x) for x in paths]
     genome = _create_genome_bgzip(paths)
     htslib.faidx(genome)
-    kent.faToTwoBit(genome)
     kent.faSize(genome)
-    cli.wait_raise(fts)
     return genome
 
 

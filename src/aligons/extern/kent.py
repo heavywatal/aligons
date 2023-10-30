@@ -139,8 +139,8 @@ def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path) -
 def net_to_maf(
     net: Path, chain_gz: Path, sing_maf: Path, target: str, query: str
 ) -> Path:
-    target_2bit = api.genome_2bit(target)
-    query_2bit = api.genome_2bit(query)
+    target_2bit = faToTwoBit(api.genome_fa(target))
+    query_2bit = faToTwoBit(api.genome_fa(query))
     target_sizes = api.fasize(target)
     query_sizes = api.fasize(query)
     tprefix = api.shorten(target)

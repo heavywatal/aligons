@@ -51,15 +51,17 @@ class PairwiseAlignment:
         pool = cli.ThreadPool()
         if not cli.dry_run:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
-        target_chromosomes = api.list_chromosome_2bit(self._target)
-        query_chromosomes = api.list_chromosome_2bit(self._query)
+        target_chromosomes = api.list_chromosome_fa(self._target)
+        query_chromosomes = api.list_chromosome_fa(self._query)
         flists: list[list[confu.Future[Path]]] = [
             [pool.submit(self.align_chr, t, q) for q in query_chromosomes]
             for t in target_chromosomes
         ]
         return [pool.submit(self.wait_integrate, futures) for futures in flists]
 
-    def align_chr(self, t2bit: Path, q2bit: Path) -> Path:
+    def align_chr(self, target_fa: Path, query_fa: Path) -> Path:
+        t2bit = kent.faToTwoBit(target_fa)
+        q2bit = kent.faToTwoBit(query_fa)
         axtgz = lastz(t2bit, q2bit, self._outdir)
         return kent.axt_chain(t2bit, q2bit, axtgz)
 
