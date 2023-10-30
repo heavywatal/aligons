@@ -89,7 +89,6 @@ def index_fasta(paths: list[Path]) -> Path:
     if len(paths) == 1:
         paths = [f.result() for f in _split_toplevel_fa(paths[0])]
     genome = _create_genome_bgzip(paths)
-    htslib.faidx(genome)
     kent.faSize(genome)
     return genome
 
@@ -100,9 +99,7 @@ def index_gff3(paths: list[Path]) -> Path:  # gff3/{species}
         if "chromosome" in paths[0].name:
             _log.warning(f"splitting chromosome? {paths[0]}")
         paths = gff.split_by_seqid(paths[0])
-    genome = _create_genome_bgzip(paths)
-    htslib.tabix(genome)
-    return genome
+    return _create_genome_bgzip(paths)
 
 
 def _create_genome_bgzip(files: list[Path]) -> Path:
@@ -116,7 +113,9 @@ def _create_genome_bgzip(files: list[Path]) -> Path:
     (outname, count) = re.subn(rf"\.chromosome\..+{ext}", rf".genome{ext}", name)
     assert count == 1, name
     outfile = files[0].with_name(outname)
-    return htslib.concat_bgzip(files, outfile)
+    htslib.concat_bgzip(files, outfile)
+    htslib.try_index(outfile)
+    return outfile
 
 
 def _split_toplevel_fa_work(fa_gz: Path) -> list[cli.FuturePath]:
