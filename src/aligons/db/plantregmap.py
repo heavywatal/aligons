@@ -31,20 +31,19 @@ def main(argv: list[str] | None = None) -> None:
         fts = [retrieve_deploy(q) for q in iter_download_queries()]
         cli.wait_raise(fts)
     if args.genome:
-        fts = tools.index_as_completed(fetch_and_bgzip())
+        pairs = list(iter_fetch_and_bgzip())
+        fts = [tools.process_genome(x) for x in pairs]
         cli.wait_raise(fts)
     if args.to_cram:
         maf = net_to_maf(args.to_cram)
         to_cram(maf)
 
 
-def fetch_and_bgzip() -> list[cli.FuturePath]:
-    fts: list[cli.FuturePath] = []
+def iter_fetch_and_bgzip() -> Iterator[tuple[cli.FuturePath, cli.FuturePath]]:
     for entry in db.iter_builtin_dataset("plantregmap.toml"):
-        fts.extend(tools.fetch_and_bgzip(entry, db_prefix()))
+        yield tools.fetch_and_bgzip(entry, db_prefix())
     for entry in iter_jgi_dataset():
-        fts.extend(tools.fetch_and_bgzip(entry, db_prefix()))
-    return fts
+        yield tools.fetch_and_bgzip(entry, db_prefix())
 
 
 def iter_jgi_dataset() -> Iterator[db.DataSet]:

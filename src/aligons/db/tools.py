@@ -1,4 +1,3 @@
-import concurrent.futures as confu
 import logging
 import os
 import re
@@ -14,12 +13,14 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
-    parser.add_argument("infile", type=Path)
+    parser.add_argument("url")
     args = parser.parse_args(argv or None)
-    gff.split_by_seqid(args.infile)
+    dl_mirror_db(args.url)
 
 
-def fetch_and_bgzip(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
+def fetch_and_bgzip(
+    entry: DataSet, prefix: Path
+) -> tuple[cli.FuturePath, cli.FuturePath]:
     url_prefix = entry["url_prefix"]
     species = entry["species"]
     annotation = entry["annotation"]
@@ -29,17 +30,18 @@ def fetch_and_bgzip(entry: DataSet, prefix: Path) -> list[cli.FuturePath]:
     stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
     out_fa = prefix / f"fasta/{species}/{stem}.{dna_sm}.toplevel.fa.gz"
     out_gff = prefix / f"gff3/{species}/{stem}.gff3.gz"
-    fts: list[cli.FuturePath] = []
     if len(sequences) == 1:
         response_fa = dl_mirror_db(url_prefix + sequences[0])
-        fts.append(cli.thread_submit(index_compress, response_fa, out_fa))
+        ft_fa = cli.thread_submit(index_compress, response_fa, out_fa)
     elif fs.is_outdated(out_fa):
         chr_fa = [dl_mirror_db(url_prefix + s).content for s in sequences]
         content_fa = b"".join(chr_fa)
-        fts.append(cli.thread_submit(bgzip_index, content_fa, out_fa))
+        ft_fa = cli.thread_submit(bgzip_index, content_fa, out_fa)
+    else:
+        ft_fa = cli.thread_submit(lambda x: x, out_fa)
     response_gff = dl_mirror_db(url_prefix + annotation)
-    fts.append(cli.thread_submit(index_compress, response_gff, out_gff))
-    return fts
+    ft_gff = cli.thread_submit(index_compress, response_gff, out_gff)
+    return ft_fa, ft_gff
 
 
 def dl_mirror_db(url: str) -> dl.Response:
@@ -48,17 +50,11 @@ def dl_mirror_db(url: str) -> dl.Response:
     return dl.mirror(url, db.path_mirror())
 
 
-def index_as_completed(futures: list[cli.FuturePath]) -> list[cli.FuturePath]:
-    fts: list[cli.FuturePath] = []
-    for ft in confu.as_completed(futures):
-        file = ft.result()
-        if file.name.endswith("dna.toplevel.fa.gz"):
-            fts.append(split_mask_index(file))
-        elif file.name.endswith("dna_sm.toplevel.fa.gz"):
-            fts.append(index_fasta([file]))
-        elif file.name.endswith("gff3.gz"):
-            fts.append(index_gff3([file]))
-    return fts
+def process_genome(futures: tuple[cli.FuturePath, cli.FuturePath]) -> cli.FuturePath:
+    ft_fa, ft_gff = futures
+    fa = ft_fa.result()
+    ft_fasize = index_fasta([fa]) if ".dna_sm." in fa.name else split_mask_index(fa)
+    return index_gff3([ft_gff.result()], ft_fasize.result())
 
 
 def split_mask_index(toplevel_fa_gz: Path) -> cli.FuturePath:
@@ -93,12 +89,13 @@ def index_fasta(paths: list[Path]) -> cli.FuturePath:
     return cli.thread_submit(_create_genome_bgzip, paths)
 
 
-def index_gff3(paths: list[Path]) -> cli.FuturePath:  # gff3/{species}
+def index_gff3(paths: list[Path], fasize: Path | None = None) -> cli.FuturePath:
     """Create bgzipped and indexed genome.gff3."""
     if len(paths) == 1:
         if "chromosome" in paths[0].name:
             _log.warning(f"splitting chromosome? {paths[0]}")
-        paths = gff.split_by_seqid(paths[0])
+        assert fasize is not None
+        paths = gff.split_with_fasize(paths[0], fasize)
     return cli.thread_submit(_create_genome_bgzip, paths)
 
 
@@ -116,7 +113,7 @@ def _create_genome_bgzip(files: list[Path]) -> Path:
     htslib.concat_bgzip(files, outfile)
     htslib.try_index(outfile)
     if outfile.name.endswith(".fa.gz"):
-        kent.faSize(outfile)
+        return kent.faSize(outfile)
     return outfile
 
 

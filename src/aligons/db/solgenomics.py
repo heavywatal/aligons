@@ -1,5 +1,6 @@
 """https://solgenomics.net/ftp/genomes/."""
 import logging
+from collections.abc import Iterator
 from pathlib import Path
 
 from aligons import db
@@ -17,19 +18,20 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv or None)
     _test_newick()
     if args.download:
-        fts = fetch_and_bgzip()
+        fts: list[cli.FuturePath] = []
+        for pair in iter_fetch_and_bgzip():
+            fts.extend(pair)
         cli.wait_raise(fts)
     if args.mask:
-        fts = tools.index_as_completed(fetch_and_bgzip())
+        pairs = list(iter_fetch_and_bgzip())
+        fts = [tools.process_genome(x) for x in pairs]
         cli.wait_raise(fts)
 
 
-def fetch_and_bgzip() -> list[cli.FuturePath]:
-    fts: list[cli.FuturePath] = []
+def iter_fetch_and_bgzip() -> Iterator[tuple[cli.FuturePath, cli.FuturePath]]:
     for entry in db.iter_builtin_dataset("solgenomics.toml"):
         entry["url_prefix"] = "https://solgenomics.net/ftp/genomes/"
-        fts.extend(tools.fetch_and_bgzip(entry, db_prefix()))
-    return fts
+        yield tools.fetch_and_bgzip(entry, db_prefix())
 
 
 def db_prefix() -> Path:

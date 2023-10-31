@@ -18,6 +18,39 @@ def main(argv: list[str] | None = None) -> None:
     split_by_seqid(args.infile)
 
 
+def split_with_fasize(path: Path, fasize: Path) -> list[Path]:
+    regions: dict[str, str] = {}
+    with fasize.open("rt") as fin:
+        for line in fin:
+            seqid, length = line.split()
+            regions[seqid] = f"##sequence-region {seqid} 1 {length}\n"
+    return split_with_hint(path, regions)
+
+
+def split_with_hint(path: Path, regions: dict[str, str]) -> list[Path]:
+    stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
+    _log.debug(f"{stem=}")
+    files: list[Path] = []
+    body = None
+    for seqid, seq_region in regions.items():
+        if re.search(r"scaffold|contig", seqid):
+            _log.debug(f"ignoring {seqid} in {path}")
+            continue
+        outfile = path.with_name(f"{stem}.chromosome.{seqid}.gff3.gz")
+        files.append(outfile)
+        _log.info(f"{outfile}")
+        if not fs.is_outdated(outfile, path) or cli.dry_run:
+            continue
+        if body is None:
+            body = _read_body(path).lazy()
+        data = body.filter(pl.col("seqid") == seqid).sort(["start"]).collect()
+        with gzip.open(outfile, "wt") as fout:
+            fout.write("##gff-version 3\n")
+            fout.write(seq_region)
+            fout.write(data.write_csv(has_header=False, separator="\t"))
+    return files
+
+
 def split_by_seqid(path: Path) -> list[Path]:
     regions = _read_sequence_region(path)
     stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
