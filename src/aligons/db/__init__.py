@@ -1,6 +1,6 @@
 import os.path
 from collections.abc import Iterator
-from importlib.abc import Traversable
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import TypedDict
 
