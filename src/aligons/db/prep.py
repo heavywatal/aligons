@@ -32,20 +32,17 @@ def main(argv: list[str] | None = None) -> None:
 def prepare_ensemblgenomes(species: list[str]) -> None:
     with ensemblgenomes.FTPensemblgenomes() as ftp:
         species = ftp.remove_unavailable(species)
-        pool = cli.ThreadPool()
         futures: list[cli.FuturePath] = []
         for sp in species:
             fasta_originals = ftp.download_fasta(sp)
             fasta_copies = [_ln_or_bgzip(x, sp) for x in fasta_originals]
-            futures.append(pool.submit(tools.index_fasta, fasta_copies))
+            futures.append(tools.index_fasta(fasta_copies))
             gff3_originals = ftp.download_gff3(sp)
             gff3_copies = [_ln_or_bgzip(x, sp) for x in gff3_originals]
-            futures.append(pool.submit(tools.index_gff3, gff3_copies))
+            futures.append(tools.index_gff3(gff3_copies))
         cli.wait_raise(futures)
     if config["db"]["kmer"]:
-        futures.clear()
-        futures = [pool.submit(tools.softmask, sp) for sp in species]
-        cli.wait_raise(futures)
+        cli.wait_raise([tools.softmask(sp) for sp in species])
     if False:  # ensemble does not support rsync
         for sp in species:
             options = "--include *_sm.chromosome.*.fa.gz --exclude *.gz"

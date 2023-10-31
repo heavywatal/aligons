@@ -2,6 +2,7 @@ import argparse
 import concurrent.futures as confu
 import logging
 import os
+import threading
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from typing import Any, TypeAlias
@@ -93,6 +94,8 @@ class ThreadPool:
 def thread_submit(
     fn: Callable[..., Any], /, *args: Any, **kwargs: Any
 ) -> confu.Future[Any]:
+    if threading.current_thread() != threading.main_thread():
+        _log.warning("submit() from non-main thread may cause deadlock.")
     return ThreadPool().submit(fn, *args, **kwargs)
 
 

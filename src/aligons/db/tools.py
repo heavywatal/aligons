@@ -55,9 +55,9 @@ def index_as_completed(futures: list[cli.FuturePath]) -> list[cli.FuturePath]:
         if file.name.endswith("dna.toplevel.fa.gz"):
             fts.append(split_mask_index(file))
         elif file.name.endswith("dna_sm.toplevel.fa.gz"):
-            fts.append(cli.thread_submit(index_fasta, [file]))
+            fts.append(index_fasta([file]))
         elif file.name.endswith("gff3.gz"):
-            fts.append(cli.thread_submit(index_gff3, [file]))
+            fts.append(index_gff3([file]))
     return fts
 
 
@@ -65,7 +65,7 @@ def split_mask_index(toplevel_fa_gz: Path) -> cli.FuturePath:
     future_chromosomes = _split_toplevel_fa_work(toplevel_fa_gz)
     future_masked = [mask.submit(f) for f in future_chromosomes]
     links = [_symlink_masked(f) for f in future_masked]
-    return cli.thread_submit(index_fasta, links)
+    return index_fasta(links)
 
 
 def _symlink_masked(ft: cli.FuturePath) -> Path:
@@ -84,22 +84,22 @@ def bgzip_index(content: bytes, outfile: Path) -> Path:
     return outfile
 
 
-def index_fasta(paths: list[Path]) -> Path:
+def index_fasta(paths: list[Path]) -> cli.FuturePath:
     """Create bgzipped and indexed genome.fa."""
     if len(paths) == 1:
+        if "chromosome" in paths[0].name:
+            _log.warning(f"splitting chromosome? {paths[0]}")
         paths = [f.result() for f in _split_toplevel_fa(paths[0])]
-    genome = _create_genome_bgzip(paths)
-    kent.faSize(genome)
-    return genome
+    return cli.thread_submit(_create_genome_bgzip, paths)
 
 
-def index_gff3(paths: list[Path]) -> Path:  # gff3/{species}
+def index_gff3(paths: list[Path]) -> cli.FuturePath:  # gff3/{species}
     """Create bgzipped and indexed genome.gff3."""
     if len(paths) == 1:
         if "chromosome" in paths[0].name:
             _log.warning(f"splitting chromosome? {paths[0]}")
         paths = gff.split_by_seqid(paths[0])
-    return _create_genome_bgzip(paths)
+    return cli.thread_submit(_create_genome_bgzip, paths)
 
 
 def _create_genome_bgzip(files: list[Path]) -> Path:
@@ -115,6 +115,8 @@ def _create_genome_bgzip(files: list[Path]) -> Path:
     outfile = files[0].with_name(outname)
     htslib.concat_bgzip(files, outfile)
     htslib.try_index(outfile)
+    if outfile.name.endswith(".fa.gz"):
+        kent.faSize(outfile)
     return outfile
 
 
@@ -131,7 +133,7 @@ def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:
     return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
 
 
-def softmask(species: str) -> Path:
+def softmask(species: str) -> cli.FuturePath:
     masked = jellyfish.run(species)
     return index_fasta(masked)
 
