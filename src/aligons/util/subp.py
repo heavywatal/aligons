@@ -82,7 +82,7 @@ def prepare_args(args: _CMD, *, if_: bool):
         cmd = " ".join(str(x) for x in args)
     if cli.dry_run or not if_:
         cmd = re.sub("^", "# ", cmd, flags=re.MULTILINE)
-        args = ["sleep", "0"]
+        args = ["true"]
     return (args, cmd)
 
 
