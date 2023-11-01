@@ -14,7 +14,7 @@ from pathlib import Path
 from aligons import db
 from aligons.util import cli, config, dl, fs, subp
 
-from . import phylo
+from . import phylo, tools
 
 _log = logging.getLogger(__name__)
 
@@ -44,6 +44,15 @@ def main(argv: list[str] | None = None) -> None:
 def _list_versions() -> Iterable[Path]:
     _log.debug(f"{_prefix_mirror_root()=}")
     return _prefix_mirror_root().glob("release-*")
+
+
+def download_compara(species: str):
+    assert species in phylo.list_species()
+    with FTPensemblgenomes() as ftp:
+        dirs = ftp.download_maf(species)
+    pool = cli.ThreadPool()
+    fts = [pool.submit(consolidate_compara_mafs, d) for d in dirs]
+    cli.wait_raise(fts)
 
 
 def consolidate_compara_mafs(indir: Path) -> Path:
@@ -105,6 +114,33 @@ def readlines_compara_maf(file: Path) -> Iterable[str]:
                 yield line
 
 
+def download_via_ftp(species: list[str]) -> None:
+    with FTPensemblgenomes() as ftp:
+        species = ftp.remove_unavailable(species)
+        futures: list[cli.FuturePath] = []
+        for sp in species:
+            fasta_originals = ftp.download_chr_sm_fasta(sp)
+            fasta_copies = [_ln_or_bgzip(x, sp) for x in fasta_originals]
+            futures.append(tools.index_fasta(fasta_copies))
+            gff3_originals = ftp.download_chr_gff3(sp)
+            gff3_copies = [_ln_or_bgzip(x, sp) for x in gff3_originals]
+            futures.append(tools.index_gff3(gff3_copies))
+        cli.wait_raise(futures)
+    if config["db"]["kmer"]:
+        cli.wait_raise([tools.softmask(sp) for sp in species])
+
+
+def _ln_or_bgzip(src: Path, species: str) -> Path:
+    fmt = "fasta" if src.name.removesuffix(".gz").endswith(".fa") else "gff3"
+    dstname = src.name.replace("primary_assembly", "chromosome")
+    dst = prefix() / fmt / species / dstname
+    if ".chromosome." in dstname:
+        fs.symlink(src, dst, relative=True)
+    else:
+        tools.recompress(src, dst)
+    return dst
+
+
 class FTPensemblgenomes(dl.LazyFTP):
     def __init__(self) -> None:
         super().__init__(
@@ -126,7 +162,7 @@ class FTPensemblgenomes(dl.LazyFTP):
     def available_species(self) -> list[str]:
         return [Path(x).name for x in self.nlst_cache("fasta")]
 
-    def download_fasta(self, species: str) -> list[Path]:
+    def download_chr_sm_fasta(self, species: str) -> list[Path]:
         relpath = f"fasta/{species}/dna"
         outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
@@ -134,7 +170,7 @@ class FTPensemblgenomes(dl.LazyFTP):
         fs.checksums(outdir / "CHECKSUMS")
         return [f for f in files if f.suffix == ".gz"]
 
-    def download_gff3(self, species: str) -> list[Path]:
+    def download_chr_gff3(self, species: str) -> list[Path]:
         relpath = f"gff3/{species}"
         outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
@@ -174,6 +210,14 @@ class FTPensemblgenomes(dl.LazyFTP):
         assert matched, substr
         misc = [x for x in nlst if re.search("CHECKSUMS$|README$", x)]
         return matched + misc
+
+
+def download_via_rsync(species: list[str]):
+    for sp in species:
+        options = "--include *_sm.chromosome.*.fa.gz --exclude *.gz"
+        rsync(f"fasta/{sp}/dna", options)
+        options = "--include *.chromosome.*.gff3.gz --exclude *.gz"
+        rsync(f"gff3/{sp}", options)
 
 
 def rsync(relpath: str, options: str = "") -> subp.subprocess.CompletedProcess[bytes]:
