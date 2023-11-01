@@ -11,9 +11,10 @@ data_dir = Path(__file__).with_name("data")
 def test_split(tmp_path: Path, caplog: pytest.LogCaptureFixture):
     source_gff = data_dir / "genome.gff3"
     genome_gff = tmp_path / "genome.gff3.gz"
+    fasize = data_dir / "fasize.chrom.sizes"
     with source_gff.open("rb") as fin, gzip.open(genome_gff, "wb") as fout:
         fout.write(fin.read())
-    gff.split_by_seqid(genome_gff)
+    gff.split_with_fasize(genome_gff, fasize)
     assert not caplog.text
     ls = list(tmp_path.glob("genome.chromosome.*"))
     assert len(ls) == 4  # noqa: PLR2004
@@ -54,13 +55,13 @@ def test_invalid(tmp_path: Path, caplog: pytest.LogCaptureFixture):
     caplog.set_level(logging.DEBUG)
     source_gff = data_dir / "invalid.gff3"
     invalid_gff = tmp_path / "invalid.gff3.gz"
+    fasize = data_dir / "fasize.chrom.sizes"
     with source_gff.open("rb") as fin, gzip.open(invalid_gff, "wb") as fout:
         fout.write(fin.read())
-    gff.main([str(invalid_gff)])
+    gff.split_with_fasize(invalid_gff, fasize)
     assert "invalid GFF without ##gff-version" in caplog.text
     assert "unfriendly" in caplog.text
     assert "ignoring comments" in caplog.text
-    assert "ignoring scaffold" in caplog.text
 
     with source_gff.open("rb") as fin:
         content = fin.read()

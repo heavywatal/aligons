@@ -15,7 +15,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
-    split_by_seqid(args.infile)
+    print(_read_sequence_region(args.infile))
 
 
 def split_with_fasize(path: Path, fasize: Path) -> list[Path]:
@@ -30,12 +30,15 @@ def split_with_fasize(path: Path, fasize: Path) -> list[Path]:
 def split_with_hint(path: Path, regions: dict[str, str]) -> list[Path]:
     stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
     _log.debug(f"{stem=}")
+    regions_gff = _read_sequence_region(path)
     files: list[Path] = []
     body = None
     for seqid, seq_region in regions.items():
         if re.search(r"scaffold|contig", seqid):
             _log.debug(f"ignoring {seqid} in {path}")
             continue
+        if (in_gff := regions_gff.get(seqid, "")) and seq_region != in_gff:
+            _log.warning(f"'{seq_region}' != '{in_gff}'")
         outfile = path.with_name(f"{stem}.chromosome.{seqid}.gff3.gz")
         files.append(outfile)
         _log.info(f"{outfile}")
@@ -48,31 +51,6 @@ def split_with_hint(path: Path, regions: dict[str, str]) -> list[Path]:
             fout.write("##gff-version 3\n")
             fout.write(seq_region)
             fout.write(data.write_csv(has_header=False, separator="\t"))
-    return files
-
-
-def split_by_seqid(path: Path) -> list[Path]:
-    regions = _read_sequence_region(path)
-    stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
-    if cli.dry_run:
-        return [path.with_name(f"{stem}.chromosome.{x}.gff3.gz") for x in regions]
-    files: list[Path] = []
-    _log.debug(f"{stem=}")
-    body = _read_body(path)
-    for name, data in body.group_by("seqid", maintain_order=True):
-        seqid = str(name)
-        if re.search(r"scaffold|contig", seqid):
-            _log.debug(f"ignoring {seqid} in {path}")
-            continue
-        outfile = path.with_name(f"{stem}.chromosome.{seqid}.gff3.gz")
-        files.append(outfile)
-        _log.info(f"{outfile}")
-        if not fs.is_outdated(outfile, path):
-            continue
-        with gzip.open(outfile, "wt") as fout:
-            fout.write("##gff-version 3\n")
-            fout.write(regions.get(seqid, ""))
-            fout.write(data.sort(["start"]).write_csv(has_header=False, separator="\t"))
     return files
 
 
