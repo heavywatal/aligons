@@ -49,12 +49,15 @@ def split_fa_gz(
 
 
 def faidx_query(bgz: Path, region: str, outfile: Path) -> Path:
-    assert outfile.suffix == ".gz"
     args: subp.Args = ["samtools", "faidx", bgz, region]
     is_to_run = fs.is_outdated(outfile, bgz)
-    p = subp.popen(args, if_=is_to_run, stdout=subp.PIPE)
-    if is_to_run:
-        bgzip(p.stdout, outfile)
+    if outfile.suffix == ".gz":
+        with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
+            if is_to_run:
+                bgzip(p.stdout, outfile)
+    else:
+        args.extend(["-o", outfile])
+        subp.run(args, if_=is_to_run)
     _log.info(f"{outfile}")
     return outfile
 
