@@ -1,4 +1,6 @@
+import gzip
 import logging
+from pathlib import Path
 
 import pytest
 from aligons.util import ConfDict, cli, empty_options, subp
@@ -71,3 +73,28 @@ def test_optjoin():
     assert subp.optjoin(ConfDict(values)) == " --key=value --zero=0 --one=1 --true"
     assert subp.optjoin(ConfDict({"key": "value"}), "-") == " -key=value"
     assert not subp.optjoin(empty_options)
+
+
+def test_open(tmp_path: Path):
+    hello_txt = tmp_path / "hello"
+    with subp.open_(hello_txt, "wt", if_=False) as fout:
+        fout.write("hello")
+    assert not hello_txt.exists()
+    with subp.open_(hello_txt, "wt", if_=True) as fout:
+        fout.write("hello")
+    with hello_txt.open("rt") as fin:
+        assert fin.read() == "hello"
+
+
+def test_gzip(tmp_path: Path):
+    hello_gz = tmp_path / "hello.gz"
+    subp.gzip(b"hello", hello_gz, if_=False)
+    assert not hello_gz.exists()
+    subp.gzip(b"hello", hello_gz, if_=True)
+    with gzip.open(hello_gz, "rb") as fin:
+        assert fin.read() == b"hello"
+    hello_gz.unlink()
+    with subp.popen(["echo", "hello"], stdout=subp.PIPE) as hello:
+        subp.gzip(hello.stdout, hello_gz)
+    with gzip.open(hello_gz, "rt") as fin:
+        assert fin.read().startswith("hello")

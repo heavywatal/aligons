@@ -1,4 +1,3 @@
-import gzip
 import logging
 import os
 import re
@@ -7,7 +6,7 @@ from pathlib import Path
 from aligons import db
 from aligons.db import DataSet, jgi, mask
 from aligons.extern import htslib, jellyfish, kent
-from aligons.util import cli, dl, fs, gff
+from aligons.util import cli, dl, fs, gff, subp
 
 _log = logging.getLogger(__name__)
 
@@ -174,8 +173,7 @@ def compress(content: bytes, outfile: Path) -> Path:
                 raise ValueError(msg)
             htslib.bgzip(content, outfile)
         elif outfile.suffix == ".gz" and not fs.is_gz(content):
-            with gzip.open(outfile, "wb") as fout:
-                fout.write(content)
+            subp.gzip(content, outfile)
         else:
             with outfile.open("wb") as fout:
                 fout.write(content)

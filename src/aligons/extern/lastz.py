@@ -6,7 +6,6 @@ dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 https://lastz.github.io/lastz/
 """
 import concurrent.futures as confu
-import gzip
 import logging
 from pathlib import Path
 
@@ -90,11 +89,8 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:
     cmd = f"lastz {t2bit} {q2bit} --format=axt"
     cmd += subp.optjoin(config["lastz"])
     is_to_run = fs.is_outdated(axtgz, [t2bit, q2bit])
-    lastz = subp.run(cmd, stdout=subp.PIPE, if_=is_to_run)
-    if is_to_run and not cli.dry_run:
-        with gzip.open(axtgz, "wb") as fout:
-            fout.write(lastz.stdout)
-    return axtgz
+    lastz = subp.popen(cmd, stdout=subp.PIPE, if_=is_to_run)
+    return subp.gzip(lastz.stdout, axtgz, if_=is_to_run)
 
 
 if __name__ == "__main__":

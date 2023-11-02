@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import shlex
 import subprocess
@@ -22,12 +23,14 @@ STDOUT: Final = subprocess.STDOUT
 _log = logging.getLogger(__name__)
 
 
-def popen(
+def popen(  # noqa: PLR0913
     args: _CMD,
     *,
     if_: bool = True,
+    executable: StrPath | None = None,
     stdin: _FILE = None,
     stdout: _FILE = None,
+    shell: bool = False,
     quiet: bool = False,
 ):  # kwargs hinders type inference of output type [str | bytes]
     (args, cmd) = prepare_args(args, if_=if_)
@@ -35,7 +38,13 @@ def popen(
         _log.debug(cmd)
     else:
         _log.info(cmd)
-    return subprocess.Popen(args, stdin=stdin, stdout=stdout)  # noqa: S603
+    return subprocess.Popen(
+        args,
+        executable=executable,
+        stdin=stdin,
+        stdout=stdout,
+        shell=shell,  # noqa: S603
+    )
 
 
 def run(  # noqa: PLR0913
@@ -96,3 +105,21 @@ def optstr(key: str, value: Any, prefix: str = "--") -> str:
     if value is True:
         return f" {prefix}{key}"
     return f" {prefix}{key}={value}"
+
+
+def open_(file: Path, mode: str, *, if_: bool = True) -> IO[Any]:
+    if cli.dry_run or not if_:
+        file = Path(os.devnull)
+    return file.open(mode)
+
+
+def gzip(data: _FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
+    assert outfile.suffix == ".gz"
+    args = ["zstd", "--format=gzip", "-T2"]
+    if_ = if_ and bool(data)
+    with open_(outfile, "wb", if_=if_) as fout:
+        if isinstance(data, bytes):
+            run(args, input=data, stdout=fout, if_=if_)
+        else:
+            run(args, stdin=data, stdout=fout, if_=if_)
+    return outfile

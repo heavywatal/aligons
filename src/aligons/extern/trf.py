@@ -6,7 +6,6 @@ src: {basename}.fa
 dat: {basename}.fa.2.5.7.80.10.40.500.dat.gz
 out: {basename}.fa.trf.bed.gz
 """
-import gzip
 import logging
 import re
 from pathlib import Path
@@ -71,8 +70,8 @@ def trf(infile: Path) -> Path:
     if is_to_run:
         pwd_dat = Path(dat.name.removesuffix(".gz"))
         _log.info(f"trf returned {p.returncode}; wrote {pwd_dat}")
-        with pwd_dat.open("rb") as fin, gzip.open(dat, "wb") as fout:
-            fout.write(fin.read())
+        with pwd_dat.open("rb") as fin:
+            subp.gzip(fin, dat)
         pwd_dat.unlink()
     _log.info(f"{dat}")
     return dat

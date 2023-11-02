@@ -1,5 +1,4 @@
 """http://plantregmap.gao-lab.org/."""
-import gzip
 import logging
 import re
 from collections.abc import Iterator
@@ -8,7 +7,7 @@ from pathlib import Path
 from aligons import db
 from aligons.db import api, jgi
 from aligons.extern import htslib, kent, mafs2cram
-from aligons.util import cli, dl, fs, tomli_w, tomllib
+from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
 
 from . import tools
 
@@ -265,9 +264,7 @@ def sanitize_hvu_chainnet(infile: Path, outfile: Path) -> Path:
     ]
     content = kent.chain_net_filter(infile, notQ=",".join(notq))
     content = content.replace(b"_unordered", b"")
-    with gzip.open(outfile, "wb") as fout:
-        fout.write(content)
-    return outfile
+    return subp.gzip(content, outfile)
 
 
 if __name__ == "__main__":

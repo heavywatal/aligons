@@ -76,9 +76,9 @@ def faSize(genome_fa_gz: Path) -> Path:  # noqa: N802
     if not str(genome_fa_gz).endswith(("genome.fa.gz", os.devnull)):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
     outfile = genome_fa_gz.with_name("fasize.chrom.sizes")
-    if fs.is_outdated(outfile, genome_fa_gz) and not cli.dry_run:
-        with outfile.open("wb") as fout:
-            subp.run(["faSize", "-detailed", genome_fa_gz], stdout=fout)
+    is_to_run = fs.is_outdated(outfile, genome_fa_gz)
+    with subp.open_(outfile, "wb", if_=is_to_run) as fout:
+        subp.run(["faSize", "-detailed", genome_fa_gz], stdout=fout, if_=is_to_run)
     _log.info(f"{outfile}")
     return outfile
 
@@ -111,11 +111,7 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path) ->
     pre_cmd = f"chainPreNet stdin {target_sizes} {query_sizes} stdout"
     pre = subp.popen(pre_cmd, if_=is_to_run, stdin=merge.stdout, stdout=subp.PIPE)
     merge.stdout.close()
-    if is_to_run and not cli.dry_run:
-        (stdout, _stderr) = pre.communicate()
-        with gzip.open(pre_chain, "wb") as fout:
-            fout.write(stdout)
-    return pre_chain
+    return subp.gzip(pre.stdout, pre_chain, if_=is_to_run)
 
 
 def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path) -> Path:

@@ -9,7 +9,6 @@ import csv
 import gzip
 import itertools
 import logging
-import os
 import re
 import sys
 from pathlib import Path
@@ -53,9 +52,8 @@ def phastCons(  # noqa: N802
     cmd += f" --seqname {seqname} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
     wig = path / "phastcons.wig.gz"
     is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
-    p = subp.run(cmd, if_=is_to_run, stdout=subp.PIPE)
-    with gzip.open(devnull_if(not is_to_run, wig), "wb") as fout:
-        fout.write(p.stdout)
+    p = subp.popen(cmd, if_=is_to_run, stdout=subp.PIPE)
+    subp.gzip(p.stdout, wig, if_=is_to_run)
     if wig.exists():
         print(wig)
     return wig
@@ -102,15 +100,14 @@ def msa_view_features(maf: Path, gff: Path, *, conserved: bool) -> Path:
         outfile = maf.with_name("4d-codons.ss")
         cmd += " --4d"
     is_to_run = fs.is_outdated(outfile, maf)
-    p = subp.run(
-        cmd,
-        if_=is_to_run,
-        stdout=subp.PIPE,
-        shell=True,  # noqa: S604,
-        executable="/bin/bash",
-    )
-    with devnull_if(not is_to_run, outfile).open("wb") as fout:
-        fout.write(p.stdout)
+    with subp.open_(outfile, "wb", if_=is_to_run) as fout:
+        subp.run(
+            cmd,
+            if_=is_to_run,
+            stdout=fout,
+            shell=True,  # noqa: S604,
+            executable="/bin/bash",
+        )
     return outfile
 
 
@@ -118,9 +115,8 @@ def msa_view_ss(codons_ss: Path) -> Path:
     outfile = codons_ss.with_name("4d-sites.ss")
     s = f"msa_view {codons_ss!s} --in-format SS --out-format SS --tuple-size 1"
     is_to_run = fs.is_outdated(outfile, codons_ss)
-    p = subp.run(s, if_=is_to_run, stdout=subp.PIPE)
-    with devnull_if(not is_to_run, outfile).open("wb") as fout:
-        fout.write(p.stdout)
+    with subp.open_(outfile, "wb", if_=is_to_run) as fout:
+        subp.run(s, if_=is_to_run, stdout=fout)
     return outfile
 
 
@@ -231,12 +227,6 @@ def clean(path: Path) -> None:
         print(file)
         if not cli.dry_run:
             file.unlink()
-
-
-def devnull_if(cond: bool, file: Path) -> Path:  # noqa: FBT001
-    if cond:
-        return Path(os.devnull)
-    return file
 
 
 if __name__ == "__main__":
