@@ -5,11 +5,10 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from aligons import db
-from aligons.db import api, jgi
 from aligons.extern import htslib, kent, mafs2cram
 from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
 
-from . import tools
+from . import api, jgi, tools
 
 _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import polars as pl
 
-from aligons.util import cli, fs
+from . import cli, fs
 
 _log = logging.getLogger(__name__)
 

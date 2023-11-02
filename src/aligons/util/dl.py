@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import requests
 import tomli_w
 
-from aligons.util import cli, fs, tomllib
+from . import cli, fs, tomllib
 
 _log = logging.getLogger(__name__)
 

@@ -5,8 +5,9 @@ https://bedtools.readthedocs.io/
 import logging
 from pathlib import Path
 
-from aligons.extern import htslib
 from aligons.util import cli, fs, subp
+
+from . import htslib
 
 _log = logging.getLogger(__name__)
 

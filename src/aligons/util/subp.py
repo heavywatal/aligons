@@ -7,9 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import IO, Any, Final, TypeAlias
 
-from aligons.util import ConfDict
-
-from . import cli
+from . import ConfDict, cli
 
 StrPath: TypeAlias = str | Path
 Args: TypeAlias = list[StrPath]

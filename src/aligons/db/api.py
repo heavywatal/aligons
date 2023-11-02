@@ -14,8 +14,9 @@ from contextlib import suppress
 from pathlib import Path
 
 from aligons import db
-from aligons.db import ensemblgenomes, phylo, plantregmap
 from aligons.util import cli, config, fs
+
+from . import ensemblgenomes, phylo, plantregmap
 
 _log = logging.getLogger(__name__)
 

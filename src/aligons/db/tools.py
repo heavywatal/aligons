@@ -4,9 +4,10 @@ import re
 from pathlib import Path
 
 from aligons import db
-from aligons.db import DataSet, jgi, mask
 from aligons.extern import htslib, jellyfish, kent
 from aligons.util import cli, dl, fs, gff, subp
+
+from . import DataSet, jgi, mask
 
 _log = logging.getLogger(__name__)
 

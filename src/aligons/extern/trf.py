@@ -12,8 +12,9 @@ from pathlib import Path
 
 import polars as pl
 
-from aligons.extern import htslib
 from aligons.util import cli, fs, subp
+
+from . import htslib
 
 _log = logging.getLogger(__name__)
 
