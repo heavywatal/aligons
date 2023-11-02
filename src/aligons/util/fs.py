@@ -88,12 +88,6 @@ def zip_decompress(data: bytes) -> bytes:
         return zin.read(members[0])
 
 
-def gzip_compress(content: bytes) -> bytes:
-    if not is_gz(content):
-        content = gzip.compress(content)
-    return content
-
-
 def gzip_decompress(content: bytes) -> bytes:
     if is_gz(content):
         content = gzip.decompress(content)

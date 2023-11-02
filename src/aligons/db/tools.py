@@ -1,3 +1,4 @@
+import gzip
 import logging
 import os
 import re
@@ -162,6 +163,7 @@ def compress(content: bytes, outfile: Path) -> Path:
         if fs.is_zip(content):
             fs.expect_suffix(outfile, ".zip", negate=True)
             content = fs.zip_decompress(content)
+        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         if htslib.to_be_bgzipped(outfile.name):
             fs.expect_suffix(outfile, ".gz")
             content = fs.gzip_decompress(content)
@@ -170,12 +172,13 @@ def compress(content: bytes, outfile: Path) -> Path:
             if outfile.name.endswith(".fa.gz") and not looks_like_fasta(content):
                 msg = f"invalid fasta: {outfile} not written"
                 raise ValueError(msg)
-            content = htslib.bgzip_compress(content)
-        elif outfile.suffix == ".gz":
-            content = fs.gzip_compress(content)
-        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-        with outfile.open("wb") as fout:
-            fout.write(content)
+            htslib.bgzip(content, outfile)
+        elif outfile.suffix == ".gz" and not fs.is_gz(content):
+            with gzip.open(outfile, "wb") as fout:
+                fout.write(content)
+        else:
+            with outfile.open("wb") as fout:
+                fout.write(content)
     _log.info(f"{outfile}")
     return outfile
 

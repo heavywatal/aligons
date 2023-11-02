@@ -4,6 +4,7 @@ import logging
 import re
 from collections.abc import Iterable
 from pathlib import Path
+from typing import IO
 
 from aligons.util import cli, fs, subp
 
@@ -48,14 +49,12 @@ def split_fa_gz(
 
 
 def faidx_query(bgz: Path, region: str, outfile: Path) -> Path:
+    assert outfile.suffix == ".gz"
     args: subp.Args = ["samtools", "faidx", bgz, region]
-    p = subp.run(args, if_=fs.is_outdated(outfile, bgz), stdout=subp.PIPE)
-    if p.stdout:
-        content = p.stdout
-        if outfile.suffix == ".gz":
-            content = bgzip_compress(content)
-        with outfile.open("wb") as fout:
-            fout.write(content)
+    is_to_run = fs.is_outdated(outfile, bgz)
+    p = subp.popen(args, if_=is_to_run, stdout=subp.PIPE)
+    if is_to_run:
+        bgzip(p.stdout, outfile)
     _log.info(f"{outfile}")
     return outfile
 
@@ -98,15 +97,18 @@ def collect_gff3_header(infiles: Iterable[Path]) -> bytes:
     return header
 
 
-def bgzip(path: Path) -> Path:
+def bgzip(data: bytes | IO[bytes] | None, outfile: Path) -> Path:
     """https://www.htslib.org/doc/bgzip.html."""
-    outfile = path.with_suffix(path.suffix + ".gz")
-    subp.run(["bgzip", "-@2", path], if_=fs.is_outdated(outfile, path))
+    assert outfile.suffix == ".gz"
+    if outfile.exists():
+        _log.info("overwriting {outfile}")
+    if data and not cli.dry_run:
+        with outfile.open("wb") as fout:
+            if isinstance(data, bytes):
+                subp.run(["bgzip", "-@2"], input=data, stdout=fout)
+            else:
+                subp.run(["bgzip", "-@2"], stdin=data, stdout=fout)
     return outfile
-
-
-def bgzip_compress(data: bytes) -> bytes:
-    return subp.run(["bgzip", "-@2"], input=data, stdout=subp.PIPE).stdout
 
 
 def try_index(bgz: Path | cli.FuturePath) -> Path:

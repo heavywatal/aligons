@@ -1,4 +1,5 @@
 """http://plantregmap.gao-lab.org/."""
+import gzip
 import logging
 import re
 from collections.abc import Iterator
@@ -264,8 +265,7 @@ def sanitize_hvu_chainnet(infile: Path, outfile: Path) -> Path:
     ]
     content = kent.chain_net_filter(infile, notQ=",".join(notq))
     content = content.replace(b"_unordered", b"")
-    content = fs.gzip_compress(content)
-    with outfile.open("wb") as fout:
+    with gzip.open(outfile, "wb") as fout:
         fout.write(content)
     return outfile
 

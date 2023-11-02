@@ -28,9 +28,7 @@ def wait_maskfasta(
     if fs.is_outdated(fo, beds) or cli.dry_run:
         for bed in beds:
             fi = maskfasta(fi, bed, soft=soft)
-    if fs.is_outdated(fo, beds) and not cli.dry_run:
-        with fo.open("wb") as fout:
-            fout.write(htslib.bgzip_compress(fi))
+        htslib.bgzip(fi, fo)
     _log.info(f"{fo}")
     return fo
 

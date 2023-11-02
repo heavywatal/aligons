@@ -78,10 +78,6 @@ def test_compress(tmp_path: Path):
     assert not fs.is_gz(decompressed)
     assert decompressed == content
     assert decompressed == fs.gzip_decompress(decompressed)
-    compressed = fs.gzip_compress(decompressed)
-    assert fs.is_gz(compressed)
-    assert gzip.decompress(compressed) == content
-    assert compressed == fs.gzip_compress(compressed)
 
 
 def test_zipfile(tmp_path: Path):

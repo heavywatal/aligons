@@ -27,10 +27,9 @@ def run(in_fa: Path, outdir: Path | None = None) -> Path:
         outdir = in_fa.parent
     out_bed = outdir / (in_fa.name.removeprefix(".gz") + ".sdust.bed.gz")
     is_to_run = fs.is_outdated(out_bed, in_fa) and not cli.dry_run
-    p = subp.run(["sdust", in_fa], if_=is_to_run, stdout=subp.PIPE)
+    p = subp.popen(["sdust", in_fa], if_=is_to_run, stdout=subp.PIPE)
     if is_to_run:
-        with out_bed.open("wb") as fout:
-            fout.write(htslib.bgzip_compress(p.stdout))
+        htslib.bgzip(p.stdout, out_bed)
     _log.info(f"{out_bed}")
     return out_bed
 
