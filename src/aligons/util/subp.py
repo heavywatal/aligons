@@ -114,7 +114,7 @@ def open_(file: Path, mode: str, *, if_: bool = True) -> IO[Any]:
 
 
 def gzip(data: _FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
-    assert outfile.suffix == ".gz"
+    assert outfile.suffix == ".gz", outfile
     args = ["zstd", "--format=gzip", "-T2"]
     if_ = if_ and bool(data)
     with open_(outfile, "wb", if_=if_) as fout:
@@ -128,6 +128,6 @@ def gzip(data: _FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
 def popen_zcat(
     infile: Path, stdout: _FILE = PIPE, *, if_: bool = True
 ) -> subprocess.Popen[bytes]:
-    assert infile.suffix == ".gz"
+    assert infile.suffix == ".gz", infile
     args = ["zstdcat", "-T2", infile]
     return popen(args, stdout=stdout, if_=if_)

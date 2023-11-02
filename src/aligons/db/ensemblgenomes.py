@@ -47,7 +47,7 @@ def _list_versions() -> Iterable[Path]:
 
 
 def download_compara(species: str):
-    assert species in phylo.list_species()
+    assert species in phylo.list_species(), species
     with FTPensemblgenomes() as ftp:
         dirs = ftp.download_maf(species)
     pool = cli.ThreadPool()

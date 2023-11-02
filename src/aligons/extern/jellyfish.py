@@ -99,7 +99,7 @@ def calc_threshold(histofile: Path) -> int:
     ddy = y.diff(null_behavior="drop").diff(null_behavior="drop")
     x = daf["x"][: len(ddy)]
     i = (ddy**2 + x**2).arg_min()
-    assert i
+    assert i, histofile
     return int(x[i])
 
 

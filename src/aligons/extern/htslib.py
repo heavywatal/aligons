@@ -97,7 +97,7 @@ def collect_gff3_header(infiles: Iterable[Path]) -> bytes:
 
 def bgzip(data: bytes | IO[bytes] | None, outfile: Path) -> Path:
     """https://www.htslib.org/doc/bgzip.html."""
-    assert outfile.suffix == ".gz"
+    assert outfile.suffix == ".gz", outfile
     if outfile.exists():
         _log.info("overwriting {outfile}")
     if data and not cli.dry_run:
