@@ -136,26 +136,18 @@ def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path) -
     return syntenic_net
 
 
-def net_to_maf(
-    net: Path, chain_gz: Path, sing_maf: Path, target: str, query: str
-) -> Path:
+def net_to_maf(net: Path, chain: Path, sing_maf: Path, target: str, query: str) -> Path:
     target_2bit = faToTwoBit(api.genome_fa(target))
     query_2bit = faToTwoBit(api.genome_fa(query))
     target_sizes = api.fasize(target)
     query_sizes = api.fasize(query)
     tprefix = api.shorten(target)
     qprefix = api.shorten(query)
-    is_to_run = fs.is_outdated(sing_maf, [net, chain_gz])
-    toaxt_cmd = "netToAxt"
-    toaxt_cmd += subp.optjoin(config["netToAxt"], "-")
-    toaxt_cmd += f" {net} stdin {target_2bit} {query_2bit} stdout"
-    toaxt = subp.popen(toaxt_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=subp.PIPE)
-    assert toaxt.stdin is not None
+    is_to_run = fs.is_outdated(sing_maf, [net, chain])
+    opts = subp.optjoin(config["netToAxt"], "-")
+    toaxt_cmd = f"netToAxt {opts} {net} {chain} {target_2bit} {query_2bit} stdout"
+    toaxt = subp.popen(toaxt_cmd, if_=is_to_run, stdout=subp.PIPE)
     assert toaxt.stdout is not None
-    if is_to_run and not cli.dry_run:
-        with gzip.open(chain_gz, "rb") as fout:
-            shutil.copyfileobj(fout, toaxt.stdin)
-            toaxt.stdin.close()
     sort = subp.popen(
         "axtSort stdin stdout", if_=is_to_run, stdin=toaxt.stdout, stdout=subp.PIPE
     )
