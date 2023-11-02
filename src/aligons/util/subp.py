@@ -123,3 +123,11 @@ def gzip(data: _FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
         else:
             run(args, stdin=data, stdout=fout, if_=if_)
     return outfile
+
+
+def popen_zcat(
+    infile: Path, stdout: _FILE = PIPE, *, if_: bool = True
+) -> subprocess.Popen[bytes]:
+    assert infile.suffix == ".gz"
+    args = ["zstdcat", "-T2", infile]
+    return popen(args, stdout=stdout, if_=if_)

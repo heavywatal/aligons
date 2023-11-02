@@ -5,11 +5,9 @@ dst: ./multiple/{target}/{clade}/phastcons.bw
 
 https://github.com/ucscGenomeBrowser/kent
 """
-import gzip
 import logging
 import os
 import re
-import shutil
 from pathlib import Path
 
 from aligons.db import api
@@ -40,14 +38,9 @@ def integrate_wigs(clade: Path) -> Path:
     outfile = clade / "phastcons.bw"
     is_to_run = not cli.dry_run and fs.is_outdated(outfile, wigs)
     args = ["wigToBigWig", "stdin", chrom_sizes, outfile]
-    p = subp.popen(args, if_=is_to_run, stdin=subp.PIPE)
-    if is_to_run:
-        assert p.stdin is not None
+    with subp.popen(args, stdin=subp.PIPE, if_=is_to_run) as w2bw:
         for wig in wigs:
-            with gzip.open(wig, "rb") as fin:
-                p.stdin.write(fin.read())
-                p.stdin.flush()
-    p.communicate()
+            subp.popen_zcat(wig, w2bw.stdin, if_=is_to_run).communicate()
     return outfile
 
 
@@ -89,13 +82,8 @@ def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path) -> Path:
     cmd += subp.optjoin(config["axtChain"], "-")
     cmd += f" stdin {t2bit} {q2bit} {chain}"
     is_to_run = fs.is_outdated(chain, axtgz)
-    p = subp.popen(cmd, if_=is_to_run, stdin=subp.PIPE)
-    if is_to_run and not cli.dry_run:
-        assert p.stdin is not None
-        with gzip.open(axtgz, "rb") as fin:
-            shutil.copyfileobj(fin, p.stdin)
-            p.stdin.close()
-    p.communicate()
+    with subp.popen_zcat(axtgz, if_=is_to_run) as zcat:
+        subp.run(cmd, stdin=zcat.stdout, if_=is_to_run)
     return chain
 
 
@@ -121,14 +109,11 @@ def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path) -
     cn_cmd += subp.optjoin(config["chainNet"], "-")
     cn_cmd += f" stdin {target_sizes} {query_sizes} stdout /dev/null"
     ns_cmd = f"netSyntenic stdin {syntenic_net}"
-    cn = subp.popen(cn_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=subp.PIPE)
-    ns = subp.popen(ns_cmd, if_=is_to_run, stdin=subp.PIPE)
-    content = b""
-    if is_to_run and not cli.dry_run:
-        with gzip.open(pre_chain, "rb") as fout:
-            content = fout.read()
-    (cn_out, _) = cn.communicate(content)
-    ns.communicate(cn_out)
+    with (
+        subp.popen_zcat(pre_chain, if_=is_to_run) as zcat,
+        subp.popen(cn_cmd, stdin=zcat.stdout, stdout=subp.PIPE, if_=is_to_run) as cn,
+    ):
+        subp.run(ns_cmd, stdin=cn.stdout, if_=is_to_run)
     return syntenic_net
 
 

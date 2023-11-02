@@ -91,8 +91,10 @@ def test_gzip(tmp_path: Path):
     subp.gzip(b"hello", hello_gz, if_=False)
     assert not hello_gz.exists()
     subp.gzip(b"hello", hello_gz, if_=True)
+    content, _ = subp.popen_zcat(hello_gz).communicate()
+    assert content == b"hello"
     with gzip.open(hello_gz, "rb") as fin:
-        assert fin.read() == b"hello"
+        assert fin.read() == content
     hello_gz.unlink()
     with subp.popen(["echo", "hello"], stdout=subp.PIPE) as hello:
         subp.gzip(hello.stdout, hello_gz)

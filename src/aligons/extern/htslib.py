@@ -71,14 +71,9 @@ def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
                 _log.debug(header.decode())
             for file in infiles:
                 if ".gff" in outfile.name:
-                    p = sort_clean_chromosome_gff3(file)
-                    (stdout, _stderr) = p.communicate()
-                    bgzip.stdin.write(stdout)
-                    bgzip.stdin.flush()
+                    sort_clean_chromosome_gff3(file, bgzip.stdin)
                 else:
-                    with gzip.open(file, "rb") as fin:
-                        bgzip.stdin.write(fin.read())
-                        bgzip.stdin.flush()
+                    subp.popen_zcat(file, bgzip.stdin).communicate()
             bgzip.communicate()
     _log.info(f"{outfile}")
     return outfile
@@ -168,7 +163,7 @@ def to_be_tabixed(filename: str) -> bool:
     return filename.removesuffix(".gz").removesuffix(".zip").endswith(ext)
 
 
-def sort_clean_chromosome_gff3(infile: Path) -> subp.subprocess.Popen[bytes]:
+def sort_clean_chromosome_gff3(infile: Path, stdout: IO[bytes]) -> None:
     # TODO: jbrowse2 still needs billzt/gff3sort precision?
     p1 = subp.popen(f"zgrep -v '^#' {infile!s}", stdout=subp.PIPE, quiet=True)
     p2 = subp.popen(
@@ -176,10 +171,10 @@ def sort_clean_chromosome_gff3(infile: Path) -> subp.subprocess.Popen[bytes]:
     )
     if p1.stdout:
         p1.stdout.close()
-    p3 = subp.popen("sort -k4,4n", stdin=p2.stdout, stdout=subp.PIPE, quiet=True)
+    p3 = subp.popen("sort -k4,4n", stdin=p2.stdout, stdout=stdout, quiet=True)
     if p2.stdout:
         p2.stdout.close()
-    return p3
+    p3.communicate()
 
 
 if __name__ == "__main__":

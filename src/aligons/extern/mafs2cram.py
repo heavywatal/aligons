@@ -73,13 +73,10 @@ def merge_crams(futures: list[confu.Future[Path]], outdir: Path) -> Path:
 def maf2cram(infile: Path, outfile: Path, reference: Path) -> Path:
     """Supports sing.maf only: each alignment must have 2 sequences."""
     is_to_run = fs.is_outdated(outfile, infile)
-    mafconv = subp.popen(
-        ["maf-convert", "sam", infile], if_=is_to_run, stdout=subp.PIPE
-    )
-    (stdout, _stderr) = mafconv.communicate()
-    content = sanitize_cram(reference, stdout, if_=is_to_run)
+    mafconv = subp.run(["maf-convert", "sam", infile], if_=is_to_run, stdout=subp.PIPE)
+    content = sanitize_cram(reference, mafconv.stdout, if_=is_to_run)
     cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {outfile!s}"
-    subp.popen(cmd, if_=is_to_run, stdin=subp.PIPE).communicate(content)
+    subp.run(cmd, if_=is_to_run, input=content)
     _log.info(f"{outfile}")
     return outfile
 
