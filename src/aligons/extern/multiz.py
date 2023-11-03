@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from aligons.db import phylo
-from aligons.util import cli, config, fs, read_config, subp
+from aligons.util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -23,12 +23,9 @@ def main(argv: list[str] | None = None) -> None:
     nodes_all = phylo.extract_names(phylo.get_tree())
     parser = cli.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
-    parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
     parser.add_argument("query", nargs="+", choices=nodes_all)
     args = parser.parse_args(argv or None)
-    if args.config:
-        read_config(args.config)
     if args.clean:
         clean(Path("multiple") / args.indir.name)
         return

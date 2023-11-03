@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .db import api, phylo
 from .extern import kent, lastz, mafs2cram, multiz, phast
-from .util import cli, log_config, read_config
+from .util import cli, log_config
 
 _log = logging.getLogger(__name__)
 
@@ -13,15 +13,12 @@ def main(argv: list[str] | None = None) -> None:
     tree = phylo.get_tree()
     parser = cli.ArgumentParser()
     parser.add_argument("-N", "--check-args", action="store_true")
-    parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("-t", "--tips", type=int, default=0)
     parser.add_argument("-g", "--max-bp", type=float, default=float("inf"))
     parser.add_argument("--compara", action="store_true")
     parser.add_argument("target", choices=phylo.extract_tip_names(tree))
     parser.add_argument("clade", choices=phylo.extract_inner_names(tree))
     args = parser.parse_args(argv or None)
-    if args.config:
-        read_config(args.config)
     log_config()
     if args.check_args:
         return

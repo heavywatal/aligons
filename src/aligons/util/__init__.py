@@ -14,22 +14,13 @@ _log = logging.getLogger(__name__)
 ConfDict: TypeAlias = MappingProxyType[str, Any]
 
 
-def read_config(path: Path) -> None:
-    with path.open("rb") as fin:
-        update_nested(_config_src, tomllib.load(fin))
+def resources_data(child: str = "") -> Traversable:
+    return resources.files("aligons.data").joinpath(child)
 
 
-def log_config(path: Path = Path(".log.aligons.toml")) -> None:
-    _log.info(f"{config}")
+def update_config_if_exists(path: Path) -> None:
     if path.exists():
-        with path.open("rb") as fin:
-            reference = ConfDict(tomllib.load(fin))
-        if _diff(reference, config):
-            msg = f"config differs from the previous run: {path.absolute()}"
-            raise ValueError(msg)
-    else:
-        with path.open("wb") as fout:
-            tomli_w.dump(_config_src, fout)
+        update_nested(_config_src, _read_config(path))
 
 
 def update_nested(x: dict[str, Any], other: Mapping[str, Any]) -> dict[str, Any]:
@@ -41,22 +32,28 @@ def update_nested(x: dict[str, Any], other: Mapping[str, Any]) -> dict[str, Any]
     return x
 
 
-def resources_data(child: str = "") -> Traversable:
-    return resources.files("aligons.data").joinpath(child)
+def _read_config(path: Path | Traversable) -> dict[str, Any]:
+    with path.open("rb") as fin:
+        return tomllib.load(fin)
 
 
-with resources_data("config.toml").open("rb") as fin:
-    _config_src: dict[str, Any] = tomllib.load(fin)
-
-_config_user = Path.home() / ".aligons.toml"
-_config_pwd = Path(".aligons.toml")
-for file in [_config_user, _config_pwd]:
-    if file.exists():
-        read_config(file)
-
-
+_config_src: dict[str, Any] = _read_config(resources_data("config.toml"))
+update_config_if_exists(Path.home() / ".aligons.toml")
+update_config_if_exists(Path(".aligons.toml"))
 config = ConfDict(_config_src)
 empty_options = ConfDict({})
+
+
+def log_config(path: Path = Path(".log.aligons.toml")) -> None:
+    _log.info(f"{config}")
+    if path.exists():
+        reference = ConfDict(_read_config(path))
+        if _diff(reference, config):
+            msg = f"config differs from the previous run: {path.absolute()}"
+            raise ValueError(msg)
+    else:
+        with path.open("wb") as fout:
+            tomli_w.dump(_config_src, fout)
 
 
 def _diff(lhs: Mapping[str, Any], rhs: Mapping[str, Any]) -> int:

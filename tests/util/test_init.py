@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 
 import pytest
-from aligons.util import config, log_config, read_config, update_nested
+from aligons.util import config, log_config, update_config_if_exists, update_nested
 
 
 def test_read_config(tmp_path: Path):
@@ -10,7 +10,7 @@ def test_read_config(tmp_path: Path):
     file = tmp_path / "aligons.toml"
     with file.open("wt") as fout:
         fout.write(f"[db]\nroot = '{tmp_path}'\n")
-    read_config(file)
+    update_config_if_exists(file)
     assert config["db"]["root"] == str(tmp_path)
 
 

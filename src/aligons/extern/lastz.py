@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 
 from aligons.db import api
-from aligons.util import cli, config, fs, read_config, subp
+from aligons.util import cli, config, fs, subp
 
 from . import kent
 
@@ -19,12 +19,9 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
-    parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("target", choices=api.species_names())
     parser.add_argument("query", nargs="*")
     args = parser.parse_args(argv or None)
-    if args.config:
-        read_config(args.config)
     run(args.target, args.query)
 
 

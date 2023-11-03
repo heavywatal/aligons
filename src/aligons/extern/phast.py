@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 from aligons.db import api, phylo
-from aligons.util import ConfDict, cli, config, empty_options, fs, read_config, subp
+from aligons.util import ConfDict, cli, config, empty_options, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -22,11 +22,8 @@ _log = logging.getLogger(__name__)
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("--clean", action="store_true")
-    parser.add_argument("-c", "--config", type=Path)
     parser.add_argument("clade", type=Path)  # multiple/{target}/{clade}
     args = parser.parse_args(argv or None)
-    if args.config:
-        read_config(args.config)
     if args.clean:
         clean(args.clade)
         return
