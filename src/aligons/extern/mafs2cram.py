@@ -5,18 +5,13 @@ dst: ./pairwise/{target}/{query}/cram/genome.cram
 """
 import concurrent.futures as confu
 import logging
-import os
 import re
 from pathlib import Path
 
-from aligons.db import api, path_mirror
+from aligons.db import api
 from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
-
-_ref_cache = str(path_mirror("hts-ref/%2s/%2s/%s"))
-os.environ["REF_CACHE"] = _ref_cache
-os.environ["REF_PATH"] = _ref_cache
 
 
 def main(argv: list[str] | None = None) -> None:

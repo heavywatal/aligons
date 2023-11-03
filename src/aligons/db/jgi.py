@@ -4,8 +4,9 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from xml.etree import ElementTree
 
-from aligons import db
 from aligons.util import cli, config, dl, tomli_w
+
+from . import _rsrc, api
 
 _log = logging.getLogger(__name__)
 _HOST = "genome.jgi.doe.gov"
@@ -23,9 +24,9 @@ def main(argv: list[str] | None = None) -> None:
     dataset_toml()
 
 
-def iter_dataset(queries: Iterable[str]) -> Iterator[db.DataSet]:
+def iter_dataset(queries: Iterable[str]) -> Iterator[_rsrc.DataSet]:
     yet_to_find = set(queries)
-    for entry in db.iter_dataset(dataset_toml()):
+    for entry in _rsrc.iter_dataset(dataset_toml()):
         if queries:
             try:
                 yet_to_find.remove(entry["species"])
@@ -40,7 +41,7 @@ def iter_dataset(queries: Iterable[str]) -> Iterator[db.DataSet]:
 
 
 def dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
-    outfile = db.path(_HOST) / (organism + ".toml")
+    outfile = api.prefix(_HOST) / (organism + ".toml")
     if not outfile.exists():
         dataset = {"dataset": list(iter_dataset_xml(organism))}
         if not cli.dry_run:
@@ -106,7 +107,7 @@ def finditer(
 
 
 def fetch_xml(organism: str) -> dl.Response:
-    outfile = db.path_mirror(_HOST) / (organism + ".xml")
+    outfile = _rsrc.db_root(_HOST) / (organism + ".xml")
     query = f"?organism={organism}"
     url = f"https://{_HOST}/portal/ext-api/downloads/get-directory"
     return session.fetch(url + query, outfile)

@@ -4,11 +4,10 @@ import re
 from collections.abc import Iterator
 from pathlib import Path
 
-from aligons import db
 from aligons.extern import htslib, kent, mafs2cram
 from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
 
-from . import api, jgi, tools
+from . import _rsrc, api, jgi, tools
 
 _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"
@@ -39,13 +38,13 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def iter_fetch_and_bgzip() -> Iterator[tuple[cli.FuturePath, cli.FuturePath]]:
-    for entry in db.iter_builtin_dataset("plantregmap.toml"):
+    for entry in _rsrc.iter_builtin_dataset("plantregmap.toml"):
         yield tools.fetch_and_bgzip(entry, db_prefix())
     for entry in iter_jgi_dataset():
         yield tools.fetch_and_bgzip(entry, db_prefix())
 
 
-def iter_jgi_dataset() -> Iterator[db.DataSet]:
+def iter_jgi_dataset() -> Iterator[_rsrc.DataSet]:
     long_species = [
         "Brachypodium_distachyon",
     ]
@@ -93,11 +92,11 @@ def download_php() -> str:
 
 
 def db_prefix() -> Path:
-    return db.path("plantregmap")
+    return api.prefix("plantregmap")
 
 
 def _prefix_mirror() -> Path:
-    return db.path_mirror(_FTP_HOST) / "plantregmap"
+    return _rsrc.db_root(_FTP_HOST) / "plantregmap"
 
 
 def rglob(pattern: str, species: str = ".") -> Iterator[Path]:

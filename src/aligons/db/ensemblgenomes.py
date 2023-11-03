@@ -11,10 +11,9 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from aligons import db
 from aligons.util import cli, config, dl, fs, subp
 
-from . import phylo, tools
+from . import _rsrc, api, phylo, tools
 
 _log = logging.getLogger(__name__)
 
@@ -229,7 +228,7 @@ def rsync(relpath: str, options: str = "") -> subp.subprocess.CompletedProcess[b
 
 
 def prefix() -> Path:
-    return db.path(f"ensembl-{version()}")
+    return api.prefix(f"ensembl-{version()}")
 
 
 def _prefix_mirror() -> Path:
@@ -237,7 +236,7 @@ def _prefix_mirror() -> Path:
 
 
 def _prefix_mirror_root() -> Path:
-    return db.path_mirror("ensemblgenomes.org/plants")
+    return _rsrc.db_root("ensemblgenomes.org/plants")
 
 
 def version() -> int:

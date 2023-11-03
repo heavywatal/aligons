@@ -3,11 +3,10 @@ import os
 import re
 from pathlib import Path
 
-from aligons import db
 from aligons.extern import htslib, jellyfish, kent
 from aligons.util import cli, dl, fs, gff, subp
 
-from . import DataSet, jgi, mask
+from . import _rsrc, jgi, mask
 
 _log = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def fetch_and_bgzip(
-    entry: DataSet, prefix: Path
+    entry: _rsrc.DataSet, prefix: Path
 ) -> tuple[cli.FuturePath, cli.FuturePath]:
     url_prefix = entry["url_prefix"]
     species = entry["species"]
@@ -47,8 +46,8 @@ def fetch_and_bgzip(
 
 def dl_mirror_db(url: str) -> dl.Response:
     if "jgi.doe.gov" in url:
-        return jgi.session.mirror(url, db.path_mirror())
-    return dl.mirror(url, db.path_mirror())
+        return jgi.session.mirror(url, _rsrc.db_root())
+    return dl.mirror(url, _rsrc.db_root())
 
 
 def process_genome(futures: tuple[cli.FuturePath, cli.FuturePath]) -> cli.FuturePath:

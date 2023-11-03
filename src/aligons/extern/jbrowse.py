@@ -11,7 +11,6 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from aligons import db
 from aligons.db import api, phylo, plantdhs, plantregmap
 from aligons.util import cli, config, fs, resources_data, subp
 
@@ -113,9 +112,9 @@ class JBrowseConfig:
         self.set_default_session()
 
     def add_papers_data(self) -> None:
-        for path in fs.sorted_naturally(db.path("papers").glob("*.bed.gz")):
+        for path in fs.sorted_naturally(api.prefix("papers").glob("*.bed.gz")):
             self.add_track(path, "papers", trackid=path.with_suffix("").stem)
-        suzuemon = db.path("suzuemon")
+        suzuemon = api.prefix("suzuemon")
         if (f := suzuemon / "sv_with_DEG.bed.gz").exists():
             self.add_track(f, "papers", trackid="SV_DEG-qin2021", subdir="suzuemon")
         if (f := suzuemon / "SV.bed.gz").exists():

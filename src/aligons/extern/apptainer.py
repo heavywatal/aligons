@@ -4,7 +4,7 @@ from pathlib import Path
 
 import polars as pl
 
-from aligons import db
+from aligons.db import api
 from aligons.util import cli, dl, fs
 
 _log = logging.getLogger(__name__)
@@ -133,7 +133,7 @@ def _parse_galaxy_index_html(content: bytes) -> pl.DataFrame:
 
 
 def _cache_dir() -> Path:
-    return db.path_mirror(_galaxy_domain)
+    return api.prefix(_galaxy_domain)
 
 
 if __name__ == "__main__":

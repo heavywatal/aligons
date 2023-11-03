@@ -13,10 +13,9 @@ from collections.abc import Iterable
 from contextlib import suppress
 from pathlib import Path
 
-from aligons import db
 from aligons.util import cli, config, fs
 
-from . import ensemblgenomes, phylo, plantregmap
+from . import _rsrc, ensemblgenomes, phylo, plantregmap
 
 _log = logging.getLogger(__name__)
 
@@ -127,12 +126,17 @@ def _glob(pattern: str, species: str, subdir: str = "") -> Iterable[Path]:
                 break
 
 
+def prefix(relpath: str | Path = "") -> Path:
+    return _rsrc.db_root("aligons") / relpath
+
+
 def _iter_prefix() -> Iterable[Path]:
-    return (_prefix(origin) for origin in config["db"]["origin"])
+    return (prefix(origin) for origin in _iter_db_origin())
 
 
-def _prefix(origin: str) -> Path:
-    return db.path(origin.format(version=ensemblgenomes.version()))
+def _iter_db_origin() -> Iterable[str]:
+    v = ensemblgenomes.version()
+    return (origin.format(version=v) for origin in config["db"]["origin"])
 
 
 def print_stats(clade: str) -> None:

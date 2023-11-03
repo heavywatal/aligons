@@ -4,11 +4,10 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from aligons import db
 from aligons.extern import htslib
 from aligons.util import cli, dl, fs
 
-from . import tools
+from . import _rsrc, api, tools
 
 _log = logging.getLogger(__name__)
 _HOST = "plantdhs.org"
@@ -28,7 +27,7 @@ def main(argv: list[str] | None = None) -> None:
 
 def retrieve_deploy(query: str) -> cli.FuturePath:
     url = f"https://bioinfor.yzu.edu.cn/download/plantdhs/{query}"
-    rawfile = db.path_mirror(_HOST) / query
+    rawfile = _rsrc.db_root(_HOST) / query
     outfile = db_prefix() / query
     if outfile.name.endswith(".zip"):
         outfile = outfile.with_suffix(".gz")
@@ -54,12 +53,12 @@ def iter_download_queries_all() -> Iterable[str]:
 
 def download_page() -> str:
     url = f"http://{_HOST}/Download"
-    cache = db.path_mirror(_HOST) / "Download.html"
+    cache = _rsrc.db_root(_HOST) / "Download.html"
     return dl.fetch(url, cache).text
 
 
 def db_prefix() -> Path:
-    return db.path("plantdhs")
+    return api.prefix("plantdhs")
 
 
 if __name__ == "__main__":
