@@ -136,7 +136,7 @@ def _ln_or_bgzip(src: Path, species: str) -> Path:
     if ".chromosome." in dstname:
         fs.symlink(src, dst, relative=True)
     else:
-        tools.recompress(src, dst)
+        tools.bgzip_or_symlink(src, dst)
     return dst
 
 

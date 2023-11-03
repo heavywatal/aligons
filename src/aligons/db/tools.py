@@ -71,7 +71,7 @@ def _symlink_masked(ft: cli.FuturePath) -> Path:
 
 
 def index_compress(response: dl.Response, outfile: Path) -> Path:
-    htslib.try_index(compress_lazy(response, outfile))
+    htslib.try_index(bgzip_or_symlink(response, outfile))
     return outfile
 
 
@@ -135,17 +135,31 @@ def softmask(species: str) -> cli.FuturePath:
     return index_fasta(masked)
 
 
-def recompress(infile: Path, outfile: Path) -> Path:
+def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
+    if isinstance(infile, dl.Response):
+        infile = infile.path
     if fs.is_outdated(outfile, infile) and not cli.dry_run:
-        with infile.open("rb") as fin:
-            content = fin.read()
-        compress(content, outfile)
-    return outfile
-
-
-def compress_lazy(response: dl.Response, outfile: Path) -> Path:
-    if fs.is_outdated(outfile, response.path) and not cli.dry_run:
-        compress(response.content, outfile)
+        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
+        if htslib.to_be_bgzipped(outfile.name):
+            fs.expect_suffix(outfile, ".gz")
+            with subp.popen_zcat(infile) as fin:
+                if any(s in (".gff", ".gff3") for s in outfile.suffixes):
+                    assert fin.stdout is not None
+                    content = fin.stdout.read()
+                    content = gff.sort(content)
+                    htslib.bgzip(content, outfile)
+                else:
+                    htslib.bgzip(fin.stdout, outfile)
+        elif outfile.suffix == infile.suffix:
+            fs.symlink(infile, outfile, relative=True)
+        elif outfile.suffix == ".gz":
+            _log.debug(f"rare case: gzip {infile = } to {outfile = }")
+            with subp.popen_zcat(infile) as fin:
+                subp.gzip(fin.stdout, outfile)
+        else:
+            msg = f"unexpected formats: {infile = }, {outfile = }"
+            raise ValueError(msg)
+    _log.info(f"{outfile}")
     return outfile
 
 
@@ -166,7 +180,7 @@ def compress(content: bytes, outfile: Path) -> Path:
         if htslib.to_be_bgzipped(outfile.name):
             fs.expect_suffix(outfile, ".gz")
             content = fs.gzip_decompress(content)
-            if ".gff" in outfile.name:
+            if any(s in (".gff", ".gff3") for s in outfile.suffixes):
                 content = gff.sort(content)
             if outfile.name.endswith(".fa.gz") and not looks_like_fasta(content):
                 msg = f"invalid fasta: {outfile} not written"

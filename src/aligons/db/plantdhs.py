@@ -32,10 +32,7 @@ def retrieve_deploy(query: str) -> cli.FuturePath:
     if outfile.name.endswith(".zip"):
         outfile = outfile.with_suffix(".gz")
     response = dl.fetch(url, rawfile)
-    if outfile.suffix == ".gz":
-        future = cli.thread_submit(tools.compress_lazy, response, outfile)
-    else:
-        future = cli.thread_submit(fs.symlink, response.path, outfile, relative=True)
+    future = cli.thread_submit(tools.bgzip_or_symlink, response, outfile)
     return cli.thread_submit(htslib.try_index, future)
 
 
