@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from collections.abc import Iterable
 from pathlib import Path
 
 from aligons.extern import htslib, jellyfish, kent
@@ -30,15 +31,8 @@ def fetch_and_bgzip(
     stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
     out_fa = prefix / f"fasta/{species}/{stem}.{dna_sm}.toplevel.fa.gz"
     out_gff = prefix / f"gff3/{species}/{stem}.gff3.gz"
-    if len(sequences) == 1:
-        response_fa = dl_mirror_db(url_prefix + sequences[0])
-        ft_fa = cli.thread_submit(index_compress, response_fa, out_fa)
-    elif fs.is_outdated(out_fa):
-        chr_fa = [dl_mirror_db(url_prefix + s).content for s in sequences]
-        content_fa = b"".join(chr_fa)
-        ft_fa = cli.thread_submit(bgzip_index, content_fa, out_fa)
-    else:
-        ft_fa = cli.thread_submit(lambda x: x, out_fa)
+    responses_fa = [dl_mirror_db(url_prefix + s) for s in sequences]
+    ft_fa = cli.thread_submit(index_compress_concat, responses_fa, out_fa)
     response_gff = dl_mirror_db(url_prefix + annotation)
     ft_gff = cli.thread_submit(index_compress, response_gff, out_gff)
     return ft_fa, ft_gff
@@ -75,8 +69,8 @@ def index_compress(response: dl.Response, outfile: Path) -> Path:
     return outfile
 
 
-def bgzip_index(content: bytes, outfile: Path) -> Path:
-    htslib.try_index(compress(content, outfile))
+def index_compress_concat(responses: Iterable[dl.Response], outfile: Path) -> Path:
+    htslib.try_index(concat_bgzip(responses, outfile))
     return outfile
 
 
@@ -136,6 +130,7 @@ def softmask(species: str) -> cli.FuturePath:
 
 
 def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
+    """Decompress/compress/symlink depending on file names."""
     if isinstance(infile, dl.Response):
         infile = infile.path
     if fs.is_outdated(outfile, infile) and not cli.dry_run:
@@ -163,42 +158,8 @@ def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
     return outfile
 
 
-def compress(content: bytes, outfile: Path) -> Path:
-    """Decompress/compress depending on file names.
-
-    - .gff |> decompress |> sort |> bgzip
-    - .bed |> decompress |> bgzip
-    - .fa |> decompress |> bgzip
-    - .zip |> decompress
-    - gzip if outfile has new .gz
-    """
-    if not cli.dry_run and fs.is_outdated(outfile):
-        if fs.is_zip(content):
-            fs.expect_suffix(outfile, ".zip", negate=True)
-            content = fs.zip_decompress(content)
-        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-        if htslib.to_be_bgzipped(outfile.name):
-            fs.expect_suffix(outfile, ".gz")
-            content = fs.gzip_decompress(content)
-            if any(s in (".gff", ".gff3") for s in outfile.suffixes):
-                content = gff.sort(content)
-            if outfile.name.endswith(".fa.gz") and not looks_like_fasta(content):
-                msg = f"invalid fasta: {outfile} not written"
-                raise ValueError(msg)
-            htslib.bgzip(content, outfile)
-        elif outfile.suffix == ".gz" and not fs.is_gz(content):
-            subp.gzip(content, outfile)
-        else:
-            with outfile.open("wb") as fout:
-                fout.write(content)
-    _log.info(f"{outfile}")
-    return outfile
-
-
-def looks_like_fasta(content: bytes) -> bool:
-    if fs.is_gz(content):
-        return True  # TODO: test first few bytes
-    return content.startswith(b">")
+def concat_bgzip(responses: Iterable[dl.Response], outfile: Path) -> Path:
+    return htslib.concat_bgzip([res.path for res in responses], outfile)
 
 
 if __name__ == "__main__":

@@ -63,21 +63,24 @@ def faidx_query(bgz: Path, region: str, outfile: Path) -> Path:
 
 
 def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
+    fs.expect_suffix(outfile, ".gz")
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
-        with outfile.open("wb") as fout:
-            bgzip = subp.popen("bgzip -@2", stdin=subp.PIPE, stdout=fout)
-            assert bgzip.stdin is not None
+        outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
+        with (
+            outfile.open("wb") as fout,
+            subp.popen(["bgzip", "-@2"], stdin=subp.PIPE, stdout=fout) as bgz,
+        ):
+            assert bgz.stdin is not None
             if ".gff" in outfile.name:
                 header = collect_gff3_header(infiles)
-                bgzip.stdin.write(header)
-                bgzip.stdin.flush()
+                bgz.stdin.write(header)
+                bgz.stdin.flush()
                 _log.debug(header.decode())
-            for file in infiles:
+            for infile in infiles:
                 if ".gff" in outfile.name:
-                    sort_clean_chromosome_gff3(file, bgzip.stdin)
+                    sort_clean_chromosome_gff3(infile, bgz.stdin)
                 else:
-                    subp.popen_zcat(file, bgzip.stdin).communicate()
-            bgzip.communicate()
+                    subp.popen_zcat(infile, bgz.stdin).communicate()
     _log.info(f"{outfile}")
     return outfile
 
@@ -97,7 +100,7 @@ def collect_gff3_header(infiles: Iterable[Path]) -> bytes:
 
 def bgzip(data: bytes | IO[bytes] | None, outfile: Path) -> Path:
     """https://www.htslib.org/doc/bgzip.html."""
-    assert outfile.suffix == ".gz", outfile
+    fs.expect_suffix(outfile, ".gz")
     if outfile.exists():
         _log.info("overwriting {outfile}")
     if data and not cli.dry_run:

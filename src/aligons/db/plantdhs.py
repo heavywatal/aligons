@@ -4,7 +4,6 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from aligons.extern import htslib
 from aligons.util import cli, dl, fs
 
 from . import _rsrc, api, tools
@@ -32,8 +31,7 @@ def retrieve_deploy(query: str) -> cli.FuturePath:
     if outfile.name.endswith(".zip"):
         outfile = outfile.with_suffix(".gz")
     response = dl.fetch(url, rawfile)
-    future = cli.thread_submit(tools.bgzip_or_symlink, response, outfile)
-    return cli.thread_submit(htslib.try_index, future)
+    return cli.thread_submit(tools.index_compress, response, outfile)
 
 
 def iter_download_queries() -> Iterable[str]:
