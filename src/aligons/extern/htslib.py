@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import IO
 
-from aligons.util import cli, fs, subp
+from aligons.util import cli, fs, gff, subp
 
 _log = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
                 _log.debug(header.decode())
             for infile in infiles:
                 if ".gff" in outfile.name:
-                    sort_clean_chromosome_gff3(infile, bgz.stdin)
+                    gff.sort_clean_chromosome(infile, bgz.stdin)
                 else:
                     subp.popen_zcat(infile, bgz.stdin).communicate()
     _log.info(f"{outfile}")
@@ -167,20 +167,6 @@ def to_be_faidxed(filename: str) -> bool:
 def to_be_tabixed(filename: str) -> bool:
     ext = (".gff", ".gff3", ".gtf", ".bed")
     return filename.removesuffix(".gz").removesuffix(".zip").endswith(ext)
-
-
-def sort_clean_chromosome_gff3(infile: Path, stdout: IO[bytes]) -> None:
-    # TODO: jbrowse2 still needs billzt/gff3sort precision?
-    p1 = subp.popen(f"zgrep -v '^#' {infile!s}", stdout=subp.PIPE, quiet=True)
-    p2 = subp.popen(
-        "grep -v '\tchromosome\t'", stdin=p1.stdout, stdout=subp.PIPE, quiet=True
-    )
-    if p1.stdout:
-        p1.stdout.close()
-    p3 = subp.popen("sort -k4,4n", stdin=p2.stdout, stdout=stdout, quiet=True)
-    if p2.stdout:
-        p2.stdout.close()
-    p3.communicate()
 
 
 if __name__ == "__main__":

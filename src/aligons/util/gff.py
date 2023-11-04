@@ -3,10 +3,11 @@ import io
 import logging
 import re
 from pathlib import Path
+from typing import IO
 
 import polars as pl
 
-from . import cli, fs
+from . import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -128,6 +129,19 @@ def _read_body(source: Path | str | bytes) -> pl.DataFrame:
             "attributes",
         ],
     )
+
+
+def sort_clean_chromosome(infile: Path, stdout: IO[bytes]) -> None:
+    # TODO: jbrowse2 still needs billzt/gff3sort precision?
+    cmd1 = f"zstdgrep -v '^#' {infile!s}"
+    cmd2 = "grep -v '\tchromosome\t'"
+    cmd3 = "sort -k4,4n"
+    with (
+        subp.popen(cmd1, stdout=subp.PIPE, quiet=True) as v_hash,
+        subp.popen(cmd2, stdin=v_hash.stdout, stdout=subp.PIPE, quiet=True) as v_chr,
+        subp.popen(cmd3, stdin=v_chr.stdout, stdout=stdout, quiet=True) as sort,
+    ):
+        sort.communicate()
 
 
 if __name__ == "__main__":
