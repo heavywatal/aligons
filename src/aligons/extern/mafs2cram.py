@@ -69,14 +69,19 @@ def maf2cram(infile: Path, outfile: Path, reference: Path) -> Path:
     """Supports sing.maf only: each alignment must have 2 sequences."""
     is_to_run = fs.is_outdated(outfile, infile)
     mafconv = subp.run(["maf-convert", "sam", infile], if_=is_to_run, stdout=subp.PIPE)
-    content = sanitize_cram(reference, mafconv.stdout, if_=is_to_run)
-    cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {outfile!s}"
-    subp.run(cmd, if_=is_to_run, input=content)
+    sam = sanitize_sam(mafconv.stdout)
+    view_cmd = f"samtools view --no-PG -h -C -@ 2 -T {reference!s}"
+    sort_cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {outfile!s}"
+    with (
+        subp.popen(sort_cmd, if_=is_to_run, stdin=subp.PIPE) as sort,
+        subp.popen(view_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=sort.stdin) as view,
+    ):
+        view.communicate(sam)
     _log.info(f"{outfile}")
     return outfile
 
 
-def sanitize_cram(reference: Path, sam: bytes, *, if_: bool) -> bytes:
+def sanitize_sam(sam: bytes) -> bytes:
     def repl(mobj: re.Match[bytes]) -> bytes:
         qstart = 0
         if int(mobj["flag"]) & 16:  # reverse strand
@@ -108,10 +113,7 @@ def sanitize_cram(reference: Path, sam: bytes, *, if_: bool) -> bytes:
         rb"(?P<seq>\w+)\t(?P<misc>.+$)"
     )
     lines = [patt.sub(repl, line) for line in sam.splitlines(keepends=True)]
-    cmd = f"samtools view --no-PG -h -C -@ 2 -T {reference!s}"
-    samview = subp.popen(cmd, if_=if_, stdin=subp.PIPE, stdout=subp.PIPE)
-    (stdout, _stderr) = samview.communicate(b"".join(lines))
-    return stdout
+    return b"".join(lines)
 
 
 if __name__ == "__main__":
