@@ -91,7 +91,7 @@ def multiz(path: Path, tree: str) -> Path:
 
 def roast(
     sing_mafs: list[Path], tmpdir: str, outfile: str, tree: str
-) -> subp.subprocess.CompletedProcess[str]:
+) -> subp.CompletedProcess[str]:
     """Generate shell script to execute multiz."""
     options = config["multiz"]
     radius = options.get("R", 30)

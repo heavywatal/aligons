@@ -49,8 +49,8 @@ def phastCons(  # noqa: N802
     cmd += f" --seqname {seqname} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
     wig = path / "phastcons.wig.gz"
     is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
-    p = subp.popen(cmd, if_=is_to_run, stdout=subp.PIPE)
-    subp.gzip(p.stdout, wig, if_=is_to_run)
+    with subp.popen(cmd, stdout=subp.PIPE, if_=is_to_run) as p:
+        subp.gzip(p.stdout, wig, if_=is_to_run)
     if wig.exists():
         print(wig)
     return wig

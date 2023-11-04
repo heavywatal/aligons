@@ -5,6 +5,7 @@ import shlex
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
+from subprocess import PIPE, CompletedProcess, Popen
 from typing import IO, Any, Final, TypeAlias
 
 from . import ConfDict, cli
@@ -15,7 +16,6 @@ _CMD: TypeAlias = Sequence[StrPath] | str
 _FILE: TypeAlias = IO[Any] | int | None
 
 CalledProcessError = subprocess.CalledProcessError
-PIPE: Final = subprocess.PIPE
 STDOUT: Final = subprocess.STDOUT
 
 _log = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ def popen(  # noqa: PLR0913
         _log.debug(cmd)
     else:
         _log.info(cmd)
-    return subprocess.Popen(
+    return Popen(
         args,
         executable=executable,
         stdin=stdin,
@@ -123,11 +123,17 @@ def gzip(data: _FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
     return outfile
 
 
-def popen_zcat(
+def popen_zcat(infile: Path, stdout: _FILE = PIPE, *, if_: bool = True) -> Popen[bytes]:
+    return popen(_zcat_args(infile), stdout=stdout, if_=if_)
+
+
+def run_zcat(
     infile: Path, stdout: _FILE = PIPE, *, if_: bool = True
-) -> subprocess.Popen[bytes]:
+) -> CompletedProcess[bytes]:
+    return run(_zcat_args(infile), stdout=stdout, if_=if_)
+
+
+def _zcat_args(infile: Path):
     if infile.suffix == ".zip":
-        args = ["unzip", "-p", infile]
-    else:
-        args = ["zstdcat", "-T2", infile]
-    return popen(args, stdout=stdout, if_=if_)
+        return ["unzip", "-p", infile]
+    return ["zstdcat", "-T2", infile]

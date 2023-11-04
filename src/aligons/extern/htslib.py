@@ -53,8 +53,7 @@ def faidx_query(bgz: Path, region: str, outfile: Path) -> Path:
     is_to_run = fs.is_outdated(outfile, bgz)
     if outfile.suffix == ".gz":
         with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
-            if is_to_run:
-                bgzip(p.stdout, outfile)
+            bgzip(p.stdout, outfile, if_=is_to_run)
     else:
         args.extend(["-o", outfile])
         subp.run(args, if_=is_to_run)
@@ -80,7 +79,7 @@ def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
                 if ".gff" in outfile.name:
                     gff.sort_clean_chromosome(infile, bgz.stdin)
                 else:
-                    subp.popen_zcat(infile, bgz.stdin).communicate()
+                    subp.run_zcat(infile, bgz.stdin)
     _log.info(f"{outfile}")
     return outfile
 
@@ -98,17 +97,17 @@ def collect_gff3_header(infiles: Iterable[Path]) -> bytes:
     return header
 
 
-def bgzip(data: bytes | IO[bytes] | None, outfile: Path) -> Path:
+def bgzip(data: bytes | IO[bytes] | None, outfile: Path, *, if_: bool = True) -> Path:
     """https://www.htslib.org/doc/bgzip.html."""
     fs.expect_suffix(outfile, ".gz")
     if outfile.exists():
         _log.info("overwriting {outfile}")
-    if data and not cli.dry_run:
-        with outfile.open("wb") as fout:
-            if isinstance(data, bytes):
-                subp.run(["bgzip", "-@2"], input=data, stdout=fout)
-            else:
-                subp.run(["bgzip", "-@2"], stdin=data, stdout=fout)
+    if_ = if_ and bool(data) and not cli.dry_run
+    with subp.open_(outfile, "wb", if_=if_) as fout:
+        if isinstance(data, bytes):
+            subp.run(["bgzip", "-@2"], input=data, stdout=fout, if_=if_)
+        else:
+            subp.run(["bgzip", "-@2"], stdin=data, stdout=fout, if_=if_)
     return outfile
 
 

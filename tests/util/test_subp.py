@@ -20,11 +20,12 @@ def test_run(cmd: str | list[str]):
 @pytest.mark.parametrize("cmd", [hello, hello.split()])
 def test_popen(cmd: str | list[str]):
     cli.dry_run = False
-    pf = subp.popen(cmd, if_=False, stdout=subp.PIPE)
-    assert pf.communicate()[0] == b""
-    pt = subp.popen(cmd, if_=True, stdout=subp.PIPE)
-    assert pt.communicate()[0] == b"hello"
-    assert subp.popen(cmd, stdout=subp.PIPE).communicate()[0] == b"hello"
+    with subp.popen(cmd, if_=False, stdout=subp.PIPE) as p:
+        assert p.communicate()[0] == b""
+    with subp.popen(cmd, if_=True, stdout=subp.PIPE) as p:
+        assert p.communicate()[0] == b"hello"
+    with subp.popen(cmd, stdout=subp.PIPE) as p:
+        assert p.communicate()[0] == b"hello"
 
 
 def test_subp_log(caplog: pytest.LogCaptureFixture):
@@ -40,24 +41,28 @@ def test_subp_log(caplog: pytest.LogCaptureFixture):
     subp.run(cmd, quiet=False, if_=False)
     assert f"# {cmd}" in caplog.text
     caplog.clear()
-    subp.popen(cmd, quiet=False, if_=False).communicate()
+    with subp.popen(cmd, quiet=False, if_=False) as p:
+        p.communicate()
     assert f"# {cmd}" in caplog.text
     caplog.clear()
     subp.run(cmd, quiet=True)
     assert not caplog.text
 
     caplog.clear()
-    subp.popen(cmd, quiet=False).communicate()
+    with subp.popen(cmd, quiet=False) as p:
+        p.communicate()
     assert cmd in caplog.text
     caplog.clear()
-    subp.popen(cmd, quiet=True).communicate()
+    with subp.popen(cmd, quiet=True) as p:
+        p.communicate()
     assert not caplog.text
 
     caplog.set_level(logging.DEBUG)
     subp.run(cmd, quiet=True)
     assert cmd in caplog.text
     caplog.clear()
-    subp.popen(cmd, quiet=True).communicate()
+    with subp.popen(cmd, quiet=True) as p:
+        p.communicate()
     assert cmd in caplog.text
 
 
@@ -91,8 +96,10 @@ def test_gzip(tmp_path: Path):
     subp.gzip(b"hello", hello_gz, if_=False)
     assert not hello_gz.exists()
     subp.gzip(b"hello", hello_gz, if_=True)
-    content, _ = subp.popen_zcat(hello_gz).communicate()
+    with subp.popen_zcat(hello_gz) as zcat:
+        content, _ = zcat.communicate()
     assert content == b"hello"
+    assert subp.run_zcat(hello_gz).stdout == b"hello"
     with gzip.open(hello_gz, "rb") as fin:
         assert fin.read() == content
     hello_gz.unlink()

@@ -82,15 +82,14 @@ def consolidate_compara_mafs(indir: Path) -> Path:
         lines: list[str] = ["##maf version=1 scoring=LASTZ_NET\n"]
         for maf in infiles:
             lines.extend(readlines_compara_maf(maf))
-        with sing_maf.open("wb") as fout:
-            cmd = f"sed -e 's/{target}/{target_short}/' -e 's/{query}/{query_short}/'"
-            sed = subp.popen(cmd, stdin=subp.PIPE, stdout=subp.PIPE)
-            maff = subp.popen("mafFilter stdin", stdin=sed.stdout, stdout=fout)
-            # for padding, not for filtering
-            assert sed.stdout is not None, cmd
-            sed.stdout.close()
-            sed.communicate("".join(lines).encode())
+        with (
+            sing_maf.open("wb") as fout,
+            subp.popen("mafFilter stdin", stdin=subp.PIPE, stdout=fout) as maff,
+        ):
+            sed = f"sed -e 's/{target}/{target_short}/' -e 's/{query}/{query_short}/'"
+            subp.run(sed, input="".join(lines).encode(), stdout=maff.stdin)
             maff.communicate()
+            # for padding, not for filtering
     _log.info(f"{outdir}")
     return outdir
 
@@ -219,7 +218,7 @@ def download_via_rsync(species: list[str]):
         rsync(f"gff3/{sp}", options)
 
 
-def rsync(relpath: str, options: str = "") -> subp.subprocess.CompletedProcess[bytes]:
+def rsync(relpath: str, options: str = "") -> subp.CompletedProcess[bytes]:
     server = "ftp.ensemblgenomes.org"
     remote_prefix = f"rsync://{server}/all/pub/plants/release-{version()}"
     src = f"{remote_prefix}/{relpath}/"

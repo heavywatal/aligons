@@ -4,7 +4,6 @@ src: {db.api.prefix}/fasta/{species}/*.fa.gz
 dst: {db.api.prefix}/fasta/{species}/kmer/*.fa.gz
 """
 import concurrent.futures as confu
-import gzip
 import logging
 from pathlib import Path
 
@@ -53,12 +52,8 @@ def count(infile: Path) -> Path:
     is_to_run = fs.is_outdated(outfile, infile) and not cli.dry_run
     if is_to_run:
         outfile.parent.mkdir(0o755, exist_ok=True)
-    p = subp.popen(args, if_=is_to_run, stdin=subp.PIPE)
-    if is_to_run:
-        assert p.stdin is not None
-        with gzip.open(infile, "rb") as fin:
-            p.stdin.write(fin.read())
-    p.communicate()
+    with subp.popen_zcat(infile, if_=is_to_run) as zcat:
+        subp.run(args, stdin=zcat.stdout, if_=is_to_run)
     return outfile
 
 
@@ -119,20 +114,19 @@ def mask_genome(infile: Path, kmer_fa: Path, freq: int = 50) -> Path:
     dump_lower_count = config["jellyfish"]["dump"]["lower_count"]
     if freq < dump_lower_count:
         _log.warning(f"threshold frequency: {freq} < {dump_lower_count=}")
-    output = kmer_fa.with_name(infile.name)
-    tmp_fa = output.with_suffix("")
+    outfile = kmer_fa.with_name(infile.name)
     args: subp.Args = ["dCNS", "maskGenome", "-d"]
     args.extend(["-i", "/dev/stdin"])
-    args.extend(["-o", tmp_fa])
+    args.extend(["-o", "/dev/stdout"])
     args.extend(["-k", kmer_fa])
     args.extend(["-f", str(freq)])
-    is_to_run = fs.is_outdated(output, [infile, kmer_fa])
-    p = subp.popen(args, if_=is_to_run, stdin=subp.PIPE)
-    if is_to_run and not cli.dry_run:
-        with gzip.open(infile, "rb") as fin:
-            p.communicate(fin.read())
-    subp.run(["gzip", "-f", tmp_fa], if_=is_to_run)
-    return output
+    is_to_run = fs.is_outdated(outfile, [infile, kmer_fa])
+    with (
+        subp.popen_zcat(infile, if_=is_to_run) as zcat,
+        subp.popen(args, stdin=zcat.stdout, stdout=subp.PIPE, if_=is_to_run) as dcns,
+    ):
+        subp.gzip(dcns.stdout, outfile, if_=is_to_run)
+    return outfile
 
 
 if __name__ == "__main__":

@@ -72,11 +72,8 @@ def maf2cram(infile: Path, outfile: Path, reference: Path) -> Path:
     sam = sanitize_sam(mafconv.stdout)
     view_cmd = f"samtools view --no-PG -h -C -@ 2 -T {reference!s}"
     sort_cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {outfile!s}"
-    with (
-        subp.popen(sort_cmd, if_=is_to_run, stdin=subp.PIPE) as sort,
-        subp.popen(view_cmd, if_=is_to_run, stdin=subp.PIPE, stdout=sort.stdin) as view,
-    ):
-        view.communicate(sam)
+    with subp.popen(sort_cmd, stdin=subp.PIPE, if_=is_to_run) as sort:
+        subp.run(view_cmd, input=sam, stdout=sort.stdin, if_=is_to_run)
     _log.info(f"{outfile}")
     return outfile
 

@@ -40,7 +40,7 @@ def integrate_wigs(clade: Path) -> Path:
     args = ["wigToBigWig", "stdin", chrom_sizes, outfile]
     with subp.popen(args, stdin=subp.PIPE, if_=is_to_run) as w2bw:
         for wig in wigs:
-            subp.popen_zcat(wig, w2bw.stdin, if_=is_to_run).communicate()
+            subp.run_zcat(wig, w2bw.stdin, if_=is_to_run)
     return outfile
 
 
@@ -94,12 +94,12 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path) ->
     pre_chain = subdir / "pre.chain.gz"
     is_to_run = fs.is_outdated(pre_chain, chains)
     merge_cmd = ["chainMergeSort"] + [str(x) for x in chains]
-    merge = subp.popen(merge_cmd, if_=is_to_run, stdout=subp.PIPE)
-    assert merge.stdout is not None
     pre_cmd = f"chainPreNet stdin {target_sizes} {query_sizes} stdout"
-    pre = subp.popen(pre_cmd, if_=is_to_run, stdin=merge.stdout, stdout=subp.PIPE)
-    merge.stdout.close()
-    return subp.gzip(pre.stdout, pre_chain, if_=is_to_run)
+    with (
+        subp.popen(merge_cmd, if_=is_to_run, stdout=subp.PIPE) as merge,
+        subp.popen(pre_cmd, if_=is_to_run, stdin=merge.stdout, stdout=subp.PIPE) as pre,
+    ):
+        return subp.gzip(pre.stdout, pre_chain, if_=is_to_run)
 
 
 def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path) -> Path:
@@ -126,21 +126,20 @@ def net_to_maf(net: Path, chain: Path, sing_maf: Path, target: str, query: str) 
     qprefix = api.shorten(query)
     is_to_run = fs.is_outdated(sing_maf, [net, chain])
     opts = subp.optjoin(config["netToAxt"], "-")
-    toaxt_cmd = f"netToAxt {opts} {net} {chain} {target_2bit} {query_2bit} stdout"
-    toaxt = subp.popen(toaxt_cmd, if_=is_to_run, stdout=subp.PIPE)
-    assert toaxt.stdout is not None
-    sort = subp.popen(
-        "axtSort stdin stdout", if_=is_to_run, stdin=toaxt.stdout, stdout=subp.PIPE
-    )
-    toaxt.stdout.close()
-    assert sort.stdout is not None
-    axttomaf_cmd = (
+    toaxt = f"netToAxt {opts} {net} {chain} {target_2bit} {query_2bit} stdout"
+    sort = "axtSort stdin stdout"
+    tomaf = (
         f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
         f" {target_sizes} {query_sizes} {sing_maf}"
     )
-    axttomaf = subp.popen(axttomaf_cmd, if_=is_to_run, stdin=sort.stdout)
-    sort.stdout.close()
-    axttomaf.communicate()
+    with (
+        subp.popen(toaxt, if_=is_to_run, stdout=subp.PIPE) as ptoaxt,
+        subp.popen(sort, if_=is_to_run, stdin=ptoaxt.stdout, stdout=subp.PIPE) as psort,
+        subp.popen(tomaf, if_=is_to_run, stdin=psort.stdout) as paxttomaf,
+    ):
+        ptoaxt.stdout.close() if ptoaxt.stdout else None
+        psort.stdout.close() if psort.stdout else None
+        paxttomaf.communicate()
     return sing_maf
 
 

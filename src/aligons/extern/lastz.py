@@ -86,8 +86,8 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:
     cmd = f"lastz {t2bit} {q2bit} --format=axt"
     cmd += subp.optjoin(config["lastz"])
     is_to_run = fs.is_outdated(axtgz, [t2bit, q2bit])
-    lastz = subp.popen(cmd, stdout=subp.PIPE, if_=is_to_run)
-    return subp.gzip(lastz.stdout, axtgz, if_=is_to_run)
+    with subp.popen(cmd, stdout=subp.PIPE, if_=is_to_run) as p:
+        return subp.gzip(p.stdout, axtgz, if_=is_to_run)
 
 
 if __name__ == "__main__":
