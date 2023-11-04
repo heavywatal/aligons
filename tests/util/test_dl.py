@@ -1,4 +1,6 @@
+import io
 import logging
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +31,17 @@ class MockResponse:
         self.url = url
         self.data = kwargs.get("data", {})
         self.content = b"content"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object):
+        return False
+
+    def iter_content(self, chunk_size: int | None) -> Iterator[bytes]:
+        if chunk_size is not None:
+            assert chunk_size >= io.DEFAULT_BUFFER_SIZE
+        yield from [self.content]
 
     def raise_for_status(self):
         pass

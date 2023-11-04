@@ -48,18 +48,6 @@ class Response:
         self._path = path
         self._content = b""
 
-    def _fetch(self) -> None:
-        response = self._session.get(self._url)
-        response.raise_for_status()
-        self._content = response.content
-        if fs.is_gz(self._content) ^ (self._path.suffix == ".gz"):
-            msg = f"gzip mismatch: '{self._url}' content vs filename '{self._path}'"
-            raise ValueError(msg)
-        _log.info(f"{self._path}")
-        self._path.parent.mkdir(0o755, parents=True, exist_ok=True)
-        with self._path.open("wb") as fout:
-            fout.write(self._content)
-
     @property
     def url(self) -> str:
         return self._url
@@ -91,6 +79,24 @@ class Response:
     @property
     def text_force(self) -> str:
         return self.content_force.decode()
+
+    def _fetch(self) -> None:
+        with self._session.get(self._url, stream=True) as response:
+            response.raise_for_status()
+            self._path.parent.mkdir(0o755, parents=True, exist_ok=True)
+            iter_content = response.iter_content(chunk_size=2**28)
+            chunk0 = next(iter_content)
+            self._test_gz(chunk0)
+            with self._path.open("wb") as fout:
+                fout.write(chunk0)
+                for chunk in iter_content:
+                    fout.write(chunk)
+            _log.info(f"{self._path}")
+
+    def _test_gz(self, content: bytes):
+        if fs.is_gz(content) ^ (self._path.suffix == ".gz"):
+            msg = f"gzip mismatch: '{self._url}' content vs filename '{self._path}'"
+            raise ValueError(msg)
 
 
 _global_session = LazySession()
