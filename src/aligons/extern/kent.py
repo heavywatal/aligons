@@ -53,7 +53,7 @@ def bedGraphToBigWig(infile: Path, chrom_sizes: Path) -> Path:  # noqa: N802
     name = re.sub(r"\.bedgraph(\.gz)?$", ".bw", infile.name, flags=re.I)
     outfile = infile.with_name(name)
     if fs.is_outdated(outfile, infile):
-        bedgraph = gunzip(infile)
+        bedgraph = _gunzip(infile)
         # gz or stdin are not accepted
         subp.run(["bedGraphToBigWig", bedgraph, chrom_sizes, outfile])
     return outfile
@@ -154,14 +154,13 @@ def chain_net_filter(file: Path, **kwargs: str) -> bytes:
     return p.stdout
 
 
-def gunzip(infile: Path) -> Path:
-    if infile.suffix != ".gz":
-        _log.debug(f"non-gz {infile}")
-        return infile
+def _gunzip(infile: Path) -> Path:
+    fs.expect_suffix(infile, ".gz")
     outfile = infile.with_suffix("")
     if fs.is_outdated(outfile, infile):
-        subp.run(["gunzip", "-fk", infile])
-        subp.run(["touch", outfile])
+        subp.run(["unzstd", "-fk", infile, "-o", outfile])
+        if not cli.dry_run:
+            outfile.touch()
     return outfile
 
 
