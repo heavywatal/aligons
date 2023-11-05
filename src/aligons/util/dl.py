@@ -1,5 +1,4 @@
 import logging
-import os
 from collections.abc import Mapping
 from ftplib import FTP
 from pathlib import Path
@@ -123,8 +122,6 @@ class LazyFTP(FTP):
         )
 
     def quit(self) -> str:  # noqa: A003
-        _log.info(f"os.chdir({self.orig_wd})")
-        os.chdir(self.orig_wd)
         _log.info("ftp.quit()")
         resp = super().quit()
         _log.info(resp)
@@ -133,16 +130,13 @@ class LazyFTP(FTP):
     def _lazy_init(self) -> None:
         if self.sock is not None:
             return
-        self.orig_wd = Path.cwd()
         _log.debug(f"ftp.connect({self.host})")
         _log.info(self.connect(self.host))
         _log.debug("ftp.login()")
         _log.info(self.login())
         _log.info(f"ftp.cwd({self.slug})")
         _log.info(self.cwd(self.slug))
-        _log.info(f"os.chdir({self.prefix})")
         self.prefix.mkdir(0o755, parents=True, exist_ok=True)
-        os.chdir(self.prefix)  # for RETR only
 
     def nlst_cache(self, relpath: str) -> list[str]:
         cache = self.prefix / relpath / ".ftp_nlst_cache"
