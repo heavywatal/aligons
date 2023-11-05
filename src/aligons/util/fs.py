@@ -123,20 +123,19 @@ def checksums(file: Path) -> None:
 
 def checkline(line: str, directory: Path) -> None:
     (e_sum, e_blocks, name) = line.split()
-    if (path := directory / name).exists():
-        cmd = ["/usr/bin/sum", path]
-        p = subprocess.run(
-            cmd, stdout=subprocess.PIPE, text=True, check=True  # noqa: S603
-        )
-        try:
-            (o_sum, o_blocks, _) = p.stdout.split()
-        except ValueError:  # pragma: no cover; old coreutils
-            (o_sum, o_blocks) = p.stdout.split()
-        if (e_sum.lstrip("0"), e_blocks) != (o_sum.lstrip("0"), o_blocks):
-            msg = f"sum {name}"
-            msg += f"\nexpected: {e_sum}\t{e_blocks}"
-            msg += f"\nobserved: {o_sum}\t{o_blocks}"
-            _log.error(msg)
+    if not (path := directory / name).exists():
+        return
+    cmd = ["/usr/bin/sum", path]
+    p = subprocess.run(cmd, stdout=subprocess.PIPE, text=True, check=True)  # noqa: S603
+    try:
+        (o_sum, o_blocks, _) = p.stdout.split()
+    except ValueError:  # pragma: no cover; old coreutils
+        (o_sum, o_blocks) = p.stdout.split()
+    if (e_sum.lstrip("0"), e_blocks) != (o_sum.lstrip("0"), o_blocks):
+        msg = f"sum {name}"
+        msg += f"\nexpected: {e_sum}\t{e_blocks}"
+        msg += f"\nobserved: {o_sum}\t{o_blocks}"
+        _log.error(msg)
 
 
 @contextlib.contextmanager
