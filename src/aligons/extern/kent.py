@@ -78,12 +78,11 @@ def faSize(genome_fa_gz: Path) -> Path:  # noqa: N802
 
 def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path) -> Path:
     chain = axtgz.with_suffix("").with_suffix(".chain")
-    cmd = "axtChain"
-    cmd += subp.optjoin(config["axtChain"], "-")
-    cmd += f" stdin {t2bit} {q2bit} {chain}"
+    opts = subp.optargs(config["axtChain"], "-")
+    args = ["axtChain", *opts, "stdin", t2bit, q2bit, chain]
     is_to_run = fs.is_outdated(chain, axtgz)
     with subp.popen_zcat(axtgz, if_=is_to_run) as zcat:
-        subp.run(cmd, stdin=zcat.stdout, if_=is_to_run)
+        subp.run(args, stdin=zcat.stdout, if_=is_to_run)
     return chain
 
 
@@ -105,42 +104,47 @@ def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path) ->
 def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path) -> Path:
     syntenic_net = pre_chain.with_name("syntenic.net")
     is_to_run = fs.is_outdated(syntenic_net, pre_chain)
-    cn_cmd = "chainNet"
-    cn_cmd += subp.optjoin(config["chainNet"], "-")
-    cn_cmd += f" stdin {target_sizes} {query_sizes} stdout /dev/null"
-    ns_cmd = f"netSyntenic stdin {syntenic_net}"
+    cn_args = ["chainNet", *subp.optargs(config["chainNet"], "-")]
+    cn_args += ["stdin", target_sizes, query_sizes, "stdout", "/dev/null"]
+    ns_args = ["netSyntenic", "stdin", "syntenic_net"]
     with (
         subp.popen_zcat(pre_chain, if_=is_to_run) as zcat,
-        subp.popen(cn_cmd, stdin=zcat.stdout, stdout=subp.PIPE, if_=is_to_run) as cn,
+        subp.popen(cn_args, stdin=zcat.stdout, stdout=subp.PIPE, if_=is_to_run) as cn,
     ):
-        subp.run(ns_cmd, stdin=cn.stdout, if_=is_to_run)
+        subp.run(ns_args, stdin=cn.stdout, if_=is_to_run)
     return syntenic_net
 
 
 def net_to_maf(net: Path, chain: Path, sing_maf: Path, target: str, query: str) -> Path:
-    target_2bit = faToTwoBit(api.genome_fa(target))
-    query_2bit = faToTwoBit(api.genome_fa(query))
-    target_sizes = api.fasize(target)
-    query_sizes = api.fasize(query)
-    tprefix = api.shorten(target)
-    qprefix = api.shorten(query)
     is_to_run = fs.is_outdated(sing_maf, [net, chain])
-    opts = subp.optjoin(config["netToAxt"], "-")
-    toaxt = f"netToAxt {opts} {net} {chain} {target_2bit} {query_2bit} stdout"
-    sort = "axtSort stdin stdout"
-    tomaf = (
-        f"axtToMaf -tPrefix={tprefix}. -qPrefix={qprefix}. stdin"
-        f" {target_sizes} {query_sizes} {sing_maf}"
-    )
+    sort = ["axtSort", "stdin", "stdout"]
     with (
-        subp.popen(toaxt, if_=is_to_run, stdout=subp.PIPE) as ptoaxt,
-        subp.popen(sort, if_=is_to_run, stdin=ptoaxt.stdout, stdout=subp.PIPE) as psort,
-        subp.popen(tomaf, if_=is_to_run, stdin=psort.stdout) as paxttomaf,
+        netToAxt(net, chain, target, query, if_=is_to_run) as ptoaxt,
+        subp.popen(sort, stdin=ptoaxt.stdout, stdout=subp.PIPE, if_=is_to_run) as psort,
+        axtToMaf(psort.stdout, target, query, sing_maf, if_=is_to_run) as paxttomaf,
     ):
         ptoaxt.stdout.close() if ptoaxt.stdout else None
         psort.stdout.close() if psort.stdout else None
         paxttomaf.communicate()
     return sing_maf
+
+
+def netToAxt(  # noqa: N802
+    net: Path, chain: Path, target: str, query: str, *, if_: bool = True
+) -> subp.Popen[bytes]:
+    target_2bit = faToTwoBit(api.genome_fa(target))
+    query_2bit = faToTwoBit(api.genome_fa(query))
+    opts = subp.optargs(config["netToAxt"], "-")
+    args = ["netToAxt", *opts, net, chain, target_2bit, query_2bit, "stdout"]
+    return subp.popen(args, stdout=subp.PIPE, if_=if_)
+
+
+def axtToMaf(  # noqa: N802
+    stdin: subp.FILE, target: str, query: str, sing_maf: Path, *, if_: bool = True
+) -> subp.Popen[bytes]:
+    opts = [f"-tPrefix={api.shorten(target)}.", f"-qPrefix={api.shorten(query)}."]
+    args = ["axtToMaf", *opts, "stdin", api.fasize(target), api.fasize(query), sing_maf]
+    return subp.popen(args, stdin=stdin, if_=if_)
 
 
 def chain_net_filter(file: Path, **kwargs: str) -> bytes:

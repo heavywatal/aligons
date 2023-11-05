@@ -66,7 +66,7 @@ def test_subp_log(caplog: pytest.LogCaptureFixture):
     assert cmd in caplog.text
 
 
-def test_optjoin():
+def test_optargs():
     values = {
         "key": "value",
         "zero": 0,
@@ -75,9 +75,10 @@ def test_optjoin():
         "false": False,
         "none": None,
     }
-    assert subp.optjoin(ConfDict(values)) == " --key=value --zero=0 --one=1 --true"
-    assert subp.optjoin(ConfDict({"key": "value"}), "-") == " -key=value"
-    assert not subp.optjoin(empty_options)
+    expected = ["--key=value", "--zero=0", "--one=1", "--true"]
+    assert subp.optargs(ConfDict(values)) == expected
+    assert subp.optargs(ConfDict({"key": "value"}), "-") == ["-key=value"]
+    assert not subp.optargs(empty_options)
 
 
 def test_open(tmp_path: Path):

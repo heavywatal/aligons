@@ -3,7 +3,7 @@ import os
 import re
 import shlex
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from subprocess import PIPE, CompletedProcess, Popen
 from typing import IO, Any, Final, TypeAlias
@@ -13,7 +13,7 @@ from . import ConfDict, cli
 StrPath: TypeAlias = str | Path
 Args: TypeAlias = list[StrPath]
 _CMD: TypeAlias = Sequence[StrPath] | str
-_FILE: TypeAlias = IO[Any] | int | None
+FILE: TypeAlias = IO[Any] | int | None
 
 CalledProcessError = subprocess.CalledProcessError
 STDOUT: Final = subprocess.STDOUT
@@ -26,8 +26,8 @@ def popen(  # noqa: PLR0913
     *,
     if_: bool = True,
     executable: StrPath | None = None,
-    stdin: _FILE = None,
-    stdout: _FILE = None,
+    stdin: FILE = None,
+    stdout: FILE = None,
     shell: bool = False,
     quiet: bool = False,
 ):  # kwargs hinders type inference of output type [str | bytes]
@@ -50,10 +50,10 @@ def run(  # noqa: PLR0913
     *,
     if_: bool = True,
     executable: StrPath | None = None,
-    stdin: _FILE = None,
+    stdin: FILE = None,
     input: bytes | None = None,  # noqa: A002
-    stdout: _FILE = None,
-    stderr: _FILE = None,
+    stdout: FILE = None,
+    stderr: FILE = None,
     shell: bool = False,
     cwd: Path | None = None,
     text: bool | None = None,
@@ -93,16 +93,18 @@ def prepare_args(args: _CMD, *, if_: bool):
     return (args, cmd)
 
 
-def optjoin(values: ConfDict, prefix: str = "--") -> str:
-    return "".join([optstr(k, v, prefix) for k, v in values.items()])
+def optargs(conf: ConfDict, prefix: str = "--") -> list[str]:
+    return list(_iter_optargs(conf, prefix))
 
 
-def optstr(key: str, value: Any, prefix: str = "--") -> str:
-    if value is None or value is False:
-        return ""
-    if value is True:
-        return f" {prefix}{key}"
-    return f" {prefix}{key}={value}"
+def _iter_optargs(conf: ConfDict, prefix: str = "--") -> Iterator[str]:
+    for key, value in conf.items():
+        if value is None or value is False:
+            continue
+        if value is True:
+            yield f"{prefix}{key}"
+        else:
+            yield f"{prefix}{key}={value}"
 
 
 def open_(file: Path, mode: str, *, if_: bool = True) -> IO[Any]:
@@ -111,7 +113,7 @@ def open_(file: Path, mode: str, *, if_: bool = True) -> IO[Any]:
     return file.open(mode)
 
 
-def gzip(data: _FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
+def gzip(data: FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
     assert outfile.suffix == ".gz", outfile
     args = ["zstd", "--format=gzip", "-T2"]
     if_ = if_ and bool(data)
@@ -123,12 +125,12 @@ def gzip(data: _FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
     return outfile
 
 
-def popen_zcat(infile: Path, stdout: _FILE = PIPE, *, if_: bool = True) -> Popen[bytes]:
+def popen_zcat(infile: Path, stdout: FILE = PIPE, *, if_: bool = True) -> Popen[bytes]:
     return popen(_zcat_args(infile), stdout=stdout, if_=if_)
 
 
 def run_zcat(
-    infile: Path, stdout: _FILE = PIPE, *, if_: bool = True
+    infile: Path, stdout: FILE = PIPE, *, if_: bool = True
 ) -> CompletedProcess[bytes]:
     return run(_zcat_args(infile), stdout=stdout, if_=if_)
 

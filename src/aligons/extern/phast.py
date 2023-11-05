@@ -44,12 +44,11 @@ def phastCons(  # noqa: N802
 ) -> Path:
     maf = str(path / "multiz.maf")
     seqname = path.name.split(".", 1)[1]  # remove "chromosome."
-    cmd = "phastCons"
-    cmd += subp.optjoin(options)
-    cmd += f" --seqname {seqname} --msa-format MAF {maf} {cons_mod},{noncons_mod}"
+    opts = [*subp.optargs(options), "--seqname", seqname, "--msa-format", "MAF"]
+    args = ["phastCons", *opts, maf, f"{cons_mod},{noncons_mod}"]
     wig = path / "phastcons.wig.gz"
     is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
-    with subp.popen(cmd, stdout=subp.PIPE, if_=is_to_run) as p:
+    with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
         subp.gzip(p.stdout, wig, if_=is_to_run)
     if wig.exists():
         print(wig)

@@ -83,10 +83,9 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:
     if not cli.dry_run:
         subdir.mkdir(0o755, exist_ok=True)
     axtgz = subdir / f"{query_label}.axt.gz"
-    cmd = f"lastz {t2bit} {q2bit} --format=axt"
-    cmd += subp.optjoin(config["lastz"])
+    args = ["lastz", t2bit, q2bit, "--format=axt", *subp.optargs(config["lastz"])]
     is_to_run = fs.is_outdated(axtgz, [t2bit, q2bit])
-    with subp.popen(cmd, stdout=subp.PIPE, if_=is_to_run) as p:
+    with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
         return subp.gzip(p.stdout, axtgz, if_=is_to_run)
 
 
