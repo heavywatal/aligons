@@ -1,8 +1,8 @@
 """https://plants.ensembl.org/.
 
-- {db.mirror}/ensemblgenomes.org/plants/release-{version}/
-  - fasta/{species}/dna/{stem}.dna_sm.chromosome.{seqid}.fa.gz
-  - gff3/{species}/
+- {db.root}/ftp.ensemblgenomes.org/pub/plants/release-{version}/
+  - fasta/{species}/dna/{stem}.{version}.dna_sm.chromosome.{seqid}.fa.gz
+  - gff3/{species}/{stem}.{version}.chromosome.{seqid}.gff3.gz
   - maf/ensembl-compara/pairwise_alignments/
 """
 import logging
@@ -16,6 +16,7 @@ from aligons.util import cli, config, dl, fs, subp
 from . import _rsrc, api, phylo, tools
 
 _log = logging.getLogger(__name__)
+_HOST = "ftp.ensemblgenomes.org"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -41,8 +42,8 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def _list_versions() -> Iterable[Path]:
-    _log.debug(f"{_prefix_mirror_root()=}")
-    return _prefix_mirror_root().glob("release-*")
+    _log.debug(f"{_prefix_mirror()=}")
+    return _prefix_mirror().parent.glob("release-*")
 
 
 def download_compara(species: str):
@@ -142,8 +143,8 @@ def _ln_or_bgzip(src: Path, species: str) -> Path:
 class FTPensemblgenomes(dl.LazyFTP):
     def __init__(self) -> None:
         super().__init__(
-            "ftp.ensemblgenomes.org",
-            f"/pub/plants/release-{version()}",
+            _HOST,
+            f"/{_relpath_release()}",
             _prefix_mirror(),
         )
 
@@ -219,8 +220,7 @@ def download_via_rsync(species: list[str]):
 
 
 def rsync(relpath: str, options: str = "") -> subp.CompletedProcess[bytes]:
-    server = "ftp.ensemblgenomes.org"
-    remote_prefix = f"rsync://{server}/all/pub/plants/release-{version()}"
+    remote_prefix = f"rsync://{_HOST}/all/{_relpath_release()}"
     src = f"{remote_prefix}/{relpath}/"
     dst = _prefix_mirror() / relpath
     return subp.run(f"rsync -auv {options} {src} {dst}")
@@ -231,11 +231,11 @@ def prefix() -> Path:
 
 
 def _prefix_mirror() -> Path:
-    return _prefix_mirror_root() / f"release-{version()}"
+    return _rsrc.db_root(_HOST) / _relpath_release()
 
 
-def _prefix_mirror_root() -> Path:
-    return _rsrc.db_root("ensemblgenomes.org/plants")
+def _relpath_release() -> Path:
+    return Path(f"pub/plants/release-{version()}")
 
 
 def version() -> int:
