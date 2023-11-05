@@ -3,18 +3,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: '3.x'
+        cache: 'pip'
     - name: Install dependencies
       run: python -m pip install -U pip
     - name: Install this
       run: python -m pip install -U .[dev]
-    - name: pytest
+    - name: lint
+      run: python -m ruff check .
+    - name: format
+      run: python -m ruff format --diff .
+    - name: test
       run: python -m pytest --cov --cov-report=xml
-    - uses: chartboost/ruff-action@v1
-    - uses: psf/black@stable
     - uses: codecov/codecov-action@v3
       with:
         files: ./coverage.xml
