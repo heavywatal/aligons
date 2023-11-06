@@ -199,26 +199,13 @@ class JBrowseConfig:
         jbrowse(args)
 
     def configure(self) -> None:
-        chrom_sizes = api.chrom_sizes(self.target.name)
         config_json = self.target / "config.json"
         with config_json.open() as fin:
             cfg = json.load(fin)
         assembly = cfg["assemblies"][0]
         session = cfg["defaultSession"]
         view = session["views"][0]
-        chrom = "6"
-        start = 27475500
-        view["bpPerPx"] = 5.0
-        view["offsetPx"] = int(start / view["bpPerPx"])
-        view["displayedRegions"] = [
-            {
-                "refName": chrom,
-                "start": 0,
-                "end": chrom_sizes[chrom],
-                "reversed": False,
-                "assemblyName": assembly["name"],
-            },
-        ]
+        self.set_displayed_regions(view, assembly["name"])
         for track in view["tracks"]:
             track["displays"] = [make_display(track)]
         if refnamealiases := self.make_refnamealiases():
@@ -226,6 +213,22 @@ class JBrowseConfig:
         cfg["configuration"] = make_configuration()
         with config_json.open("w") as fout:
             json.dump(cfg, fout, indent=2)
+
+    def set_displayed_regions(self, view: dict[str, Any], asm_name: str) -> None:
+        chrom_sizes = api.chrom_sizes(self.target.name)
+        asm_conf = find_config_assembly(self.target.name)
+        chrom = asm_conf["chromosome"]
+        view["bpPerPx"] = asm_conf["bpPerPx"]
+        view["offsetPx"] = int(asm_conf["start"] / view["bpPerPx"])
+        view["displayedRegions"] = [
+            {
+                "refName": chrom,
+                "start": 0,
+                "end": chrom_sizes[chrom],
+                "reversed": False,
+                "assemblyName": asm_name,
+            },
+        ]
 
     def make_refnamealiases(self):
         species = self.target.name
@@ -326,6 +329,14 @@ def iter_targets(path: Path) -> Iterable[Path]:
 def redirect_html(url: str) -> str:
     meta = f"""<meta http-equiv="refresh" content="1; URL={url}">"""
     return f"""<html><head>{meta}</head><body>Redirecting</body></html>"""
+
+
+def find_config_assembly(species: str) -> dict[str, Any]:
+    for entry in config["jbrowse"]["assemblies"]:
+        if entry["species"] == species:
+            return entry
+    msg = f"{species} not in jbrowse.assemblies"
+    raise ValueError(msg)
 
 
 if __name__ == "__main__":
