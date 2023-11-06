@@ -140,7 +140,10 @@ def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
             with subp.popen_zcat(infile) as zcat:
                 if any(s in (".gff", ".gff3") for s in outfile.suffixes):
                     assert zcat.stdout is not None
-                    content, _ = zcat.communicate()
+                    if infile.name.startswith("PGSC_DM_V403"):
+                        content = clean_seqid_pgsc(zcat.stdout)
+                    else:
+                        content, _ = zcat.communicate()
                     content = gff.sort(content)
                     htslib.bgzip(content, outfile)
                 else:
@@ -160,6 +163,10 @@ def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
 
 def concat_bgzip(responses: Iterable[dl.Response], outfile: Path) -> Path:
     return htslib.concat_bgzip([res.path for res in responses], outfile)
+
+
+def clean_seqid_pgsc(stdin: subp.FILE) -> bytes:
+    return subp.run(["sed", "s/^ST4.03ch/chr/"], stdin=stdin, stdout=subp.PIPE).stdout
 
 
 if __name__ == "__main__":
