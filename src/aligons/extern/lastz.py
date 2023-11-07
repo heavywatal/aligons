@@ -7,6 +7,7 @@ https://lastz.github.io/lastz/
 """
 import concurrent.futures as confu
 import logging
+from collections.abc import Iterator
 from pathlib import Path
 
 from aligons.db import api
@@ -47,19 +48,17 @@ class PairwiseAlignment:
         pool = cli.ThreadPool()
         if not cli.dry_run:
             self._outdir.mkdir(0o755, parents=True, exist_ok=True)
-        target_chromosomes = api.list_chromosome_fa(self._target)
-        query_chromosomes = api.list_chromosome_fa(self._query)
+        target_chromosomes = list(iter_chromosome_2bit(self._target))
+        query_chromosomes = list(iter_chromosome_2bit(self._query))
         flists: list[list[confu.Future[Path]]] = [
             [pool.submit(self.align_chr, t, q) for q in query_chromosomes]
             for t in target_chromosomes
         ]
         return [pool.submit(self.wait_integrate, futures) for futures in flists]
 
-    def align_chr(self, target_fa: Path, query_fa: Path) -> Path:
-        t2bit = kent.faToTwoBit(target_fa)
-        q2bit = kent.faToTwoBit(query_fa)
-        axtgz = lastz(t2bit, q2bit, self._outdir)
-        return kent.axt_chain(t2bit, q2bit, axtgz)
+    def align_chr(self, target_2bit: Path, query_2bit: Path) -> Path:
+        axtgz = lastz(target_2bit, query_2bit, self._outdir)
+        return kent.axt_chain(target_2bit, query_2bit, axtgz)
 
     def wait_integrate(self, futures: list[confu.Future[Path]]) -> Path:
         return self.integrate([f.result() for f in futures])
@@ -87,6 +86,14 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:
     is_to_run = fs.is_outdated(axtgz, [t2bit, q2bit])
     with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
         return subp.gzip(p.stdout, axtgz, if_=is_to_run)
+
+
+def iter_chromosome_2bit(species: str) -> Iterator[Path]:
+    fts = [
+        cli.thread_submit(kent.faToTwoBit, f) for f in api.list_chromosome_fa(species)
+    ]
+    for future in fts:
+        yield future.result()
 
 
 if __name__ == "__main__":
