@@ -108,7 +108,7 @@ def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path) -
     is_to_run = fs.is_outdated(syntenic_net, pre_chain)
     cn_args = ["chainNet", *subp.optargs(config["chainNet"], "-")]
     cn_args += ["stdin", target_sizes, query_sizes, "stdout", "/dev/null"]
-    ns_args = ["netSyntenic", "stdin", "syntenic_net"]
+    ns_args = ["netSyntenic", "stdin", syntenic_net]
     with (
         subp.popen_zcat(pre_chain, if_=is_to_run) as zcat,
         subp.popen(cn_args, stdin=zcat.stdout, stdout=subp.PIPE, if_=is_to_run) as cn,
