@@ -116,14 +116,17 @@ def readlines_compara_maf(file: Path) -> Iterable[str]:
 def download_via_ftp(species: list[str]) -> None:
     with FTPensemblgenomes() as ftp:
         species = ftp.remove_unavailable(species)
-        futures: list[cli.FuturePath] = []
+        fasizes: list[cli.FuturePath] = []
         for sp in species:
             fasta_originals = ftp.download_chr_sm_fasta(sp)
             fasta_copies = [_ln_or_bgzip(x, sp) for x in fasta_originals]
-            futures.append(tools.index_fasta(fasta_copies))
+            fasizes.append(tools.index_fasta(fasta_copies))
+        futures: list[cli.FuturePath] = []
+        for sp, future in zip(species, fasizes, strict=True):
             gff3_originals = ftp.download_chr_gff3(sp)
             gff3_copies = [_ln_or_bgzip(x, sp) for x in gff3_originals]
-            futures.append(tools.index_gff3(gff3_copies))
+            fasize = future.result()
+            futures.append(tools.index_gff3(gff3_copies, fasize))
         cli.wait_raise(futures)
     if config["db"]["kmer"]:
         cli.wait_raise([tools.softmask(sp) for sp in species])

@@ -88,7 +88,7 @@ def index_gff3(paths: list[Path], fasize: Path | None = None) -> cli.FuturePath:
     if len(paths) == 1:
         if "chromosome" in paths[0].name:
             _log.warning(f"splitting chromosome? {paths[0]}")
-        assert fasize is not None
+        assert fasize is not None, paths
         paths = gff.split_with_fasize(paths[0], fasize)
     return cli.thread_submit(_create_genome_bgzip, paths)
 
