@@ -143,8 +143,8 @@ def make_newick() -> str:
     return f"({eudicots},{monocot})angiospermae"
 
 
-def list_species(clade: str = "angiospermae") -> list[str]:
-    return extract_names(get_subtree([clade]))
+def list_species(clade: str = "") -> list[str]:
+    return extract_names(get_subtree([clade] if clade else []))
 
 
 def expand_shortnames(shortnames: list[str]) -> Iterator[str]:
