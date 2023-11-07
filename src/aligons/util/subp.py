@@ -119,20 +119,20 @@ def gzip(data: FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
     if_ = if_ and bool(data)
     with open_(outfile, "wb", if_=if_) as fout:
         if isinstance(data, bytes):
-            run(args, input=data, stdout=fout, if_=if_)
+            run(args, input=data, stdout=fout, if_=if_, quiet=True)
         else:
-            run(args, stdin=data, stdout=fout, if_=if_)
+            run(args, stdin=data, stdout=fout, if_=if_, quiet=True)
     return outfile
 
 
 def popen_zcat(infile: Path, stdout: FILE = PIPE, *, if_: bool = True) -> Popen[bytes]:
-    return popen(_zcat_args(infile), stdout=stdout, if_=if_)
+    return popen(_zcat_args(infile), stdout=stdout, if_=if_, quiet=True)
 
 
 def run_zcat(
     infile: Path, stdout: FILE = PIPE, *, if_: bool = True
 ) -> CompletedProcess[bytes]:
-    return run(_zcat_args(infile), stdout=stdout, if_=if_)
+    return run(_zcat_args(infile), stdout=stdout, if_=if_, quiet=True)
 
 
 def _zcat_args(infile: Path):
