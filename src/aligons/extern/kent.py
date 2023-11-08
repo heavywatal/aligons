@@ -149,15 +149,14 @@ def axtToMaf(  # noqa: N802
     return subp.popen(args, stdin=stdin, if_=if_)
 
 
-def chain_net_filter(file: Path, **kwargs: str) -> bytes:
+def chain_net_filter(file: Path, **kwargs: str) -> subp.Popen[bytes]:
     options = [f"-{k}={v}".removesuffix("=True") for k, v in kwargs.items()]
     if file.name.removesuffix(".gz").endswith(".net"):
         program = "netFilter"
     else:
         program = "chainFilter"
     cmd = [program, *options, file]
-    p = subp.run(cmd, stdout=subp.PIPE)
-    return p.stdout
+    return subp.popen(cmd, stdout=subp.PIPE)
 
 
 def _gunzip(infile: Path, *, if_: bool = True) -> Path:

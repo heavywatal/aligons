@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from aligons.extern import htslib, kent, mafs2cram
-from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
+from aligons.util import cli, dl, fs, resources_data, subp, tomli_w, tomllib
 
 from . import _rsrc, api, jgi, tools
 
@@ -226,39 +226,40 @@ class FTPplantregmap(dl.LazyFTP):
         outdir = db_prefix() / species / "compara"
         if re.match(r"Osj_Hvu\.(chain|net)\.gz", orig.name):
             return sanitize_hvu_chainnet(orig, outdir / orig.name)
+        if re.match(r"Osj_Obr\.(chain|net)\.gz", orig.name):
+            return sanitize_obr_chainnet(orig, outdir / orig.name)
+        if re.match(r"Osj_Ogl\.(chain|net)\.gz", orig.name):
+            return sanitize_ogl_chainnet(orig, outdir / orig.name)
         return fs.symlink(orig, outdir / orig.name, relative=True)
 
 
 def sanitize_hvu_chainnet(infile: Path, outfile: Path) -> Path:
     if not fs.is_outdated(outfile, infile):
         return outfile
-    notq = [
-        "morex_contig_137999",
-        "morex_contig_1587688",
-        "morex_contig_159532",
-        "morex_contig_164803",
-        "morex_contig_244380",
-        "morex_contig_2549682",
-        "morex_contig_41360",
-        "morex_contig_41603",
-        "morex_contig_42365",
-        "morex_contig_43017",
-        "morex_contig_43925",
-        "morex_contig_44379",
-        "morex_contig_61860",
-        "morex_contig_68624",
-        "morex_contig_68638",
-        "morex_contig_68864",
-        "morex_contig_70023",
-        "morex_contig_70567",
-        "morex_contig_70976",
-        "morex_contig_71199",
-        "morex_contig_72677",
-        "morex_contig_73216",
-    ]
-    content = kent.chain_net_filter(infile, notQ=",".join(notq))
+    text = resources_data("plantregmap/osj_obr").read_text()
+    notq = text.splitlines()
+    filter = kent.chain_net_filter(infile, notQ=",".join(notq))
+    content, _ = filter.communicate()
     content = content.replace(b"_unordered", b"")
     return subp.gzip(content, outfile)
+
+
+def sanitize_obr_chainnet(infile: Path, outfile: Path) -> Path:
+    if not fs.is_outdated(outfile, infile):
+        return outfile
+    text = resources_data("plantregmap/osj_obr").read_text()
+    notq = text.splitlines()
+    filter = kent.chain_net_filter(infile, notQ=",".join(notq))
+    return subp.gzip(filter.stdout, outfile)
+
+
+def sanitize_ogl_chainnet(infile: Path, outfile: Path) -> Path:
+    if not fs.is_outdated(outfile, infile):
+        return outfile
+    text = resources_data("plantregmap/osj_ogl").read_text()
+    notq = text.splitlines()
+    filter = kent.chain_net_filter(infile, notQ=",".join(notq))
+    return subp.gzip(filter.stdout, outfile)
 
 
 if __name__ == "__main__":
