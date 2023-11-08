@@ -238,8 +238,8 @@ def sanitize_hvu_chainnet(infile: Path, outfile: Path) -> Path:
         return outfile
     text = resources_data("plantregmap/osj_obr").read_text()
     notq = text.splitlines()
-    filter = kent.chain_net_filter(infile, notQ=",".join(notq))
-    content, _ = filter.communicate()
+    filter_ = kent.chain_net_filter(infile, notQ=",".join(notq))
+    content, _ = filter_.communicate()
     content = content.replace(b"_unordered", b"")
     return subp.gzip(content, outfile)
 
@@ -249,8 +249,8 @@ def sanitize_obr_chainnet(infile: Path, outfile: Path) -> Path:
         return outfile
     text = resources_data("plantregmap/osj_obr").read_text()
     notq = text.splitlines()
-    filter = kent.chain_net_filter(infile, notQ=",".join(notq))
-    return subp.gzip(filter.stdout, outfile)
+    filter_ = kent.chain_net_filter(infile, notQ=",".join(notq))
+    return subp.gzip(filter_.stdout, outfile)
 
 
 def sanitize_ogl_chainnet(infile: Path, outfile: Path) -> Path:
@@ -258,8 +258,8 @@ def sanitize_ogl_chainnet(infile: Path, outfile: Path) -> Path:
         return outfile
     text = resources_data("plantregmap/osj_ogl").read_text()
     notq = text.splitlines()
-    filter = kent.chain_net_filter(infile, notQ=",".join(notq))
-    return subp.gzip(filter.stdout, outfile)
+    filter_ = kent.chain_net_filter(infile, notQ=",".join(notq))
+    return subp.gzip(filter_.stdout, outfile)
 
 
 if __name__ == "__main__":
