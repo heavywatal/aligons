@@ -98,7 +98,7 @@ def _block_to_bed(block: bytes) -> str:
         )
         .select(["seqid", "start", "end", "name", "score", "strand"])
         .sort("start")
-        .write_csv(separator="\t", has_header=False)
+        .write_csv(separator="\t", include_header=False)
     )
 
 

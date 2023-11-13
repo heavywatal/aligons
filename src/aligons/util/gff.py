@@ -51,7 +51,7 @@ def split_with_hint(path: Path, regions: dict[str, str]) -> list[Path]:
         with gzip.open(outfile, "wt") as fout:
             fout.write("##gff-version 3\n")
             fout.write(seq_region)
-            fout.write(data.write_csv(has_header=False, separator="\t"))
+            fout.write(data.write_csv(include_header=False, separator="\t"))
     return files
 
 
@@ -103,7 +103,7 @@ def _sort_body(content: bytes) -> bytes:
         _read_body(content)
         .filter(pl.col("start") < pl.col("end"))  # SL2.40: end 338074 < begin 338105
         .sort(["seqid", "start"])
-        .write_csv(bio, has_header=False, separator="\t")
+        .write_csv(bio, include_header=False, separator="\t")
     )
     return bio.getvalue()
 
