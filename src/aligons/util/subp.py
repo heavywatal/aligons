@@ -3,12 +3,12 @@ import os
 import re
 import shlex
 import subprocess
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from subprocess import PIPE, CompletedProcess, Popen
 from typing import IO, Any, Final, TypeAlias
 
-from . import ConfDict, cli
+from . import cli
 
 StrPath: TypeAlias = str | Path
 Args: TypeAlias = list[StrPath]
@@ -93,11 +93,11 @@ def prepare_args(args: _CMD, *, if_: bool):
     return (args, cmd)
 
 
-def optargs(conf: ConfDict, prefix: str = "--") -> list[str]:
+def optargs(conf: Mapping[str, Any], prefix: str = "--") -> list[str]:
     return list(_iter_optargs(conf, prefix))
 
 
-def _iter_optargs(conf: ConfDict, prefix: str = "--") -> Iterator[str]:
+def _iter_optargs(conf: Mapping[str, Any], prefix: str = "--") -> Iterator[str]:
     for key, value in conf.items():
         if value is None or value is False:
             continue
