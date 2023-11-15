@@ -242,7 +242,7 @@ def filter_chr_chainnet(infile: Path, outfile: Path, remove: str = "") -> Path:
     popen_filter = kent.netFilter if filename.endswith(".net") else kent.chainFilter
     with (
         subp.popen_zcat(infile) as zcat,
-        subp.popen_sd(zcat.stdout, remove) as sd,
+        subp.popen_sd(remove, stdin=zcat.stdout) as sd,
         popen_filter(stdin=sd.stdout, q=",".join(qseqs)) as pfilter,
     ):
         return subp.gzip(pfilter.stdout, outfile)

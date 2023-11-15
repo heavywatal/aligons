@@ -141,7 +141,9 @@ def _zcat_args(infile: Path) -> Args:
     return ["zstdcat", "-T2", infile]
 
 
-def popen_sd(stdin: FILE, pattern: str, repl: str = "") -> Popen[bytes]:
+def popen_sd(
+    pattern: str, repl: str = "", *, stdin: FILE = PIPE, stdout: FILE = PIPE
+) -> Popen[bytes]:
     if pattern:
-        return popen(["sd", pattern, repl], stdin=stdin, stdout=PIPE)
+        return popen(["sd", pattern, repl], stdin=stdin, stdout=stdout)
     return popen(["cat"], stdin=stdin, stdout=PIPE, quiet=True)

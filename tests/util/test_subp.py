@@ -104,7 +104,26 @@ def test_gzip(tmp_path: Path):
     with gzip.open(hello_gz, "rb") as fin:
         assert fin.read() == content
     hello_gz.unlink()
-    with subp.popen(["echo", "hello"], stdout=subp.PIPE) as hello:
-        subp.gzip(hello.stdout, hello_gz)
+    with subp.popen(hello, stdout=subp.PIPE) as phello:
+        subp.gzip(phello.stdout, hello_gz)
     with gzip.open(hello_gz, "rt") as fin:
         assert fin.read().startswith("hello")
+
+
+def test_sd():
+    try:
+        subp.run(["sd", "--version"], stdout=subp.subprocess.DEVNULL)
+    except FileNotFoundError as e:
+        pytest.skip(e.strerror)
+    with (
+        subp.popen(hello, stdout=subp.PIPE) as phello,
+        subp.popen_sd("$", "ween", stdin=phello.stdout) as sd,
+    ):
+        result, _ = sd.communicate()
+    assert result == b"helloween"
+    with (
+        subp.popen(hello, stdout=subp.PIPE) as phello,
+        subp.popen_sd("", stdin=phello.stdout) as sd,
+    ):
+        result, _ = sd.communicate()
+    assert result == b"hello"

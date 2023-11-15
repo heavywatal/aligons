@@ -166,7 +166,7 @@ def concat_bgzip(responses: Iterable[dl.Response], outfile: Path) -> Path:
 
 
 def clean_seqid_pgsc(stdin: subp.FILE) -> bytes:
-    return subp.run(["sed", "s/^ST4.03ch/chr/"], stdin=stdin, stdout=subp.PIPE).stdout
+    return subp.popen_sd("^ST4.03ch", "chr", stdin=stdin).communicate()[0]
 
 
 if __name__ == "__main__":
