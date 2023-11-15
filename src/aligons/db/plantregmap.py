@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from aligons.extern import htslib, kent, mafs2cram
-from aligons.util import cli, dl, fs, resources_data, subp, tomli_w, tomllib
+from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
 
 from . import _rsrc, api, jgi, tools
 
@@ -225,41 +225,27 @@ class FTPplantregmap(dl.LazyFTP):
         orig = self.retrieve(relpath, checksize=True)
         outdir = db_prefix() / species / "compara"
         if re.match(r"Osj_Hvu\.(chain|net)\.gz", orig.name):
-            return sanitize_hvu_chainnet(orig, outdir / orig.name)
-        if re.match(r"Osj_Obr\.(chain|net)\.gz", orig.name):
-            return sanitize_obr_chainnet(orig, outdir / orig.name)
-        if re.match(r"Osj_Ogl\.(chain|net)\.gz", orig.name):
-            return sanitize_ogl_chainnet(orig, outdir / orig.name)
+            return filter_chr_chainnet(orig, outdir / orig.name, "_unordered")
+        if re.match(r"Osj_(Obr|Obl)\.(chain|net)\.gz", orig.name):
+            return filter_chr_chainnet(orig, outdir / orig.name)
         return fs.symlink(orig, outdir / orig.name, relative=True)
 
 
-def sanitize_hvu_chainnet(infile: Path, outfile: Path) -> Path:
+def filter_chr_chainnet(infile: Path, outfile: Path, remove: str = "") -> Path:
     if not fs.is_outdated(outfile, infile):
         return outfile
-    text = resources_data("plantregmap/osj_obr").read_text()
-    notq = text.splitlines()
-    filter_ = kent.chain_net_filter(infile, notQ=",".join(notq))
-    content, _ = filter_.communicate()
-    content = content.replace(b"_unordered", b"")
-    return subp.gzip(content, outfile)
-
-
-def sanitize_obr_chainnet(infile: Path, outfile: Path) -> Path:
-    if not fs.is_outdated(outfile, infile):
-        return outfile
-    text = resources_data("plantregmap/osj_obr").read_text()
-    notq = text.splitlines()
-    filter_ = kent.chain_net_filter(infile, notQ=",".join(notq))
-    return subp.gzip(filter_.stdout, outfile)
-
-
-def sanitize_ogl_chainnet(infile: Path, outfile: Path) -> Path:
-    if not fs.is_outdated(outfile, infile):
-        return outfile
-    text = resources_data("plantregmap/osj_ogl").read_text()
-    notq = text.splitlines()
-    filter_ = kent.chain_net_filter(infile, notQ=",".join(notq))
-    return subp.gzip(filter_.stdout, outfile)
+    filename = infile.name.removesuffix(".gz")
+    stem = Path(filename).stem
+    _target, query = stem.split("_")
+    qspecies = lengthen(query)
+    qseqs = api.chrom_sizes(qspecies).keys()
+    popen_filter = kent.netFilter if filename.endswith(".net") else kent.chainFilter
+    with (
+        subp.popen_zcat(infile) as zcat,
+        subp.popen_sd(zcat.stdout, remove) as sd,
+        popen_filter(stdin=sd.stdout, q=",".join(qseqs)) as pfilter,
+    ):
+        return subp.gzip(pfilter.stdout, outfile)
 
 
 if __name__ == "__main__":

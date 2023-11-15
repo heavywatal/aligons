@@ -135,7 +135,13 @@ def run_zcat(
     return run(_zcat_args(infile), stdout=stdout, if_=if_, quiet=True)
 
 
-def _zcat_args(infile: Path):
+def _zcat_args(infile: Path) -> Args:
     if infile.suffix == ".zip":
         return ["unzip", "-p", infile]
     return ["zstdcat", "-T2", infile]
+
+
+def popen_sd(stdin: FILE, pattern: str, repl: str = "") -> Popen[bytes]:
+    if pattern:
+        return popen(["sd", pattern, repl], stdin=stdin, stdout=PIPE)
+    return popen(["cat"], stdin=stdin, stdout=PIPE, quiet=True)

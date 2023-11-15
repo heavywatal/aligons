@@ -5,6 +5,7 @@ dst: ./multiple/{target}/{clade}/phastcons.bw
 
 https://github.com/ucscGenomeBrowser/kent
 """
+import functools
 import logging
 import os
 import re
@@ -147,6 +148,15 @@ def axtToMaf(  # noqa: N802
     opts = [f"-tPrefix={api.shorten(target)}.", f"-qPrefix={api.shorten(query)}."]
     args = ["axtToMaf", *opts, "stdin", api.fasize(target), api.fasize(query), sing_maf]
     return subp.popen(args, stdin=stdin, if_=if_)
+
+
+def _popen(args: subp.Args, stdin: subp.FILE, **kwargs: str) -> subp.Popen[bytes]:
+    opts = subp.optargs(kwargs, "-")
+    return subp.popen([*args, *opts], stdin=stdin, stdout=subp.PIPE)
+
+
+netFilter = functools.partial(_popen, ["netFilter", "stdin"])  # noqa: N816
+chainFilter = functools.partial(_popen, ["chainFilter", "stdin"])  # noqa: N816
 
 
 def chain_net_filter(file: Path, **kwargs: str) -> subp.Popen[bytes]:
