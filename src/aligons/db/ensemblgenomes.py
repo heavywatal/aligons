@@ -51,27 +51,22 @@ def download_compara(species: str):
     with FTPensemblgenomes() as ftp:
         dirs = ftp.download_maf(species)
     pool = cli.ThreadPool()
-    fts = [pool.submit(consolidate_compara_mafs, d) for d in dirs]
+    fts = [pool.submit(_consolidate_compara_mafs, d) for d in dirs]
     cli.wait_raise(fts)
 
 
-def consolidate_compara_mafs(indir: Path) -> Path:
+def _consolidate_compara_mafs(indir: Path) -> Path:
     _log.debug(f"{indir=}")
     mobj = re.search(r"([^_]+)_.+?\.v\.([^_]+)", indir.name)
     assert mobj, indir.name
     target_short = mobj.group(1)
     query_short = mobj.group(2)
-    target = next(phylo.expand_shortnames([target_short]))
-    query = next(phylo.expand_shortnames([query_short]))
-    outdir = Path("compara") / target / query
-    pat = re.compile(r"lastz_net\.([^_]+)_\d+\.maf$")
-    infiles_by_seq: dict[str, list[Path]] = {}
-    for maf in fs.sorted_naturally(indir.glob("*_*.maf")):
-        mobj = pat.search(maf.name)
-        assert mobj, maf.name
-        seq = mobj.group(1)
-        infiles_by_seq.setdefault(seq, []).append(maf)
-    for seq, infiles in infiles_by_seq.items():
+    target = phylo.lengthen(target_short)
+    query = phylo.lengthen(query_short)
+    if not query:
+        return Path(os.devnull)
+    outdir = prefix() / "maf" / target / query
+    for seq, infiles in _list_mafs_by_seq(indir).items():
         if seq == "supercontig":
             continue
         chrdir = outdir / f"chromosome.{seq}"
@@ -80,22 +75,36 @@ def consolidate_compara_mafs(indir: Path) -> Path:
         _log.info(str(sing_maf))
         if not fs.is_outdated(sing_maf, infiles):
             continue
-        lines: list[str] = ["##maf version=1 scoring=LASTZ_NET\n"]
-        for maf in infiles:
-            lines.extend(readlines_compara_maf(maf))
         with (
-            sing_maf.open("wb") as fout,
-            subp.popen("mafFilter stdin", stdin=subp.PIPE, stdout=fout) as maff,
+            subp.popen_sd(target, target_short) as tsd,
+            subp.popen_sd(query, query_short, stdin=tsd.stdout) as qsd,
+            subp.open_(sing_maf, "wb") as fout,
+            subp.popen(["mafFilter", "stdin"], stdin=qsd.stdout, stdout=fout) as maff,
         ):
-            sed = f"sed -e 's/{target}/{target_short}/' -e 's/{query}/{query_short}/'"
-            subp.run(sed, input="".join(lines).encode(), stdout=maff.stdin)
+            assert tsd.stdin
+            tsd.stdin.write(b"##maf version=1 scoring=LASTZ_NET\n")
+            for maf in infiles:
+                _log.debug(f"{maf}")
+                tsd.stdin.writelines(_readlines_compara_maf(maf))
+            tsd.stdin.close()
             maff.communicate()
             # for padding, not for filtering
     _log.info(f"{outdir}")
     return outdir
 
 
-def readlines_compara_maf(file: Path) -> Iterable[str]:
+def _list_mafs_by_seq(indir: Path) -> dict[str, list[Path]]:
+    pat = re.compile(r"lastz_net\.([^_]+)_\d+\.maf$")
+    infiles_by_seq: dict[str, list[Path]] = {}
+    for maf in fs.sorted_naturally(indir.glob("*_*.maf")):
+        mobj = pat.search(maf.name)
+        assert mobj, maf.name
+        seq = mobj.group(1)
+        infiles_by_seq.setdefault(seq, []).append(maf)
+    return infiles_by_seq
+
+
+def _readlines_compara_maf(file: Path) -> Iterable[bytes]:
     """MAF files of ensembl compara have broken "a" lines.
 
     a# id: 0000000
@@ -103,12 +112,12 @@ def readlines_compara_maf(file: Path) -> Iterable[str]:
     s aaa.1
     s bbb.1
     """
-    with file.open("r") as fin:
+    with file.open("rb") as fin:
         for line in fin:
-            if line.startswith(("#", "a#")):
+            if line.startswith((b"#", b"a#")):
                 continue
-            if line.startswith(" score"):
-                yield "a" + line
+            if line.startswith(b" score"):
+                yield b"a" + line
             else:
                 yield line
 
@@ -182,16 +191,14 @@ class FTPensemblgenomes(dl.LazyFTP):
 
     def download_maf(self, species: str) -> list[Path]:
         relpath = "maf/ensembl-compara/pairwise_alignments"
-        outdir = self.prefix / relpath
+        outdir = prefix() / relpath
         nlst = self.nlst_cache(relpath)
         sp = phylo.shorten(species)
-        for x in nlst:
-            if f"/{sp}_" in x:
-                self.retrieve(x)
+        files = [self.retrieve(x) for x in nlst if f"/{sp}_" in x]
         _log.debug(f"{outdir=}")
         dirs: list[Path] = []
-        for targz in outdir.glob("*.tar.gz"):
-            expanded = self.prefix / targz.with_suffix("").with_suffix("")
+        for targz in files:
+            expanded = outdir / targz.name.removesuffix(".tar.gz")
             tar = ["tar", "xzf", targz, "-C", outdir]
             subp.run(tar, if_=fs.is_outdated(expanded / "README.maf"))
             # TODO: MD5SUM

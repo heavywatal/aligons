@@ -147,7 +147,15 @@ def list_species(clade: str = "") -> list[str]:
     return extract_names(get_subtree([clade] if clade else []))
 
 
-def expand_shortnames(shortnames: list[str]) -> Iterator[str]:
+def lengthen(species: str) -> str:
+    try:
+        return next(_expand_shortnames([species]))
+    except StopIteration:
+        _log.warning(f"cannot expand {species = }")
+        return ""
+
+
+def _expand_shortnames(shortnames: list[str]) -> Iterator[str]:
     return _filter_by_shortname(list_species(), shortnames)
 
 
