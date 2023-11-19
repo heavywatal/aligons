@@ -64,3 +64,9 @@ species = "oryza_sativa"
 chromosome = "6"
 start = 27475500
 bpPerPx = 5.0
+
+[[jbrowse.assemblies]]
+species = "solanum_lycopersicum"
+chromosome = "3"
+start = 1404500
+bpPerPx = 5.0
