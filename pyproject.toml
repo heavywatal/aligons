@@ -45,7 +45,7 @@ ignore = [
   "ANN",  # annotation
   "T201", # print
   "S101", # assert
-  "COM",  # trailing comma
+  "COM812", # trailing comma
   "TD",   # todo
   "FIX",  # todo
 ]
