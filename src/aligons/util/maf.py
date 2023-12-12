@@ -48,7 +48,7 @@ def to_bed(maf_s: pl.DataFrame) -> pl.DataFrame:
         .rename({"field_0": "species", "field_1": "chrom"})
         .with_columns(
             pl.when(pl.col("strand") == "-")
-            .then(pl.col("fasize") - pl.col("start") - pl.col("size"))
+            .then(pl.col("fasize") - pl.col("start") - pl.col("size") + 1)
             .otherwise(pl.col("start"))
             .alias("start")
         )
