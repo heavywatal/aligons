@@ -6,14 +6,14 @@ import subprocess
 from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from subprocess import PIPE, CompletedProcess, Popen
-from typing import IO, Any, Final, TypeAlias
+from typing import IO, Any, Final
 
 from . import cli
 
-StrPath: TypeAlias = str | Path
-Args: TypeAlias = list[StrPath]
-_CMD: TypeAlias = Sequence[StrPath] | str
-FILE: TypeAlias = IO[Any] | int | None
+type StrPath = str | Path
+type Args = list[StrPath]
+type _CMD = Sequence[StrPath] | str
+type FILE = IO[Any] | int | None
 
 CalledProcessError = subprocess.CalledProcessError
 STDOUT: Final = subprocess.STDOUT

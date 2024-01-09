@@ -5,7 +5,7 @@ import logging
 import re
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from pathlib import Path
-from typing import NamedTuple, TypeAlias
+from typing import NamedTuple
 
 from aligons.util import cli, config
 
@@ -201,8 +201,8 @@ class Bricks(NamedTuple):
     blank: str = "  "
 
 
-StrGen: TypeAlias = Iterator[str]
-GraphGen: TypeAlias = Iterable[tuple[str, str]]
+type StrGen = Iterator[str]
+type GraphGen = Iterable[tuple[str, str]]
 NORMAL_BRICKS = Bricks()
 COMPACT_BRICKS = Bricks("┬─")
 

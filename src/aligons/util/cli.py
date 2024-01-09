@@ -5,9 +5,9 @@ import os
 import threading
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any
 
-FuturePath: TypeAlias = confu.Future[Path]
+type FuturePath = confu.Future[Path]
 
 dry_run = False
 
