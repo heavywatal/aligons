@@ -8,6 +8,7 @@
 import logging
 import os
 import re
+from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -95,12 +96,12 @@ def _consolidate_compara_mafs(indir: Path) -> Path:
 
 def _list_mafs_by_seq(indir: Path) -> dict[str, list[Path]]:
     pat = re.compile(r"lastz_net\.([^_]+)_\d+\.maf$")
-    infiles_by_seq: dict[str, list[Path]] = {}
+    infiles_by_seq: dict[str, list[Path]] = defaultdict(list)
     for maf in fs.sorted_naturally(indir.glob("*_*.maf")):
         mobj = pat.search(maf.name)
         assert mobj, maf.name
         seq = mobj.group(1)
-        infiles_by_seq.setdefault(seq, []).append(maf)
+        infiles_by_seq[seq].append(maf)
     return infiles_by_seq
 
 
