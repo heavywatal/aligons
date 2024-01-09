@@ -9,12 +9,10 @@ import re
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
-from typing import TypeVar
 from zipfile import ZipFile
 
 from . import cli
 
-StrPath = TypeVar("StrPath", str, Path)
 _log = logging.getLogger(__name__)
 
 
@@ -62,15 +60,15 @@ def newest(files: list[Path]) -> Path:
     return max(files, key=lambda p: p.stat().st_mtime)
 
 
-def sorted_naturally(iterable: Iterable[StrPath]) -> list[StrPath]:
+def sorted_naturally[T: str | Path](iterable: Iterable[T]) -> list[T]:
     return sorted(iterable, key=natural_key)
 
 
-def natural_key(x: StrPath) -> list[str]:
+def natural_key(x: str | Path) -> list[str]:
     return [try_zeropad(s) for s in re.split(r"[\W_]", name_if_path(x))]
 
 
-def name_if_path(x: StrPath) -> str:
+def name_if_path(x: str | Path) -> str:
     return x if isinstance(x, str) else x.name
 
 
