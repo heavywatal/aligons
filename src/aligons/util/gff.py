@@ -114,7 +114,7 @@ def _read_body(source: Path | str | bytes) -> pl.DataFrame:
     return pl.read_csv(
         source,
         separator="\t",
-        comment_char="#",
+        comment_prefix="#",
         has_header=False,
         dtypes=[pl.Utf8],
         new_columns=[
