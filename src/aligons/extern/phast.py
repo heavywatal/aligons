@@ -11,10 +11,12 @@ import itertools
 import logging
 import re
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from aligons.db import api, phylo
-from aligons.util import ConfDict, cli, config, empty_options, fs, subp
+from aligons.util import cli, config, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -32,7 +34,7 @@ def main(argv: list[str] | None = None) -> None:
 
 def run(path_clade: Path) -> None:
     (cons_mod, noncons_mod) = prepare_mods(path_clade)
-    opts = config.get("phastCons", empty_options)
+    opts = config.get("phastCons", {})
     pool = cli.ThreadPool()
     chrs = path_clade.glob("chromosome*")
     fts = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]
@@ -40,7 +42,7 @@ def run(path_clade: Path) -> None:
 
 
 def phastCons(  # noqa: N802
-    path: Path, cons_mod: Path, noncons_mod: Path, options: ConfDict = empty_options
+    path: Path, cons_mod: Path, noncons_mod: Path, options: Mapping[str, Any] = {}
 ) -> Path:
     maf = str(path / "multiz.maf")
     seqname = path.name.split(".", 1)[1]  # remove "chromosome."

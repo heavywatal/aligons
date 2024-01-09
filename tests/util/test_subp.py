@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 import pytest
-from aligons.util import ConfDict, cli, empty_options, subp
+from aligons.util import cli, subp
 
 hello = "printf hello"
 
@@ -76,9 +76,9 @@ def test_optargs():
         "none": None,
     }
     expected = ["--key=value", "--zero=0", "--one=1", "--true"]
-    assert subp.optargs(ConfDict(values)) == expected
-    assert subp.optargs(ConfDict({"key": "value"}), "-") == ["-key=value"]
-    assert not subp.optargs(empty_options)
+    assert subp.optargs(values) == expected
+    assert subp.optargs({"key": "value"}, "-") == ["-key=value"]
+    assert not subp.optargs({})
 
 
 def test_open(tmp_path: Path):

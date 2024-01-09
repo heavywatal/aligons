@@ -5,13 +5,11 @@ from importlib import resources
 from importlib.resources.abc import Traversable
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, TypeAlias
+from typing import Any
 
 import tomli_w
 
 _log = logging.getLogger(__name__)
-
-ConfDict: TypeAlias = MappingProxyType[str, Any]
 
 
 def resources_data(child: str = "") -> Traversable:
@@ -40,14 +38,13 @@ def _read_config(path: Path | Traversable) -> dict[str, Any]:
 _config_src: dict[str, Any] = _read_config(resources_data("config.toml"))
 update_config_if_exists(Path.home() / ".aligons.toml")
 update_config_if_exists(Path(".aligons.toml"))
-config = ConfDict(_config_src)
-empty_options = ConfDict({})
+config = MappingProxyType[str, Any](_config_src)
 
 
 def log_config(path: Path = Path(".log.aligons.toml")) -> None:
     _log.info(f"{config}")
     if path.exists():
-        reference = ConfDict(_read_config(path))
+        reference = _read_config(path)
         if _diff(reference, config):
             msg = f"config differs from the previous run: {path.absolute()}"
             raise ValueError(msg)
