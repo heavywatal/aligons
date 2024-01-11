@@ -42,13 +42,17 @@ ignore = [
   "D1",   # missing docstring
   "D203", # incompatible
   "D213", # incompatible
-  "ANN",  # annotation
+  "ANN101", # self
+  "ANN401", # Any
   "T201", # print
   "S101", # assert
   "COM812", # trailing comma
   "TD",   # todo
   "FIX",  # todo
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN2"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

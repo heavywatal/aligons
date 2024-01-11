@@ -7,8 +7,9 @@ import logging
 import os
 import re
 import subprocess
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from pathlib import Path
+from typing import Any
 from zipfile import ZipFile
 
 from . import cli
@@ -137,7 +138,7 @@ def checkline(line: str, directory: Path) -> None:
 
 
 @contextlib.contextmanager
-def chdir(path: Path | str):
+def chdir(path: Path | str) -> Generator[None, Any, None]:
     """Change working directory temporarily with 'with' statement."""
     previous_wd = Path.cwd()
     os.chdir(path)

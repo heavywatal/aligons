@@ -2,6 +2,7 @@ import io
 import logging
 import re
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
@@ -31,7 +32,7 @@ def maf_to_fa(infile: Path) -> Path:
     return outfile
 
 
-def subseq(chrom: str, start: int, end: int, name: str, strand: str, **_) -> bytes:
+def subseq(chrom: str, start: int, end: int, name: str, strand: str, **_: Any) -> bytes:
     bgz = api.genome_fa(name)
     region = f"{chrom}:{start}-{end}"
     args: subp.Args = ["samtools", "faidx", bgz, region]

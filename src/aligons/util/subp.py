@@ -30,7 +30,8 @@ def popen(  # noqa: PLR0913
     stdout: FILE = None,
     shell: bool = False,
     quiet: bool = False,
-):  # kwargs hinders type inference of output type [str | bytes]
+) -> Popen[bytes]:
+    # kwargs hinders type inference of output type [str | bytes]
     (args, cmd) = prepare_args(args, if_=if_)
     if quiet:
         _log.debug(cmd)
@@ -59,7 +60,8 @@ def run(  # noqa: PLR0913
     text: bool | None = None,
     quiet: bool = False,
     check: bool = True,
-):  # kwargs hinders type inference of output type [str | bytes]
+) -> CompletedProcess[Any]:
+    # kwargs hinders type inference of output type [str | bytes]
     (args, cmd) = prepare_args(args, if_=if_)
     if quiet:
         _log.debug(cmd)
@@ -81,7 +83,7 @@ def run(  # noqa: PLR0913
     )
 
 
-def prepare_args(args: _CMD, *, if_: bool):
+def prepare_args(args: _CMD, *, if_: bool) -> tuple[Sequence[str | Path], str]:
     if isinstance(args, str):
         cmd = args.rstrip()
         args = shlex.split(cmd)

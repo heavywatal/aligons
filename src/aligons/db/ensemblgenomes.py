@@ -47,7 +47,7 @@ def _list_versions() -> Iterable[Path]:
     return _prefix_mirror().parent.glob("release-*")
 
 
-def download_compara(species: str):
+def download_compara(species: str) -> None:
     assert species in phylo.list_species(), species
     with FTPensemblgenomes() as ftp:
         dirs = ftp.download_maf(species)
@@ -222,7 +222,7 @@ class FTPensemblgenomes(dl.LazyFTP):
         return matched + misc
 
 
-def download_via_rsync(species: list[str]):
+def download_via_rsync(species: list[str]) -> None:
     for sp in species:
         options = "--include *_sm.chromosome.*.fa.gz --exclude *.gz"
         rsync(f"fasta/{sp}/dna", options)

@@ -230,7 +230,7 @@ class JBrowseConfig:
             },
         ]
 
-    def make_refnamealiases(self):
+    def make_refnamealiases(self) -> dict[str, Any] | None:
         species = self.target.name
         path = f"chromAlias/{species}.chromAlias.txt"
         resources_alias = resources_data(path)
@@ -250,7 +250,7 @@ class JBrowseConfig:
         }
 
 
-def make_display(track: dict[str, Any]):
+def make_display(track: dict[str, Any]) -> dict[str, Any]:
     clade_color = {
         "bep": "#C82828",
         "poaceae": "#C8641E",
@@ -292,11 +292,11 @@ def make_display(track: dict[str, Any]):
     return item
 
 
-def make_configuration():
+def make_configuration() -> dict[str, Any]:
     return {"theme": make_theme()}
 
 
-def make_theme():
+def make_theme() -> dict[str, Any]:
     return {
         "palette": {
             "primary": {"main": "#186038"},

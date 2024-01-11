@@ -35,7 +35,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self,
         args: Sequence[str] | None = None,
         namespace: argparse.Namespace | None = None,
-    ):
+    ) -> argparse.Namespace:
         res = super().parse_args(args, namespace or argparse.Namespace())
         global dry_run  # noqa: PLW0603
         dry_run = res.dry_run

@@ -29,13 +29,13 @@ class LazySession:
         _log.info(f"GET {url}")
         return self._req_session.get(url, **kwargs)
 
-    def fetch(self, url: str, outfile: Path | None = None):
+    def fetch(self, url: str, outfile: Path | None = None) -> "Response":
         if outfile is None:
             urlp = urlparse(url)
             outfile = Path(Path(urlp.path).name)
         return Response(self, url, outfile)
 
-    def mirror(self, url: str, outdir: Path = Path()):
+    def mirror(self, url: str, outdir: Path = Path()) -> "Response":
         urlp = urlparse(url)
         return self.fetch(url, outdir / (urlp.netloc + urlp.path))
 
@@ -92,7 +92,7 @@ class Response:
                     fout.write(chunk)
             _log.info(f"{self._path}")
 
-    def _test_gz(self, content: bytes):
+    def _test_gz(self, content: bytes) -> None:
         if fs.is_gz(content) ^ (self._path.suffix == ".gz"):
             msg = f"gzip mismatch: '{self._url}' content vs filename '{self._path}'"
             raise ValueError(msg)
