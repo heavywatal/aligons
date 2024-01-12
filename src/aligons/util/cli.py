@@ -73,7 +73,7 @@ class ConfigLogging(argparse.Action):
 
 
 class ConsoleHandler(logging.StreamHandler):  # type: ignore[reportMissingTypeArgument]
-    def format(self, record: logging.LogRecord) -> str:  # noqa: A003
+    def format(self, record: logging.LogRecord) -> str:
         if record.levelno < logging.WARNING:
             return record.msg
         return super().format(record)

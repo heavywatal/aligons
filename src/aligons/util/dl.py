@@ -121,7 +121,7 @@ class LazyFTP(FTP):
             timeout=timeout or None  # pyright: ignore[reportGeneralTypeIssues]
         )
 
-    def quit(self) -> str:  # noqa: A003
+    def quit(self) -> str:
         _log.info("ftp.quit()")
         resp = super().quit()
         _log.info(resp)
