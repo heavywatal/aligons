@@ -91,11 +91,7 @@ def _block_to_bed(block: bytes) -> str:
     _log.debug(seqid)
     return (
         _read_dat_body(block)
-        .with_columns(
-            pl.lit(seqid).alias("seqid"),
-            pl.lit(".").alias("name"),
-            pl.lit(".").alias("strand"),
-        )
+        .with_columns(seqid=pl.lit(seqid), name=pl.lit("."), strand=pl.lit("."))
         .select(["seqid", "start", "end", "name", "score", "strand"])
         .sort("start")
         .write_csv(separator="\t", include_header=False)

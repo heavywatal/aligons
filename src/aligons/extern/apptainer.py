@@ -84,9 +84,7 @@ def make_sh(sif: Path, command: str = "", outdir: Path = Path()) -> Path:
 def latest_apps(table: pl.DataFrame) -> list[str]:
     return (
         table.filter(pl.col("app").is_in(_galaxy_apps.keys()))
-        .select(
-            pl.concat_str([pl.col("app"), pl.col("tag")], separator=":").alias("name")
-        )
+        .select(name=pl.concat_str(["app", "tag"], separator=":"))
         .to_series()
         .to_list()
     )
@@ -113,20 +111,19 @@ def _parse_galaxy_index_html(content: bytes) -> pl.DataFrame:
         raw.filter(pl.col("anchor").str.starts_with("<a "))
         .with_columns(
             pl.col("time").str.to_datetime("%d-%b-%Y %H:%M"),
-            pl.col("anchor")
+            href=pl.col("anchor")
             .str.extract(r"href=\"([^\"]+)")
-            .str.replace("%3A", ":")
-            .alias("href"),
+            .str.replace("%3A", ":"),
         )
         .filter(~pl.col("href").str.starts_with("mulled"))
         .with_columns(
-            pl.col("href").str.extract("(.+):").alias("app"),
-            pl.col("href").str.extract(":(.+)").alias("tag"),
+            app=pl.col("href").str.extract("(.+):"),
+            tag=pl.col("href").str.extract(":(.+)"),
         )
         .sort(["app", "time"])
         .group_by("app")
         .last()
-        .with_columns(pl.col("time").dt.date().alias("date"))
+        .with_columns(date=pl.col("time").dt.date())
         .select(["app", "tag", "date", "size"])
         .sort("app")
     )
