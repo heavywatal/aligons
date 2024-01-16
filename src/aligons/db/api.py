@@ -48,9 +48,10 @@ def fasize(species: str) -> Path:
     return get_file("fasize.chrom.sizes", species)
 
 
-def genome_fa(species: str) -> Path:
+def genome_fa(species: str, seqid: str = "") -> Path:
     subdir = "kmer" if config["db"]["kmer"] else ""
-    return get_file("*.genome.fa.gz", species, subdir)
+    pattern = f"*.chromosome.{seqid}.fa.gz" if seqid else "*.genome.fa.gz"
+    return get_file(pattern, species, subdir)
 
 
 def genome_gff3(species: str) -> Path:
