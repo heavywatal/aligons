@@ -60,6 +60,8 @@ def pull_galaxy(prefix: Path) -> None:
     for x in latest_apps(table):
         url = f"{_galaxy_prefix}{x}"
         sif = dl.fetch(url, imgdir / x).path
+        if sif.name.startswith("phast:1.5"):
+            continue
         key = sif.name.split(":", 1)[0]
         cmds = _galaxy_apps[key] or [key]
         for command in cmds:
