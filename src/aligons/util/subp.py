@@ -117,7 +117,7 @@ def open_(file: Path, mode: str, *, if_: bool = True) -> IO[Any]:
 
 def gzip(data: FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
     assert outfile.suffix == ".gz", outfile
-    args = ["zstd", "--format=gzip", "-T2"]
+    args = ["zstd", "--format=gzip"]
     if_ = if_ and bool(data)
     with open_(outfile, "wb", if_=if_) as fout:
         if isinstance(data, bytes):
@@ -140,7 +140,7 @@ def run_zcat(
 def _zcat_args(infile: Path) -> Args:
     if infile.suffix == ".zip":
         return ["unzip", "-p", infile]
-    return ["zstdcat", "-T2", infile]
+    return ["zstdcat", infile]
 
 
 def popen_sd(
