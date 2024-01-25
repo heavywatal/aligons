@@ -1,7 +1,5 @@
 import concurrent.futures as confu
 import contextlib
-import gzip
-import io
 import itertools
 import logging
 import os
@@ -10,7 +8,6 @@ import subprocess
 from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import Any
-from zipfile import ZipFile
 
 from . import cli
 
@@ -78,27 +75,6 @@ def try_zeropad(s: str) -> str:
         return f"{int(s):03}"
     except (ValueError, TypeError):
         return s
-
-
-def zip_decompress(data: bytes) -> bytes:
-    with ZipFile(io.BytesIO(data), "r") as zin:
-        members = zin.namelist()
-        assert len(members) == 1, members
-        return zin.read(members[0])
-
-
-def gzip_decompress(content: bytes) -> bytes:
-    if is_gz(content):
-        content = gzip.decompress(content)
-    return content
-
-
-def is_gz(content: bytes) -> bool:
-    return content.startswith(b"\x1f\x8b")
-
-
-def is_zip(content: bytes) -> bool:
-    return content.startswith(b"\x50\x4b")
 
 
 def expect_suffix(file: Path, suffix: str, *, negate: bool = False) -> None:

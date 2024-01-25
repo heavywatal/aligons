@@ -22,14 +22,15 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def wait_maskfasta(
-    fi: bytes, fts: list[cli.FuturePath], fo: Path, *, soft: bool = True
+    fi: Path, fts: list[cli.FuturePath], fo: Path, *, soft: bool = True
 ) -> Path:
     fs.expect_suffix(fo, ".gz")
     beds = [f.result() for f in fts]
-    if fs.is_outdated(fo, beds) or cli.dry_run:
+    if fs.is_outdated(fo, [fi, *beds]) or cli.dry_run:
+        content = subp.run_zcat(fi).stdout
         for bed in beds:
-            fi = maskfasta(fi, bed, soft=soft)
-        htslib.bgzip(fi, fo)
+            content = maskfasta(content, bed, soft=soft)
+        htslib.bgzip(content, fo)
     _log.info(f"{fo}")
     return fo
 
@@ -42,7 +43,7 @@ def maskfasta(fi: bytes, bed: Path, *, soft: bool = True) -> bytes:
     args.extend(["-fi", "/dev/stdin"])
     args.extend(["-bed", bed])  # <BED/GFF/VCF>(.gz)
     args.extend(["-fo", "/dev/stdout"])
-    p = subp.run(args, input=fs.gzip_decompress(fi), stdout=subp.PIPE)
+    p = subp.run(args, input=fi, stdout=subp.PIPE)
     return p.stdout
 
 

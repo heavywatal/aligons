@@ -1,6 +1,4 @@
-import gzip
 from pathlib import Path
-from zipfile import ZipFile
 
 import pytest
 from aligons.util import fs
@@ -61,40 +59,6 @@ def test_symlink(tmp_path: Path):
     assert relsib.readlink() == Path("noexist")
     relparent = fs.symlink(tmp_path, tmp_path / "relparenrt", relative=True)
     assert relparent.readlink() == Path("..")
-
-
-def test_compress(tmp_path: Path):
-    content = b"hello\n"
-    gz_file = tmp_path / "plain.txt.gz"
-    with gzip.open(gz_file, "wb") as fout:
-        fout.write(content)
-    with gz_file.open("rb") as fin:
-        gz_content = fin.read()
-    # contains filename
-    assert gz_content != gzip.compress(content)
-    assert fs.is_gz(gz_content)
-    assert not fs.is_zip(gz_content)
-    decompressed = fs.gzip_decompress(gz_content)
-    assert not fs.is_gz(decompressed)
-    assert decompressed == content
-    assert decompressed == fs.gzip_decompress(decompressed)
-
-
-def test_zipfile(tmp_path: Path):
-    content = b"hello\n"
-    txt_file = tmp_path / "file.txt"
-    with txt_file.open("wb") as fout:
-        fout.write(content)
-    zip_file = txt_file.with_suffix(txt_file.suffix + ".zip")
-    with ZipFile(zip_file, "w") as zf:
-        zf.write(txt_file)
-    with zip_file.open("rb") as fin:
-        zip_content = fin.read()
-    assert fs.is_zip(zip_content)
-    assert not fs.is_gz(zip_content)
-    decompressed = fs.zip_decompress(zip_content)
-    assert not fs.is_zip(decompressed)
-    assert decompressed == content
 
 
 def test_expect_suffix():

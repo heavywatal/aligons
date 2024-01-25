@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import requests
 import tomli_w
 
-from . import cli, fs, tomllib
+from . import cli, tomllib
 
 _log = logging.getLogger(__name__)
 
@@ -85,17 +85,11 @@ class Response:
             self._path.parent.mkdir(0o755, parents=True, exist_ok=True)
             iter_content = response.iter_content(chunk_size=2**28)
             chunk0 = next(iter_content)
-            self._test_gz(chunk0)
             with self._path.open("wb") as fout:
                 fout.write(chunk0)
                 for chunk in iter_content:
                     fout.write(chunk)
             _log.info(f"{self._path}")
-
-    def _test_gz(self, content: bytes) -> None:
-        if fs.is_gz(content) ^ (self._path.suffix == ".gz"):
-            msg = f"gzip mismatch: '{self._url}' content vs filename '{self._path}'"
-            raise ValueError(msg)
 
 
 _global_session = LazySession()

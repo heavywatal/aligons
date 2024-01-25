@@ -41,12 +41,7 @@ def submit(
     fts.append(cli.thread_submit(repeatmasker.repeatmasker, infile, species))
     fts.append(cli.thread_submit(sdust.run, infile))
     fts.append(cli.thread_submit(trf.run, infile))
-    if fs.is_outdated(outfile, infile) and not cli.dry_run:
-        with infile.open("rb") as fin:
-            fi = fin.read()
-    else:
-        fi = b""
-    return cli.thread_submit(bedtools.wait_maskfasta, fi, fts, outfile)
+    return cli.thread_submit(bedtools.wait_maskfasta, infile, fts, outfile)
 
 
 if __name__ == "__main__":

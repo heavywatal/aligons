@@ -8,6 +8,7 @@ out: {basename}.fa.trf.bed.gz
 """
 import logging
 import re
+from collections.abc import Iterator
 from pathlib import Path
 
 import polars as pl
@@ -31,8 +32,7 @@ def run(infile: Path) -> Path:
     dat = trf(infile)
     outfile = infile.with_suffix(infile.suffix + ".trf.bed.gz")
     if fs.is_outdated(outfile, [infile, dat]) and not cli.dry_run:
-        bed = dat_to_bed(dat)
-        htslib.bgzip(bed.encode(), outfile)
+        dat_to_bed(dat, outfile)
     _log.info(f"{outfile}")
     return outfile
 
@@ -78,11 +78,15 @@ def trf(infile: Path) -> Path:
     return dat
 
 
-def dat_to_bed(infile: Path) -> str:
-    with infile.open("rb") as fin:
-        content = fs.gzip_decompress(fin.read())
-    blocks = content.split(b"\n\nSequence: ")[1:]
-    return "".join([_block_to_bed(x) for x in blocks])
+def dat_to_bed(dat: Path, bed: Path) -> Path:
+    content = b"".join(_dat_to_bed_iter(dat))
+    return htslib.bgzip(content, bed)
+
+
+def _dat_to_bed_iter(infile: Path) -> Iterator[bytes]:
+    content = subp.run_zcat(infile).stdout
+    for match in re.finditer(b"(?<=\n\nSequence: ).+?", content, re.DOTALL):
+        yield _block_to_bed(match.group(0)).encode()
 
 
 def _block_to_bed(block: bytes) -> str:
