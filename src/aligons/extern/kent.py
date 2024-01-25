@@ -79,52 +79,70 @@ def faSize(genome_fa_gz: Path) -> Path:  # noqa: N802
     return outfile
 
 
-def axt_chain(t2bit: Path, q2bit: Path, axtgz: Path) -> Path:
-    chain = axtgz.with_suffix("").with_suffix(".chain")
+def axtChain(axt: Path, t2bit: Path, q2bit: Path) -> Path:  # noqa: N802
+    """Chain together axt alignments."""
+    chain = axt.with_suffix("").with_suffix(".chain.gz")
     opts = subp.optargs(config["axtChain"], "-")
-    args = ["axtChain", *opts, "stdin", t2bit, q2bit, chain]
-    is_to_run = fs.is_outdated(chain, axtgz)
-    with subp.popen_zcat(axtgz, if_=is_to_run) as zcat:
-        subp.run(args, stdin=zcat.stdout, if_=is_to_run)
-    return chain
+    args = ["axtChain", *opts, axt, t2bit, q2bit, "stdout"]
+    if_ = fs.is_outdated(chain, axt)
+    with subp.popen(args, stdout=subp.PIPE, if_=if_) as p:
+        return subp.gzip(p.stdout, chain, if_=if_)
 
 
-def merge_sort_pre(chains: list[Path], target_sizes: Path, query_sizes: Path) -> Path:
+def chainMergeSort(chains: list[Path]) -> Path:  # noqa: N802
+    """Combine sorted files into larger sorted file."""
     parent = {x.parent for x in chains}
     subdir = parent.pop()
     assert not parent, "chains are in the same directory"
-    pre_chain = subdir / "pre.chain.gz"
-    is_to_run = fs.is_outdated(pre_chain, chains)
-    merge_cmd = ["chainMergeSort"] + [str(x) for x in chains]
-    pre_cmd = f"chainPreNet stdin {target_sizes} {query_sizes} stdout"
-    with (
-        subp.popen(merge_cmd, if_=is_to_run, stdout=subp.PIPE) as merge,
-        subp.popen(pre_cmd, if_=is_to_run, stdin=merge.stdout, stdout=subp.PIPE) as pre,
-    ):
-        return subp.gzip(pre.stdout, pre_chain, if_=is_to_run)
+    outfile = subdir / "target.chain.gz"
+    if_ = fs.is_outdated(outfile, chains)
+    merge_cmd = ["chainMergeSort", *chains]
+    with subp.popen(merge_cmd, if_=if_, stdout=subp.PIPE) as merge:
+        return subp.gzip(merge.stdout, outfile, if_=if_)
 
 
-def chain_net_syntenic(pre_chain: Path, target_sizes: Path, query_sizes: Path) -> Path:
-    syntenic_net = pre_chain.with_name("syntenic.net")
-    is_to_run = fs.is_outdated(syntenic_net, pre_chain)
-    cn_args = ["chainNet", *subp.optargs(config["chainNet"], "-")]
-    cn_args += ["stdin", target_sizes, query_sizes, "stdout", "/dev/null"]
-    ns_args = ["netSyntenic", "stdin", syntenic_net]
-    with (
-        subp.popen_zcat(pre_chain, if_=is_to_run) as zcat,
-        subp.popen(cn_args, stdin=zcat.stdout, stdout=subp.PIPE, if_=is_to_run) as cn,
-    ):
-        subp.run(ns_args, stdin=cn.stdout, if_=is_to_run)
-    return syntenic_net
+def chain_net(chain: Path, target_sizes: Path, query_sizes: Path) -> tuple[Path, Path]:
+    """Make alignment nets out of chains.
+
+    chainPreNet - Remove chains that don't have a chance of being netted.
+    """
+    tnet = chain.with_name("target.net")
+    qnet = chain.with_name("query.net")
+    tsyn = tnet.with_suffix(".net.gz")
+    qsyn = qnet.with_suffix(".net.gz")
+    if_ = fs.is_outdated(tsyn, chain) or fs.is_outdated(qsyn, chain)
+    pre_args = ["chainPreNet", chain, target_sizes, query_sizes, "stdout"]
+    opts = subp.optargs(config["chainNet"], "-")
+    cn_args = ["chainNet", *opts, "stdin", target_sizes, query_sizes, tnet, qnet]
+    with subp.popen(pre_args, stdout=subp.PIPE, if_=if_) as p:
+        try:
+            subp.run(cn_args, stdin=p.stdout, if_=if_)
+        except subp.CalledProcessError as e:
+            # printMem() in chainNet/netSyntenic works only on Linux.
+            if not e.stderr.startswith(b"Couldn't open /proc/self/stat"):
+                raise
+    return (netSyntenic(tnet, tsyn, if_=if_), netSyntenic(qnet, qsyn, if_=if_))
+
+
+def netSyntenic(net: Path, synnet: Path, *, if_: bool) -> Path:  # noqa: N802
+    """Add synteny info to net."""
+    args = ["netSyntenic", net, "stdout"]
+    with subp.popen(args, stdout=subp.PIPE, if_=if_) as p:
+        subp.gzip(p.stdout, synnet, if_=if_)
+    if net.exists() and if_ and not cli.dry_run:
+        net.unlink()
+    return synnet
 
 
 def net_to_maf(net: Path, chain: Path, sing_maf: Path, target: str, query: str) -> Path:
-    is_to_run = fs.is_outdated(sing_maf, [net, chain])
+    if_ = fs.is_outdated(sing_maf, [net, chain])
+    if net.name.startswith("query"):
+        target, query = query, target
     sort = ["axtSort", "stdin", "stdout"]
     with (
-        netToAxt(net, chain, target, query, if_=is_to_run) as ptoaxt,
-        subp.popen(sort, stdin=ptoaxt.stdout, stdout=subp.PIPE, if_=is_to_run) as psort,
-        axtToMaf(psort.stdout, target, query, sing_maf, if_=is_to_run) as paxttomaf,
+        netToAxt(net, chain, target, query, if_=if_) as ptoaxt,
+        subp.popen(sort, stdin=ptoaxt.stdout, stdout=subp.PIPE, if_=if_) as psort,
+        axtToMaf(psort.stdout, target, query, sing_maf, if_=if_) as paxttomaf,
     ):
         ptoaxt.stdout.close() if ptoaxt.stdout else None
         psort.stdout.close() if psort.stdout else None
@@ -138,6 +156,8 @@ def netToAxt(  # noqa: N802
     target_2bit = faToTwoBit(api.genome_fa(target))
     query_2bit = faToTwoBit(api.genome_fa(query))
     opts = subp.optargs(config["netToAxt"], "-")
+    if net.name.startswith("query"):
+        opts.append("-qChain")
     args = ["netToAxt", *opts, net, chain, target_2bit, query_2bit, "stdout"]
     return subp.popen(args, stdout=subp.PIPE, if_=if_)
 

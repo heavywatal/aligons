@@ -18,7 +18,6 @@ linearGap = "medium"
 # minScore = 2000
 
 [netToAxt]
-# qChain = false
 # maxGap = 100
 # noSplit = false
 
