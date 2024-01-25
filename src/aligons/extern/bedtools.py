@@ -17,8 +17,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("infile", type=Path)
     parser.add_argument("bed", type=Path)
     args = parser.parse_args(argv or None)
-    with args.infile.open("rb") as fin:
-        print(maskfasta(fin.read(), args.bed).decode())
+    fi = subp.run_zcat(args.infile).stdout
+    print(maskfasta(fi, args.bed).decode())
 
 
 def wait_maskfasta(
