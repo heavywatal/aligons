@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 from .db import api, phylo
-from .extern import kent, lastz, mafs2cram, multiz, phast
+from .extern import htslib, kent, lastz, mafs2cram, multiz, phast
 from .util import cli, log_config
 
 _log = logging.getLogger(__name__)
@@ -23,6 +23,18 @@ def main(argv: list[str] | None = None) -> None:
     if args.check_args:
         return
     phastcons(args.target, args.clade, args.tips, args.max_bp, compara=args.compara)
+
+
+def phastcons_block(bed: Path) -> None:
+    aln = lastz.PairwiseChromosomeAlignment(bed)
+    ref_fa = api.genome_fa(aln.target)
+    fts = [cli.thread_submit(mafs2cram.maf2cram, ft, ref_fa) for ft in aln.submit()]
+    for future in fts:
+        htslib.index(future.result())
+    lst_species = [aln.target, *aln.queries]
+    multiple = multiz.run(aln.target_dir, lst_species)
+    phast.run(multiple)
+    kent.run(multiple)
 
 
 def phastcons(

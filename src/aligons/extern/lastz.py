@@ -11,7 +11,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from aligons.db import api
-from aligons.util import cli, config, fs, subp
+from aligons.util import cli, config, fs, maf, subp
 
 from . import kent
 
@@ -30,13 +30,59 @@ def run(target: str, queries: list[str]) -> Path:
     queries = api.sanitize_queries(target, queries)
     futures: list[confu.Future[Path]] = []
     for query in queries:
-        pa = PairwiseAlignment(target, query)
+        pa = PairwiseGenomeAlignment(target, query)
         futures.extend(pa.run())
     cli.wait_raise(futures)
     return Path("pairwise") / target
 
 
-class PairwiseAlignment:
+class PairwiseChromosomeAlignment:
+    def __init__(self, bed: Path) -> None:
+        bed_df = maf.read_bed(bed)
+        rows = bed_df.iter_rows(named=True)
+        row0 = next(rows)
+        self._target = row0["name"]
+        self._target_sizes = api.fasize(self._target)
+        self._t2bit = kent.faToTwoBit(api.genome_fa(self._target, row0["chrom"]))
+        self._target_dir = Path("pairwise") / self._target
+        if not cli.dry_run:
+            self._target_dir.mkdir(0o755, parents=True, exist_ok=True)
+        self._queries: dict[str, Path] = {}
+        for row in rows:
+            query = row["name"]
+            q2bit = kent.faToTwoBit(api.genome_fa(query, row["chrom"]))
+            self._queries[query] = q2bit
+
+    def submit(self) -> list[cli.FuturePath]:
+        return [
+            cli.thread_submit(self.chr_sing_maf, query, q2bit)
+            for query, q2bit in self._queries.items()
+        ]
+
+    def chr_sing_maf(self, query: str, q2bit: Path) -> Path:
+        outdir = self._target_dir / query
+        query_sizes = api.fasize(query)
+        axt = lastz(self._t2bit, q2bit, outdir)
+        chain = kent.axtChain(axt, self._t2bit, q2bit)
+        net, _qnet = kent.chain_net(chain, self._target_sizes, query_sizes)
+        sing_maf = net.with_name("sing.maf")
+        kent.net_to_maf(net, chain, sing_maf, self._target, query)
+        return sing_maf
+
+    @property
+    def target_dir(self) -> Path:
+        return self._target_dir
+
+    @property
+    def target(self) -> str:
+        return self._target
+
+    @property
+    def queries(self) -> list[str]:
+        return list(self._queries.keys())
+
+
+class PairwiseGenomeAlignment:
     def __init__(self, target: str, query: str) -> None:
         self._target = target
         self._query = query
