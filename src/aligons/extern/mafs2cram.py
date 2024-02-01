@@ -24,7 +24,7 @@ def main(argv: list[str] | None = None) -> None:
             target = path.parent.parent.parent.name
             reference = api.genome_fa(target)
             stem = str(path.parent).replace("/", "_")
-            maf2cram(path, Path(stem + ".cram"), reference)
+            maf2cram(path, reference, Path(stem + ".cram"))
         return
     cli.wait_raise([mafs2cram(path) for path in args.query])
 
@@ -48,7 +48,7 @@ def mafs2cram(path: Path) -> cli.FuturePath:
             _log.warning(f"not found {maf}")
             continue
         cram = outdir / (chr_dir.name + ".cram")
-        futures.append(pool.submit(maf2cram, maf, cram, reference))
+        futures.append(pool.submit(maf2cram, maf, reference, cram))
     return pool.submit(merge_crams, futures, outdir)
 
 
@@ -65,8 +65,14 @@ def merge_crams(futures: list[confu.Future[Path]], outdir: Path) -> Path:
     return outfile
 
 
-def maf2cram(infile: Path, outfile: Path, reference: Path) -> Path:
+def maf2cram(
+    infile: cli.FuturePath | Path, reference: Path, outfile: Path | None = None
+) -> Path:
     """Supports sing.maf only: each alignment must have 2 sequences."""
+    if isinstance(infile, confu.Future):
+        infile = infile.result()
+    if outfile is None:
+        outfile = infile.with_suffix(".cram")
     is_to_run = fs.is_outdated(outfile, infile)
     mafconv = subp.run(["maf-convert", "sam", infile], if_=is_to_run, stdout=subp.PIPE)
     sam = sanitize_sam(mafconv.stdout)

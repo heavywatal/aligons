@@ -111,9 +111,8 @@ def net_to_maf(net_gz: Path) -> Path:
 
 def to_cram(maf: Path) -> Path:
     target, _query = extract_species(maf.stem)
-    outfile = maf.with_suffix(".cram")
     reference = api.genome_fa(target)
-    mafs2cram.maf2cram(maf, outfile, reference)
+    outfile = mafs2cram.maf2cram(maf, reference)
     htslib.index(outfile)
     return outfile
 
