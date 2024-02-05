@@ -90,7 +90,8 @@ def _dat_to_bed_iter(infile: Path) -> Iterator[bytes]:
 
 
 def _block_to_bed(block: bytes) -> str:
-    assert (mobj := re.search(rb"\S+", block))
+    mobj = re.search(rb"\S+", block)
+    assert mobj, block
     seqid = mobj.group(0).decode()
     _log.debug(seqid)
     return (

@@ -165,7 +165,8 @@ def most_conserved_mod(mods: list[Path]) -> Path:
 
 
 def extract_tree(mod: str) -> str:
-    assert (m := re.search(r"TREE: (.+;)", mod)), mod
+    m = re.search(r"TREE: (.+;)", mod)
+    assert m, mod
     return m.group(1)
 
 
