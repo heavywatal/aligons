@@ -45,8 +45,6 @@ class PairwiseChromosomeAlignment:
         self._target_sizes = api.fasize(self._target)
         self._t2bit = kent.faToTwoBit(api.genome_fa(self._target, row0["chrom"]))
         self._target_dir = Path("pairwise") / self._target
-        if not cli.dry_run:
-            self._target_dir.mkdir(0o755, parents=True, exist_ok=True)
         self._queries: dict[str, Path] = {}
         for row in rows:
             query = row["name"]
@@ -92,8 +90,6 @@ class PairwiseGenomeAlignment:
 
     def run(self) -> list[cli.FuturePath]:
         pool = cli.ThreadPool()
-        if not cli.dry_run:
-            self._outdir.mkdir(0o755, parents=True, exist_ok=True)
         target_chromosomes = list(iter_chromosome_2bit(self._target))
         query_chromosomes = list(iter_chromosome_2bit(self._query))
         flists: list[list[confu.Future[Path]]] = [
@@ -124,7 +120,7 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:
     query_label = q2bit.stem.rsplit("dna_sm.", 1)[1]
     subdir = outdir / target_label
     if not cli.dry_run:
-        subdir.mkdir(0o755, exist_ok=True)
+        subdir.mkdir(0o755, parents=True, exist_ok=True)
     axtgz = subdir / f"{query_label}.axt.gz"
     args = ["lastz", t2bit, q2bit, "--format=axt", *subp.optargs(config["lastz"])]
     is_to_run = fs.is_outdated(axtgz, [t2bit, q2bit])
