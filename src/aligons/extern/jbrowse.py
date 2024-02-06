@@ -230,10 +230,10 @@ def make_display(track: dict[str, Any]) -> dict[str, Any]:
     }
     item = {}
     if track["type"] == "FeatureTrack":
-        if "gff3" in track["type"]:
+        if "gff3" in track["configuration"]:
             item = {
                 "type": "LinearBasicDisplay",
-                "height": 80,
+                "height": 60,
             }
         else:  # bed
             item = {
