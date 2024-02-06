@@ -7,7 +7,6 @@ dst: {document_root}/{jbrowse_XYZ}/{vNN}/{species}
 import json
 import logging
 import re
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +60,8 @@ class JBrowse:
         self.create()
         jbc = JBrowseConfig(self.root, indir)
         jbc.add()
+        jbc.add_external()
+        jbc.set_default_session()
         jbc.configure()
         jbc.write_redirect_html(self.slug)
 
@@ -69,10 +70,10 @@ class JBrowseConfig:
     def __init__(self, root: Path, multialign_species: Path) -> None:
         self.load = config["jbrowse"]["load"]
         self.multiple_dir = multialign_species
-        species_name = self.multiple_dir.name
+        self.species = self.multiple_dir.name
         vnn_dir = multialign_species.parent.parent.resolve()
-        self.pairwise_dir = vnn_dir / "pairwise" / species_name
-        self.relpath = Path(vnn_dir.name) / species_name
+        self.pairwise_dir = vnn_dir / "pairwise" / self.species
+        self.relpath = Path(vnn_dir.name) / self.species
         self.target = root / self.relpath
         self.tracks: list[str] = []
         _log.info(f"{self.target}")
@@ -86,9 +87,8 @@ class JBrowseConfig:
 
     def add(self) -> None:
         self.target.mkdir(0o755, parents=True, exist_ok=True)
-        species = self.multiple_dir.name
-        self.add_assembly(species)
-        self.add_track_gff(species)
+        self.add_assembly()
+        self.add_track_gff()
         clades = [x.name for x in self.multiple_dir.iterdir() if "-" not in x.name]
         _log.info(f"{clades}")
         clades = phylo.sorted_by_len_newicks(clades, reverse=True)
@@ -98,52 +98,25 @@ class JBrowseConfig:
         for bed in self.multiple_dir.rglob("cns.bed.gz"):
             clade = bed.parent.name
             self.add_track(bed, "conservation", trackid="CNS-" + clade, subdir=clade)
-        gen = self.pairwise_dir.rglob("genome.cram")
-        crams = {cram.parent.parent.name: cram for cram in gen}
+        iter_crai = self.pairwise_dir.rglob("*.cram.crai")
+        crams = {cram.parent.parent.name: cram.with_suffix("") for cram in iter_crai}
         for query in phylo.list_species(clades[0]):
             if cram := crams.pop(query, None):
                 self.add_track(cram, "alignment", trackid=query, subdir=query)
         for query, cram in crams.items():
             self.add_track(cram, "alignment", trackid=query, subdir=query)
-        self.add_plantregmap(species)
-        if self.target.name == "oryza_sativa":
-            self.add_papers_data()
-            self.add_plantdhs()
-        self.set_default_session()
 
-    def add_papers_data(self) -> None:
-        for path in fs.sorted_naturally(api.prefix("papers").glob("*.bed.gz")):
-            self.add_track(path, "papers", trackid=path.with_suffix("").stem)
-        suzuemon = api.prefix("suzuemon")
-        if (f := suzuemon / "sv_with_DEG.bed.gz").exists():
-            self.add_track(f, "papers", trackid="SV_DEG-qin2021", subdir="suzuemon")
-        if (f := suzuemon / "SV.bed.gz").exists():
-            self.add_track(f, "papers", trackid="SV_all-qin2021", subdir="suzuemon")
+    def add_external(self) -> None:
+        if self.species == "oryza_sativa":
+            add_plantregmap(self, self.species)
+            add_papers_data(self)
+            add_plantdhs(self)
+        elif self.species == "solanum_lycopersicum":
+            add_plantregmap(self, self.species)
 
-    def add_plantdhs(self) -> None:
-        for path in fs.sorted_naturally(plantdhs.db_prefix().glob("Rice_*.bw")):
-            trackid = path.stem.removeprefix("Rice_")
-            self.add_track(path, "plantdhs", trackid=trackid)
-        for path in fs.sorted_naturally(plantdhs.db_prefix().glob("*.gff.gz")):
-            self.add_track(path, "plantdhs", trackid=path.stem)
-
-    def add_plantregmap(self, species: str) -> None:
-        for path in fs.sorted_naturally(plantregmap.rglob("*.bw", species)):
-            trackid = path.with_suffix(".bedGraph").name
-            self.add_track(path, "plantregmap", trackid=trackid)
-        for path in fs.sorted_naturally(plantregmap.rglob("*.cram", species)):
-            trackid = path.with_suffix(".net").name
-            self.add_track(path, "plantregmap", trackid=trackid)
-        for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
-            trackid = re.sub(r"_[^_]+\.gff\.gz$", "", path.name)
-            self.add_track(path, "plantregmap", trackid=trackid)
-        for path in fs.sorted_naturally(plantregmap.rglob("*.bed.gz", species)):
-            trackid = re.sub(r"(_normal)?\.bed\.gz$", "", path.name)
-            self.add_track(path, "plantregmap", trackid=trackid)
-
-    def add_assembly(self, species: str) -> None:
+    def add_assembly(self) -> None:
         # --alias, --name, --displayName
-        genome = api.genome_fa(species)
+        genome = api.genome_fa(self.species)
         args: subp.Args = ["add-assembly"]
         args.extend(["--target", self.target])
         args.extend(["--load", self.load])
@@ -151,8 +124,8 @@ class JBrowseConfig:
         if not (self.target / genome.name).exists():
             jbrowse(args)
 
-    def add_track_gff(self, species: str) -> None:
-        gff = api.genome_gff3(species)
+    def add_track_gff(self) -> None:
+        gff = api.genome_gff3(self.species)
         ngff = gff.with_suffix("").with_suffix("").with_suffix(".name.gff3.gz")
         if ngff.exists():
             gff = ngff
@@ -231,8 +204,7 @@ class JBrowseConfig:
         ]
 
     def make_refnamealiases(self) -> dict[str, Any] | None:
-        species = self.target.name
-        path = f"chromAlias/{species}.chromAlias.txt"
+        path = f"chromAlias/{self.species}.chromAlias.txt"
         resources_alias = resources_data(path)
         if not resources_alias.is_file():
             return None
@@ -307,6 +279,39 @@ def make_theme() -> dict[str, Any]:
     }
 
 
+def add_plantdhs(jbc: JBrowseConfig) -> None:
+    for path in fs.sorted_naturally(plantdhs.db_prefix().glob("Rice_*.bw")):
+        trackid = path.stem.removeprefix("Rice_")
+        jbc.add_track(path, "plantdhs", trackid=trackid)
+    for path in fs.sorted_naturally(plantdhs.db_prefix().glob("*.gff.gz")):
+        jbc.add_track(path, "plantdhs", trackid=path.stem)
+
+
+def add_plantregmap(jbc: JBrowseConfig, species: str) -> None:
+    for path in fs.sorted_naturally(plantregmap.rglob("*.bw", species)):
+        trackid = path.with_suffix(".bedGraph").name
+        jbc.add_track(path, "plantregmap", trackid=trackid)
+    for path in fs.sorted_naturally(plantregmap.rglob("*.cram", species)):
+        trackid = path.with_suffix(".net").name
+        jbc.add_track(path, "plantregmap", trackid=trackid)
+    for path in fs.sorted_naturally(plantregmap.rglob("*.gff.gz", species)):
+        trackid = re.sub(r"_[^_]+\.gff\.gz$", "", path.name)
+        jbc.add_track(path, "plantregmap", trackid=trackid)
+    for path in fs.sorted_naturally(plantregmap.rglob("*.bed.gz", species)):
+        trackid = re.sub(r"(_normal)?\.bed\.gz$", "", path.name)
+        jbc.add_track(path, "plantregmap", trackid=trackid)
+
+
+def add_papers_data(jbc: JBrowseConfig) -> None:
+    for path in fs.sorted_naturally(api.prefix("papers").glob("*.bed.gz")):
+        jbc.add_track(path, "papers", trackid=path.with_suffix("").stem)
+    suzuemon = api.prefix("suzuemon")
+    if (f := suzuemon / "sv_with_DEG.bed.gz").exists():
+        jbc.add_track(f, "papers", trackid="SV_DEG-qin2021", subdir="suzuemon")
+    if (f := suzuemon / "SV.bed.gz").exists():
+        jbc.add_track(f, "papers", trackid="SV_all-qin2021", subdir="suzuemon")
+
+
 def jbrowse(args: subp.Args) -> None:
     subp.run(["jbrowse", *args])
 
@@ -315,15 +320,6 @@ def npx_jbrowse(args: subp.Args, version: str = "") -> None:
     pkg = "@jbrowse/cli"
     pkg = f"{pkg}@{version}" if version else pkg
     subp.run(["npx", pkg, *args])
-
-
-def iter_targets(path: Path) -> Iterable[Path]:
-    for config_json in path.rglob("config.json"):
-        if "test_data" in str(config_json):
-            continue
-        abs_config_json = config_json.resolve()
-        if abs_config_json.parent.parent.name.startswith("jbrowse-"):
-            yield abs_config_json.parent
 
 
 def redirect_html(url: str) -> str:
