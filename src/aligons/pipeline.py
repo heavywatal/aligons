@@ -3,8 +3,8 @@ import logging
 from pathlib import Path
 
 from .db import api, phylo
-from .extern import htslib, kent, lastz, mafs2cram, multiz, phast
-from .util import cli, log_config
+from .extern import bedtools, htslib, kent, lastz, mafs2cram, multiz, phast
+from .util import cli, fs, gff, log_config
 
 _log = logging.getLogger(__name__)
 
@@ -25,16 +25,30 @@ def main(argv: list[str] | None = None) -> None:
     phastcons(args.target, args.clade, args.tips, args.max_bp, compara=args.compara)
 
 
-def phastcons_block(bed: Path) -> None:
+def phastcons_block(bed: Path, clade: str) -> None:
+    lst_species = phylo.list_species(clade)
     aln = lastz.PairwiseChromosomeAlignment(bed)
+    not_in_aln = set(lst_species) - {aln.target, *aln.queries}
+    assert not not_in_aln, not_in_aln
     ref_fa = api.genome_fa(aln.target)
     fts = [cli.thread_submit(mafs2cram.maf2cram, ft, ref_fa) for ft in aln.submit()]
     for future in fts:
         htslib.index(future.result())
-    lst_species = [aln.target, *aln.queries]
     multiple = multiz.run(aln.target_dir, lst_species)
+    if not (clade_alias := multiple.with_name(clade)).exists():
+        clade_alias.symlink_to(multiple.name)
     phast.run(multiple)
-    kent.run(multiple)
+    bigwig = kent.run(multiple)
+    bed = bigwig.with_suffix(".bed.gz")
+    if fs.is_outdated(bed, bigwig):
+        htslib.bgzip(kent.bigWigToBed(bigwig), bed)
+    cns_bed = bed.with_name("cns.bed.gz")
+    if fs.is_outdated(cns_bed, bed):
+        cds_df = gff.extract_cds_bed(api.genome_gff3(aln.target))
+        cds = cds_df.write_csv(separator="\t", include_header=False).encode()
+        cns = bedtools.subtract(bed, cds)
+        cns = bedtools.remove_short(cns, 15)
+        htslib.tabix(htslib.bgzip(cns, cns_bed))
 
 
 def phastcons(

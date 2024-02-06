@@ -6,6 +6,7 @@ dst: ./multiple/{target}/{clade}/phastcons.bw
 https://github.com/ucscGenomeBrowser/kent
 """
 import functools
+import io
 import logging
 import os
 import re
@@ -24,10 +25,11 @@ def main(argv: list[str] | None = None) -> None:
     run(args.clade)
 
 
-def run(clade: Path) -> None:
+def run(clade: Path) -> Path:
     if (bigwig := integrate_wigs(clade)).exists():
         print(bigwig)
         _log.info(bigWigInfo(bigwig).rstrip())
+    return bigwig
 
 
 def integrate_wigs(clade: Path) -> Path:
@@ -60,6 +62,32 @@ def bedGraphToBigWig(infile: Path, chrom_sizes: Path) -> Path:  # noqa: N802
         # gz or stdin are not accepted
     subp.run(["bedGraphToBigWig", infile, chrom_sizes, outfile], if_=is_to_run)
     return outfile
+
+
+def bigWigToBed(infile: Path, min_width: int = 15) -> bytes:  # noqa: N802
+    patt = re.compile(rb"^fixedStep chrom=(\S+) start=(\d+)")
+    chrom = b""
+    start = 0
+    scores: list[float] = []
+    buf = io.BytesIO()
+
+    def write() -> None:
+        if (w := len(scores)) >= min_width:
+            s = int(sum(scores) / (0.001 * w))
+            buf.write(chrom + f"\t{start}\t{start + w}\t.\t{s}\t.\n".encode())
+
+    with subp.popen(["bigWigToWig", infile, "stdout"], stdout=subp.PIPE) as wig:
+        assert wig.stdout is not None
+        for line in wig.stdout:
+            if mobj := patt.match(line):
+                write()
+                chrom = mobj.group(1)
+                start = int(mobj.group(2)) - 1
+                scores = []
+            else:
+                scores.append(float(line))
+        write()
+    return buf.getvalue()
 
 
 def faToTwoBit(fa_gz: Path) -> Path:  # noqa: N802

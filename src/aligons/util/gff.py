@@ -131,6 +131,17 @@ def _read_body(source: Path | str | bytes) -> pl.DataFrame:
     )
 
 
+def extract_cds_bed(infile: Path) -> pl.DataFrame:
+    return _to_bed(_read_body(infile).filter(pl.col("type") == "CDS"))
+
+
+def _to_bed(x: pl.DataFrame) -> pl.DataFrame:
+    return x.select(["seqid", "start", "end"]).with_columns(
+        start=pl.col("start") - 1,
+        end=pl.col("end") - 1,
+    )
+
+
 def sort_clean_chromosome(infile: Path, stdout: IO[bytes]) -> None:
     # TODO: jbrowse2 still needs billzt/gff3sort precision?
     cmd1 = f"zstdgrep -v '^#' {infile!s}"
