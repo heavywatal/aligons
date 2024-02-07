@@ -54,18 +54,15 @@ lower_count = 10
 high = 1000
 
 [jbrowse]
-version = "2.7.1"
+version = "2.10.1"
 document_root = "/var/www/html"
 load = "symlink"
+window_width = 1200
 
 [[jbrowse.assemblies]]
 species = "oryza_sativa"
-chromosome = "6"
-start = 27475500
-bpPerPx = 5.0
+location = "6:27,475,000..27,485,000"
 
 [[jbrowse.assemblies]]
 species = "solanum_lycopersicum"
-chromosome = "3"
-start = 1404500
-bpPerPx = 5.0
+location = "3:1,404,500..1,410,500"

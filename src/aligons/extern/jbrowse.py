@@ -95,9 +95,10 @@ class JBrowseConfig:
         for clade in clades:
             wig = self.multiple_dir / clade / "phastcons.bw"
             self.add_track(wig, "conservation", trackid=clade, subdir=clade)
-        for bed in self.multiple_dir.rglob("cns.bed.gz"):
-            clade = bed.parent.name
-            self.add_track(bed, "conservation", trackid="CNS-" + clade, subdir=clade)
+            bed = wig.with_name("cns.bed.gz")
+            if bed.exists():
+                tid = "CNS-" + clade
+                self.add_track(bed, "conservation", trackid=tid, subdir=clade)
         iter_crai = self.pairwise_dir.rglob("*.cram.crai")
         crams = {cram.parent.parent.name: cram.with_suffix("") for cram in iter_crai}
         for query in phylo.list_species(clades[0]):
@@ -188,11 +189,18 @@ class JBrowseConfig:
             json.dump(cfg, fout, indent=2)
 
     def set_displayed_regions(self, view: dict[str, Any], asm_name: str) -> None:
+        window_width = config["jbrowse"]["window_width"]
         chrom_sizes = api.chrom_sizes(self.target.name)
         asm_conf = find_config_assembly(self.target.name)
-        chrom = asm_conf["chromosome"]
-        view["bpPerPx"] = asm_conf["bpPerPx"]
-        view["offsetPx"] = int(asm_conf["start"] / view["bpPerPx"])
+        _log.info(f"{asm_conf}")
+        location = asm_conf["location"]
+        mobj = re.search(r"(\w+)\s*:\s*([\d,]+)\s*(?::|\.{2,})\s*([\d,]+)", location)
+        assert mobj is not None, location
+        chrom = mobj.group(1)
+        start = int(mobj.group(2).replace(",", ""))
+        end = int(mobj.group(3).replace(",", ""))
+        view["bpPerPx"] = round((end - start) / window_width, 2)
+        view["offsetPx"] = int(start / view["bpPerPx"])
         view["displayedRegions"] = [
             {
                 "refName": chrom,
