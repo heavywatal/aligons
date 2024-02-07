@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import subprocess
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -41,12 +41,12 @@ def symlink(path: Path, link: Path, *, relative: bool = False) -> Path:
     return link
 
 
-def is_outdated(product: Path, source: list[Path] | Path | None = None) -> bool:
+def is_outdated(product: Path, source: Sequence[Path] | Path | None = None) -> bool:
     if not product.exists():
         return True
     if product.stat().st_size == 0:
         return True
-    if isinstance(source, list):
+    if isinstance(source, Sequence):
         source = [x for x in source if x.exists()]
         source = newest(source) if source else None
     if source and source.exists() and product.stat().st_mtime < source.stat().st_mtime:
@@ -54,7 +54,7 @@ def is_outdated(product: Path, source: list[Path] | Path | None = None) -> bool:
     return False
 
 
-def newest(files: list[Path]) -> Path:
+def newest(files: Sequence[Path]) -> Path:
     return max(files, key=lambda p: p.stat().st_mtime)
 
 
