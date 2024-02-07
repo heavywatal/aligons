@@ -18,6 +18,8 @@ from typing import Any
 from aligons.db import api, phylo
 from aligons.util import cli, config, fs, subp
 
+from . import kent
+
 _log = logging.getLogger(__name__)
 
 
@@ -32,29 +34,38 @@ def main(argv: list[str] | None = None) -> None:
     run(args.clade)
 
 
-def run(path_clade: Path) -> None:
+def run(path_clade: Path) -> list[Path]:
     (cons_mod, noncons_mod) = prepare_mods(path_clade)
+    target = path_clade.parent.name
+    chrom_sizes = api.fasize(target)
     opts = config.get("phastCons", {})
-    pool = cli.ThreadPool()
-    chrs = path_clade.glob("chromosome*")
-    fts = [pool.submit(phastCons, d, cons_mod, noncons_mod, opts) for d in chrs]
-    cli.wait_raise(fts)
+    fts = [
+        cli.thread_submit(phastCons, d, chrom_sizes, cons_mod, noncons_mod, opts)
+        for d in path_clade.glob("chromosome*")
+    ]
+    return [ft.result() for ft in fts]
 
 
 def phastCons(  # noqa: N802
-    path: Path, cons_mod: Path, noncons_mod: Path, options: Mapping[str, Any] = {}
+    path: Path,
+    chrom_sizes: Path,
+    cons_mod: Path,
+    noncons_mod: Path,
+    options: Mapping[str, Any] = {},
 ) -> Path:
-    maf = str(path / "multiz.maf")
+    maf = path / "multiz.maf"
     seqname = path.name.split(".", 1)[1]  # remove "chromosome."
     opts = [*subp.optargs(options), "--seqname", seqname, "--msa-format", "MAF"]
     args = ["phastCons", *opts, maf, f"{cons_mod},{noncons_mod}"]
-    wig = path / "phastcons.wig.gz"
-    is_to_run = fs.is_outdated(wig, [cons_mod, noncons_mod])
-    with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
-        subp.gzip(p.stdout, wig, if_=is_to_run)
-    if wig.exists():
-        print(wig)
-    return wig
+    wig = path / "phastcons.wig"
+    bw = wig.with_suffix(".bw")
+    if_ = fs.is_outdated(bw, [cons_mod, noncons_mod])
+    with subp.open_(wig, "wb", if_=if_) as fout:
+        subp.run(args, stdout=fout, if_=if_)
+    kent.wigToBigWig(wig, chrom_sizes)
+    if bw.exists():
+        print(bw)
+    return bw
 
 
 def prepare_mods(clade: Path) -> tuple[Path, Path]:

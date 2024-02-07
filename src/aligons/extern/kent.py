@@ -10,6 +10,7 @@ import io
 import logging
 import os
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from aligons.db import api
@@ -22,34 +23,41 @@ def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("clade", type=Path)
     args = parser.parse_args(argv or None)
-    run(args.clade)
+    _run(args.clade)
 
 
-def run(clade: Path) -> Path:
-    if (bigwig := integrate_wigs(clade)).exists():
+def _run(clade: Path) -> Path:
+    name = "phastcons.bw"
+    wigs = [p / name for p in fs.sorted_naturally(clade.glob("chromosome.*"))]
+    if (bigwig := bigWigCat(clade / name, wigs)).exists():
         print(bigwig)
-        _log.info(bigWigInfo(bigwig).rstrip())
+        _log.info(bigWigInfo(bigwig).decode().rstrip())
     return bigwig
 
 
-def integrate_wigs(clade: Path) -> Path:
-    species = clade.parent.name
-    chrom_sizes = api.fasize(species)
-    name = "phastcons.wig.gz"
-    wigs = [p / name for p in fs.sorted_naturally(clade.glob("chromosome.*"))]
-    _log.debug(f"{[str(x) for x in wigs]}")
-    outfile = clade / "phastcons.bw"
-    is_to_run = not cli.dry_run and fs.is_outdated(outfile, wigs)
-    args = ["wigToBigWig", "stdin", chrom_sizes, outfile]
-    with subp.popen(args, stdin=subp.PIPE, if_=is_to_run) as w2bw:
-        for wig in wigs:
-            subp.run_zcat(wig, w2bw.stdin, if_=is_to_run)
-    return outfile
+def bigWigCat(out_bw: Path, in_bws: Sequence[Path]) -> Path:  # noqa: N802
+    if len(in_bws) == 1:
+        args = ["cp", *in_bws, out_bw]
+    else:
+        args = ["bigWigCat", out_bw, *in_bws]
+    subp.run(args, if_=fs.is_outdated(out_bw, in_bws))
+    return out_bw
 
 
 def bigWigInfo(path: Path) -> bytes:  # noqa: N802
     args = ["bigWigInfo", path]
     return subp.run(args, stdout=subp.PIPE, text=True).stdout
+
+
+def wigToBigWig(wig: Path, chrom_sizes: Path, *, keep: bool = False) -> Path:  # noqa: N802
+    bw = wig.with_suffix(".bw")
+    args: subp.Args = ["wigToBigWig"]
+    args.extend(["-fixedSummaries", "-keepAllChromosomes"])  # for bigWigCat
+    args.extend([wig, chrom_sizes, bw])  # mustBeReadableAndRegularFile
+    subp.run(args, if_=fs.is_outdated(bw, wig))
+    if wig.exists() and bw.exists() and not keep and not cli.dry_run:
+        wig.unlink()
+    return bw
 
 
 def bedGraphToBigWig(infile: Path, chrom_sizes: Path) -> Path:  # noqa: N802
@@ -58,8 +66,7 @@ def bedGraphToBigWig(infile: Path, chrom_sizes: Path) -> Path:  # noqa: N802
     outfile = infile.with_name(name)
     is_to_run = fs.is_outdated(outfile, infile)
     if infile.suffix == ".gz":
-        infile = _gunzip(infile, if_=is_to_run)
-        # gz or stdin are not accepted
+        infile = _gunzip(infile, if_=is_to_run)  # mustBeReadableAndRegularFile
     subp.run(["bedGraphToBigWig", infile, chrom_sizes, outfile], if_=is_to_run)
     return outfile
 
