@@ -26,6 +26,7 @@ R = 30  # (30) dynamic programing radius
 M = 18  # (1) minimum block length of output
 
 [phastCons]
+msa-format = "MAF"
 target-coverage = 0.25
 expected-length = 12
 

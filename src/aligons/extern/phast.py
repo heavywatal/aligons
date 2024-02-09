@@ -11,9 +11,7 @@ import itertools
 import logging
 import re
 import sys
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
 
 from aligons.db import api, phylo
 from aligons.util import cli, config, fs, subp
@@ -35,31 +33,32 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def run(path_clade: Path) -> list[Path]:
-    (cons_mod, noncons_mod) = prepare_mods(path_clade)
+    (_cons_mod, noncons_mod) = prepare_mods(path_clade)
     target = path_clade.parent.name
     chrom_sizes = api.fasize(target)
-    opts = config.get("phastCons", {})
     fts = [
-        cli.thread_submit(phastCons, d, chrom_sizes, cons_mod, noncons_mod, opts)
-        for d in path_clade.glob("chromosome*")
+        cli.thread_submit(phastCons, maf, chrom_sizes, None, noncons_mod)
+        for maf in path_clade.glob("chromosome.*/multiz.maf")
     ]
     return [ft.result() for ft in fts]
 
 
 def phastCons(  # noqa: N802
-    path: Path,
-    chrom_sizes: Path,
-    cons_mod: Path,
-    noncons_mod: Path,
-    options: Mapping[str, Any] = {},
+    msa: Path, chrom_sizes: Path, cons_mod: Path | None, noncons_mod: Path
 ) -> Path:
-    maf = path / "multiz.maf"
-    seqname = path.name.split(".", 1)[1]  # remove "chromosome."
-    opts = [*subp.optargs(options), "--seqname", seqname, "--msa-format", "MAF"]
-    args = ["phastCons", *opts, maf, f"{cons_mod},{noncons_mod}"]
-    wig = path / "phastcons.wig"
+    conf = config.get("phastCons", {})
+    bed = msa.with_name("most-cons.bed")
+    wig = msa.with_name("phastcons.wig")
     bw = wig.with_suffix(".bw")
-    if_ = fs.is_outdated(bw, [cons_mod, noncons_mod])
+    seqname = msa.parent.name.split(".", 1)[1]  # remove "chromosome."
+    opts = ["--most-conserved", bed, "--score", "--seqname", seqname]
+    if cons_mod is None:  # option 2
+        opts.extend(["--estimate-rho", msa.with_name("estimate")])
+        mod = f"{noncons_mod}"
+    else:  # option 3
+        mod = f"{cons_mod},{noncons_mod}"
+    args = ["phastCons", *subp.optargs(conf), *opts, msa, mod]
+    if_ = fs.is_outdated(bw, [msa, noncons_mod])
     with subp.open_(wig, "wb", if_=if_) as fout:
         subp.run(args, stdout=fout, if_=if_)
     kent.wigToBigWig(wig, chrom_sizes)
