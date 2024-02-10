@@ -37,21 +37,11 @@ def phastcons_block(bed: Path, clade: str) -> None:
     multiple = multiz.run(aln.target_dir, lst_species)
     if not (clade_alias := multiple.with_name(clade)).exists():
         clade_alias.symlink_to(multiple.name)
-    (chrom_bws, chrom_beds) = phast.run(multiple)
-    bigwig = kent.bigWigCat(multiple / "phastcons.bw", chrom_bws)
-    mostcons_bed = bigwig.with_name("mostcons.bed.gz")
-    htslib.concat_bgzip(chrom_beds, mostcons_bed)
-    htslib.tabix(mostcons_bed)
-    bed = bigwig.with_suffix(".bed.gz")
-    if fs.is_outdated(bed, bigwig):
-        htslib.bgzip(kent.bigWigToBed(bigwig), bed)
-    cns_bed = bed.with_name("cns.bed.gz")
-    if fs.is_outdated(cns_bed, bed):
-        cds_df = gff.extract_cds_bed(api.genome_gff3(aln.target))
-        cds = cds_df.write_csv(separator="\t", include_header=False).encode()
-        cns = bedtools.subtract(bed, cds)
-        cns = bedtools.remove_short(cns, 15)
-        htslib.tabix(htslib.bgzip(cns, cns_bed))
+    (bigwig, mostcons) = phast.run(multiple)
+    cns_bed = mostcons.with_name("cns.bed.gz")
+    _subtract_cds(mostcons, api.genome_gff3(aln.target), cns_bed)
+    cns0_bed = bigwig.with_name("cns0.bed.gz")
+    _subtract_cds(bigwig, api.genome_gff3(aln.target), cns0_bed)
 
 
 def phastcons(
@@ -72,9 +62,23 @@ def phastcons(
         multiple = multiz.run(pairwise, species)
         if n == len(lst_species):
             multiple.with_name(clade).symlink_to(multiple.name)
-        chrom_bws = phast.run(multiple)
-        kent.bigWigCat(multiple / "phastcons.bw", chrom_bws)
+        (_bigwig, _cns_bed) = phast.run(multiple)
     cli.wait_raise(fts)
+
+
+def _subtract_cds(bed: Path, gff3: Path, outfile: Path) -> Path:
+    if bed.suffix == ".bw":
+        bigwig = bed
+        bed = bigwig.with_suffix(".bed.gz")
+        if fs.is_outdated(bed, bigwig):
+            htslib.bgzip(kent.bigWigToBed(bigwig), bed)
+    if fs.is_outdated(outfile, bed):
+        cds_df = gff.extract_cds_bed(gff3)
+        cds = cds_df.write_csv(separator="\t", include_header=False).encode()
+        cns = bedtools.subtract(bed, cds)
+        cns = bedtools.remove_short(cns, 15)
+        htslib.tabix(htslib.bgzip(cns, outfile))
+    return outfile
 
 
 def test_fasize(species: str, max_bp: float) -> bool:

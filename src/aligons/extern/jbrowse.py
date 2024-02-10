@@ -93,12 +93,7 @@ class JBrowseConfig:
         _log.info(f"{clades}")
         clades = phylo.sorted_by_len_newicks(clades, reverse=True)
         for clade in clades:
-            wig = self.multiple_dir / clade / "phastcons.bw"
-            self.add_track(wig, "conservation", trackid=clade, subdir=clade)
-            bed = wig.with_name("cns.bed.gz")
-            if bed.exists():
-                tid = "CNS-" + clade
-                self.add_track(bed, "conservation", trackid=tid, subdir=clade)
+            self.add_phast(clade)
         iter_crai = self.pairwise_dir.rglob("*.cram.crai")
         crams = {cram.parent.parent.name: cram.with_suffix("") for cram in iter_crai}
         for query in phylo.list_species(clades[0]):
@@ -106,6 +101,16 @@ class JBrowseConfig:
                 self.add_track(cram, "alignment", trackid=query, subdir=query)
         for query, cram in crams.items():
             self.add_track(cram, "alignment", trackid=query, subdir=query)
+
+    def add_phast(self, clade: str) -> None:
+        clade_dir = self.multiple_dir / clade
+        for wig in clade_dir.glob("*.bw"):
+            stem = wig.stem
+            self.add_track(wig, "conservation", trackid=f"{stem}-{clade}", subdir=clade)
+        for csi in clade_dir.glob("*.csi"):
+            bed = csi.with_suffix("")
+            stem = bed.with_suffix("").stem
+            self.add_track(bed, "conservation", trackid=f"{stem}-{clade}", subdir=clade)
 
     def add_external(self) -> None:
         if self.species == "oryza_sativa":
@@ -167,6 +172,7 @@ class JBrowseConfig:
         patt = r"_inProm|_CE_genome-wide"  # redundant subsets
         patt += r"|_H\dK\d"
         patt += r"|SV_all-qin"
+        patt += r"|^cns0|^most-cons|cns-poaceae|cns-monocot"
         rex = re.compile(patt)
         tracks = [x for x in self.tracks if not rex.search(x)]
         args.extend(["--tracks", ",".join(tracks)])

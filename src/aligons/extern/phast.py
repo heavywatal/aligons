@@ -7,6 +7,7 @@ http://compgen.cshl.edu/phast/
 """
 import csv
 import gzip
+import io
 import itertools
 import logging
 import re
@@ -16,7 +17,7 @@ from pathlib import Path
 from aligons.db import api, phylo
 from aligons.util import cli, config, fs, subp
 
-from . import kent
+from . import htslib, kent
 
 _log = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ def main(argv: list[str] | None = None) -> None:
     run(args.clade)
 
 
-def run(path_clade: Path) -> tuple[list[Path], list[Path]]:
+def run(path_clade: Path) -> tuple[Path, Path]:
     (_cons_mod, noncons_mod) = prepare_mods(path_clade)
     target = path_clade.parent.name
     chrom_sizes = api.fasize(target)
@@ -40,13 +41,16 @@ def run(path_clade: Path) -> tuple[list[Path], list[Path]]:
         cli.thread_submit(phastCons, maf, chrom_sizes, None, noncons_mod)
         for maf in fs.sorted_naturally(path_clade.glob("chromosome.*/multiz.maf"))
     ]
-    bigwigs: list[Path] = []
-    beds: list[Path] = []
+    chrom_bws: list[Path] = []
+    chrom_beds: list[Path] = []
     for ft in futures:
         res = ft.result()
-        bigwigs.append(res[0])
-        beds.append(res[1])
-    return (bigwigs, beds)
+        chrom_bws.append(res[0])
+        chrom_beds.append(res[1])
+    bigwig = kent.bigWigCat(path_clade / "phastcons.bw", chrom_bws)
+    mostcons = bigwig.with_name("most-cons.bed.gz")
+    concat_clean_mostcons(chrom_beds, mostcons)
+    return bigwig, mostcons
 
 
 def phastCons(  # noqa: N802
@@ -81,8 +85,8 @@ def phastCons(  # noqa: N802
 def prepare_mods(clade: Path) -> tuple[Path, Path]:
     target = clade.parent.name
     prepare_labeled_gff3(target)
-    cons_mod = clade / "cons.mod"
-    noncons_mod = clade / "noncons.mod"
+    cons_mod = clade / "phylofit.cons.mod"
+    noncons_mod = clade / "phylofit.noncons.mod"
     tree = phylo.get_subtree(clade.name.split("-"), phylo.shorten_names)
     cfutures: list[cli.FuturePath] = []
     nfutures: list[cli.FuturePath] = []
@@ -178,7 +182,7 @@ def consEntropy(  # noqa: N802
 
 
 def most_conserved_mod(mods: list[Path]) -> Path:
-    outfile = mods[0].with_name("cons.mod")
+    outfile = mods[0].with_name("phylofit.cons.mod")
     if not fs.is_outdated(outfile, mods) or cli.dry_run:
         return outfile
     shortest_length = sys.float_info.max
@@ -246,6 +250,18 @@ def add_label_to_chr(infile: Path, outfile: Path, label: str) -> None:
             if row[2] == "CDS":
                 row[0] = label + row[0]
                 writer.writerow(row)
+
+
+def concat_clean_mostcons(beds: list[Path], outfile: Path) -> Path:
+    sd = ["sd", r"multiz\.\d+|\+$", "."]
+    buffer = io.BytesIO()
+    for infile in beds:
+        with subp.popen_zcat(infile, stdout=subp.PIPE) as pzcat:
+            p = subp.run(sd, stdin=pzcat.stdout, stdout=subp.PIPE)
+            buffer.write(p.stdout)
+    htslib.bgzip(buffer.getvalue(), outfile)
+    htslib.tabix(outfile)
+    return outfile
 
 
 def clean(path: Path) -> None:
