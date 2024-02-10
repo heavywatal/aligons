@@ -37,8 +37,11 @@ def phastcons_block(bed: Path, clade: str) -> None:
     multiple = multiz.run(aln.target_dir, lst_species)
     if not (clade_alias := multiple.with_name(clade)).exists():
         clade_alias.symlink_to(multiple.name)
-    chrom_bws = phast.run(multiple)
+    (chrom_bws, chrom_beds) = phast.run(multiple)
     bigwig = kent.bigWigCat(multiple / "phastcons.bw", chrom_bws)
+    mostcons_bed = bigwig.with_name("mostcons.bed.gz")
+    htslib.concat_bgzip(chrom_beds, mostcons_bed)
+    htslib.tabix(mostcons_bed)
     bed = bigwig.with_suffix(".bed.gz")
     if fs.is_outdated(bed, bigwig):
         htslib.bgzip(kent.bigWigToBed(bigwig), bed)
@@ -69,7 +72,6 @@ def phastcons(
         multiple = multiz.run(pairwise, species)
         if n == len(lst_species):
             multiple.with_name(clade).symlink_to(multiple.name)
-        phast.run(multiple)
         chrom_bws = phast.run(multiple)
         kent.bigWigCat(multiple / "phastcons.bw", chrom_bws)
     cli.wait_raise(fts)

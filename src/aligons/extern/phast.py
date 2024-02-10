@@ -32,39 +32,50 @@ def main(argv: list[str] | None = None) -> None:
     run(args.clade)
 
 
-def run(path_clade: Path) -> list[Path]:
+def run(path_clade: Path) -> tuple[list[Path], list[Path]]:
     (_cons_mod, noncons_mod) = prepare_mods(path_clade)
     target = path_clade.parent.name
     chrom_sizes = api.fasize(target)
-    fts = [
+    futures = [
         cli.thread_submit(phastCons, maf, chrom_sizes, None, noncons_mod)
-        for maf in path_clade.glob("chromosome.*/multiz.maf")
+        for maf in fs.sorted_naturally(path_clade.glob("chromosome.*/multiz.maf"))
     ]
-    return [ft.result() for ft in fts]
+    bigwigs: list[Path] = []
+    beds: list[Path] = []
+    for ft in futures:
+        res = ft.result()
+        bigwigs.append(res[0])
+        beds.append(res[1])
+    return (bigwigs, beds)
 
 
 def phastCons(  # noqa: N802
     msa: Path, chrom_sizes: Path, cons_mod: Path | None, noncons_mod: Path
-) -> Path:
+) -> tuple[Path, Path]:
     conf = config.get("phastCons", {})
     bed = msa.with_name("most-cons.bed")
-    wig = msa.with_name("phastcons.wig")
+    wig = msa.with_name("post-probs.wig")
     bw = wig.with_suffix(".bw")
+    estimate_base = msa.with_name("estimate")
     seqname = msa.parent.name.split(".", 1)[1]  # remove "chromosome."
     opts = ["--most-conserved", bed, "--score", "--seqname", seqname]
     if cons_mod is None:  # option 2
-        opts.extend(["--estimate-rho", msa.with_name("estimate")])
+        opts.extend(["--estimate-rho", estimate_base])
         mod = f"{noncons_mod}"
     else:  # option 3
         mod = f"{cons_mod},{noncons_mod}"
     args = ["phastCons", *subp.optargs(conf), *opts, msa, mod]
-    if_ = fs.is_outdated(bw, [msa, noncons_mod])
+    deps = [msa, noncons_mod]
+    if_ = fs.is_outdated(bw, deps) or fs.is_outdated(bed, deps)
     with subp.open_(wig, "wb", if_=if_) as fout:
         subp.run(args, stdout=fout, if_=if_)
+    emods = [estimate_base.with_suffix(x) for x in (".cons.mod", ".noncons.mod")]
+    if emods[0].exists() and emods[1].exists():
+        consEntropy(conf["target-coverage"], conf["expected-length"], *emods)
     kent.wigToBigWig(wig, chrom_sizes)
     if bw.exists():
         print(bw)
-    return bw
+    return (bw, bed)
 
 
 def prepare_mods(clade: Path) -> tuple[Path, Path]:
@@ -151,6 +162,19 @@ def phyloBoot(mods: list[Path], outfile: Path) -> None:  # noqa: N802
         f"phyloBoot --read-mods {read_mods} --output-average {outfile}",
         if_=fs.is_outdated(outfile, mods),
     )
+
+
+def consEntropy(  # noqa: N802
+    target_coverage: float, expected_length: int, cons_mod: Path, noncons_mod: Path
+) -> Path:
+    cov = str(target_coverage)
+    exp_len = str(expected_length)
+    args = ["consEntropy", cov, exp_len, cons_mod, noncons_mod]
+    outfile = cons_mod.with_name("entropy.txt")
+    if_ = fs.is_outdated(outfile, [cons_mod, noncons_mod])
+    with subp.open_(outfile, "wb", if_=if_) as fout:
+        subp.run(args, stdout=fout, if_=if_)
+    return outfile
 
 
 def most_conserved_mod(mods: list[Path]) -> Path:
