@@ -182,6 +182,9 @@ class JBrowseConfig:
         config_json = self.target / "config.json"
         with config_json.open() as fin:
             cfg = json.load(fin)
+        for track in cfg["tracks"]:
+            if track["adapter"]["type"].startswith("Bed"):
+                color_LinearBasicDisplay(track)
         assembly = cfg["assemblies"][0]
         session = cfg["defaultSession"]
         view = session["views"][0]
@@ -237,11 +240,6 @@ class JBrowseConfig:
 
 
 def make_display(track: dict[str, Any]) -> dict[str, Any]:
-    clade_color = {
-        "bep": "#C82828",
-        "poaceae": "#C8641E",
-        "monocot": "#C8B414",
-    }
     item = {}
     if track["type"] == "FeatureTrack":
         if "gff3" in track["configuration"]:
@@ -254,21 +252,10 @@ def make_display(track: dict[str, Any]) -> dict[str, Any]:
                 "type": "LinearBasicDisplay",
                 "height": 30,
                 "trackShowLabels": False,
-                "renderer": {
-                    "type": "SvgFeatureRenderer",
-                    "height": 10,
-                    "color": "#800000",
-                },
+                "trackShowDescriptions": False,
             }
     elif track["type"] == "QuantitativeTrack":
-        item = {
-            "type": "LinearWiggleDisplay",
-            "height": 40,
-            "color": clade_color.get(track["configuration"], "#888888"),
-            "constraints": {"max": 1, "min": 0},
-        }
-        if track["configuration"] not in clade_color:
-            del item["constraints"]
+        item = make_LinearWiggleDisplay(track["configuration"])
     elif track["type"] == "AlignmentsTrack":
         item = {
             "type": "LinearPileupDisplay",
@@ -276,6 +263,40 @@ def make_display(track: dict[str, Any]) -> dict[str, Any]:
         }
     item["configuration"] = "-".join([track["configuration"], str(item["type"])])
     return item
+
+
+def color_LinearBasicDisplay(track: dict[str, Any]) -> None:  # noqa: N802
+    for item in track["displays"]:
+        if item["type"] == "LinearBasicDisplay":
+            item["renderer"] = {
+                "type": "SvgFeatureRenderer",
+                "color1": clade_color(track["trackId"]),
+                "height": 10,
+            }
+
+
+def make_LinearWiggleDisplay(configuration: str) -> dict[str, Any]:  # noqa: N802
+    item: dict[str, Any] = {
+        "type": "LinearWiggleDisplay",
+        "height": 40,
+        "color": clade_color(configuration),
+    }
+    if "phast" in configuration.lower():
+        item["constraints"] = {"max": 1, "min": 0}
+    return item
+
+
+def clade_color(label: str, default: str = "#888888") -> str:
+    colors = {
+        "bep": "#C82828",
+        "poaceae": "#C8641E",
+        "monocot": "#C8B414",
+        "solanum": "#C82828",
+        "solanaceae": "#C8641E",
+        "lamiids": "#C8B414",
+    }
+    clade = label.rsplit("-", 1)[-1]
+    return colors.get(clade, default)
 
 
 def make_configuration() -> dict[str, Any]:
