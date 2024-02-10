@@ -184,7 +184,7 @@ class JBrowseConfig:
             cfg = json.load(fin)
         for track in cfg["tracks"]:
             if track["adapter"]["type"].startswith("Bed"):
-                color_LinearBasicDisplay(track)
+                set_LinearBasicDisplay(track)
         assembly = cfg["assemblies"][0]
         session = cfg["defaultSession"]
         view = session["views"][0]
@@ -265,14 +265,18 @@ def make_display(track: dict[str, Any]) -> dict[str, Any]:
     return item
 
 
-def color_LinearBasicDisplay(track: dict[str, Any]) -> None:  # noqa: N802
-    for item in track["displays"]:
-        if item["type"] == "LinearBasicDisplay":
-            item["renderer"] = {
+def set_LinearBasicDisplay(track: dict[str, Any]) -> None:  # noqa: N802
+    track["displays"] = [
+        {
+            "type": "LinearBasicDisplay",
+            "displayId": track["trackId"] + "-LinearBasicDisplay",
+            "renderer": {
                 "type": "SvgFeatureRenderer",
                 "color1": clade_color(track["trackId"]),
                 "height": 10,
-            }
+            },
+        }
+    ]
 
 
 def make_LinearWiggleDisplay(configuration: str) -> dict[str, Any]:  # noqa: N802
