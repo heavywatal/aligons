@@ -5,8 +5,6 @@ dst: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
 
 http://compgen.cshl.edu/phast/
 """
-import csv
-import gzip
 import itertools
 import logging
 import re
@@ -14,7 +12,7 @@ import sys
 from pathlib import Path
 
 from aligons.db import api, phylo
-from aligons.util import cli, config, fs, subp
+from aligons.util import cli, config, fs, gff, subp
 
 from . import htslib, kent
 
@@ -83,7 +81,8 @@ def phastCons(  # noqa: N802
 
 def prepare_mods(clade: Path) -> tuple[Path, Path]:
     target = clade.parent.name
-    prepare_labeled_gff3(target)
+    if not cli.dry_run:
+        assert cds_gff3(target).exists()
     cons_mod = clade / "phylofit.cons.mod"
     noncons_mod = clade / "phylofit.noncons.mod"
     tree = phylo.get_subtree(clade.name.split("-"), phylo.shorten_names)
@@ -92,44 +91,51 @@ def prepare_mods(clade: Path) -> tuple[Path, Path]:
     pool = cli.ThreadPool()
     for chromosome in clade.glob("chromosome*"):
         maf = chromosome / "multiz.maf"
-        gff = path_labeled_gff3(target, chromosome.name)
-        cfutures.append(pool.submit(make_cons_mod, maf, gff, tree))
-        nfutures.append(pool.submit(make_noncons_mod, maf, gff, tree))
+        seqid = chromosome.name.removeprefix("chromosome.")
+        cfutures.append(pool.submit(make_cons_mod, maf, target, seqid, tree))
+        nfutures.append(pool.submit(make_noncons_mod, maf, target, seqid, tree))
     phyloBoot([f.result() for f in cfutures], cons_mod)
     phyloBoot([f.result() for f in nfutures], noncons_mod)
     return (cons_mod, noncons_mod)
 
 
-def make_cons_mod(maf: Path, gff: Path, tree: str) -> Path:
-    codons_ss = msa_view_features(maf, gff, conserved=True)
+def make_cons_mod(maf: Path, species: str, seqid: str, tree: str) -> Path:
+    codons_ss = msa_view_features(maf, species, seqid, conserved=True)
     codons_mods = phyloFit(codons_ss, tree, conserved=True)
     return most_conserved_mod(codons_mods)
 
 
-def make_noncons_mod(maf: Path, gff: Path, tree: str) -> Path:
-    _4d_codons_ss = msa_view_features(maf, gff, conserved=False)
+def make_noncons_mod(maf: Path, species: str, seqid: str, tree: str) -> Path:
+    _4d_codons_ss = msa_view_features(maf, species, seqid, conserved=False)
     _4d_sites_ss = msa_view_ss(_4d_codons_ss)
     return phyloFit(_4d_sites_ss, tree, conserved=False)[0]
 
 
-def msa_view_features(maf: Path, gff: Path, *, conserved: bool) -> Path:
-    cmd = f"msa_view {maf!s} --in-format MAF --features <(gunzip -c {gff!s})"
+def msa_view_features(maf: Path, species: str, seqid: str, *, conserved: bool) -> Path:
+    """Calculate sufficient statistics with a custom GFF.
+
+    - Seqid must be labeled with species names as in maf, e.g., osat.1, slyc.2.
+    - `--4d` requires all features are on the same chromosome.
+    - BED is not recognized as opposed to `--help` description.
+    """
+    cmd = ["msa_view", maf, "--in-format", "MAF", "--features", "/dev/stdin"]
     if conserved:
         outfile = maf.with_name("codons.ss")
-        cmd += " --catmap 'NCATS = 3; CDS 1-3' --out-format SS --unordered-ss"
-        cmd += " --reverse-groups transcript_id"
+        cmd.extend(["--catmap", "NCATS = 3; CDS 1-3"])
+        cmd.extend(["--out-format", "SS", "--unordered-ss"])
+        cmd.extend(["--reverse-groups", "transcript_id"])
     else:
         outfile = maf.with_name("4d-codons.ss")
-        cmd += " --4d"
-    is_to_run = fs.is_outdated(outfile, maf)
-    with subp.open_(outfile, "wb", if_=is_to_run) as fout:
-        subp.run(
-            cmd,
-            if_=is_to_run,
-            stdout=fout,
-            shell=True,  # noqa: S604,
-            executable="/bin/bash",
-        )
+        cmd.append("--4d")
+    if_ = fs.is_outdated(outfile, maf)
+    shortname = phylo.shorten(species)
+    grep_cmd = ["zstdgrep", f"^{seqid}\t", cds_gff3(species)]
+    with (
+        subp.popen(grep_cmd, stdout=subp.PIPE, if_=if_) as grep,
+        subp.popen_sd(r"^(\w)", f"{shortname}.$1", stdin=grep.stdout, if_=if_) as sd,
+        subp.open_(outfile, "wb", if_=if_) as fout,
+    ):
+        subp.run(cmd, stdin=sd.stdout, stdout=fout, if_=if_)
     return outfile
 
 
@@ -207,48 +213,18 @@ def extract_tree(mod: str) -> str:
     return m.group(1)
 
 
-def path_labeled_gff3(species: str, chromosome: str) -> Path:
-    return Path("gff3") / species / f"labeled-{chromosome}.gff3.gz"
-
-
-def prepare_labeled_gff3(species: str) -> None:
-    """Deploy labeled copies of GFF3.
-
-    src: {db.api.prefix}/gff3/{species}/*.{chromosome}.gff3.gz
-    dst: ./gff3/{species}/labeled-{chromosome}.gff3.gz
-    """
-    shortname = phylo.shorten(species)
-    for infile in api.list_chromosome_gff3(species):
-        mobj = re.search(r"(chromosome.+)\.gff3\.gz$", infile.name)
-        assert mobj, infile
-        outfile = path_labeled_gff3(species, mobj.group(1))
-        if fs.is_outdated(outfile, infile) and not cli.dry_run:
-            _log.info(f"{outfile}")
-            add_label_to_chr(infile, outfile, shortname + ".")
-
-
-def add_label_to_chr(infile: Path, outfile: Path, label: str) -> None:
-    """Modify GFF3 for msa_view.
-
-    - Add species name to chromosome name, e.g., osat.1, zmay.2
-    - Extract CDS
-    """
-    outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-    with gzip.open(infile, "rt") as fin, gzip.open(outfile, "wt") as fout:
-        for line in fin:
-            if not line.startswith("##"):
-                break
-            fout.write(line)
-        reader = csv.reader(fin, delimiter="\t")
-        writer = csv.writer(
-            fout, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE
-        )
-        for row in reader:
-            if len(row) < 8 or row[0].startswith("#"):  # noqa: PLR2004
-                continue
-            if row[2] == "CDS":
-                row[0] = label + row[0]
-                writer.writerow(row)
+def cds_gff3(species: str) -> Path:
+    genome_gff3 = api.genome_gff3(species)
+    name = genome_gff3.name.removesuffix(".genome.gff3.gz") + ".cds.gff3.gz"
+    cds = genome_gff3.with_name(name)
+    if fs.is_outdated(cds, genome_gff3) and not cli.dry_run:
+        x = gff.GFF(genome_gff3)
+        x.body = x.body.filter(type="CDS")
+        with htslib.popen_bgzip(cds) as bgzip:
+            assert bgzip.stdin, cds
+            x.write(bgzip.stdin)
+        _log.info(f"{cds}")
+    return cds
 
 
 def concat_clean_mostcons(beds: list[Path], outfile: Path) -> Path:

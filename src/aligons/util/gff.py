@@ -2,8 +2,8 @@ import gzip
 import io
 import logging
 import re
+import typing
 from pathlib import Path
-from typing import IO
 
 import polars as pl
 
@@ -17,6 +17,31 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
     print(_read_sequence_region(args.infile))
+
+
+class GFF:
+    def __init__(self, source: Path) -> None:
+        self.header = _read_header(source)
+        self.body = _read_body(source)
+
+    def write(self, iobytes: typing.IO[bytes]) -> None:
+        iobytes.write(self.header)
+        iobytes = typing.cast(io.BytesIO, iobytes)
+        self.body.write_csv(iobytes, include_header=False, separator="\t")
+
+
+def _read_header(source: Path) -> bytes:
+    header = b""
+    with subp.popen_zcat(source) as zcat:
+        assert zcat.stdout, source
+        for line in zcat.stdout:
+            if not line.startswith(b"#"):
+                break
+            header += line
+    if not header.startswith(b"##gff-version"):
+        _log.warning("invalid GFF without ##gff-version")
+        return b"##gff-version 3\n"
+    return header
 
 
 def split_with_fasize(path: Path, fasize: Path) -> list[Path]:
@@ -142,7 +167,7 @@ def _to_bed(x: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def sort_clean_chromosome(infile: Path, stdout: IO[bytes]) -> None:
+def sort_clean_chromosome(infile: Path, stdout: typing.IO[bytes]) -> None:
     # TODO: jbrowse2 still needs billzt/gff3sort precision?
     cmd1 = f"zstdgrep -v '^#' {infile!s}"
     cmd2 = "grep -v '\tchromosome\t'"

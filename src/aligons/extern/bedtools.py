@@ -47,9 +47,9 @@ def maskfasta(fi: bytes, bed: Path, *, soft: bool = True) -> bytes:
     return p.stdout
 
 
-def subtract(a: Path, b: bytes) -> bytes:
-    sub: subp.Args = ["bedtools", "subtract", "-a", a, "-b", "-"]
-    return subp.run(sub, input=b, stdout=subp.PIPE).stdout
+def subtract(a: Path, b: Path) -> bytes:
+    sub: subp.Args = ["bedtools", "subtract", "-a", a, "-b", b]
+    return subp.run(sub, stdout=subp.PIPE).stdout
 
 
 def remove_short(b: bytes, min_width: int = 0) -> bytes:
