@@ -7,7 +7,6 @@ http://compgen.cshl.edu/phast/
 """
 import csv
 import gzip
-import io
 import itertools
 import logging
 import re
@@ -253,13 +252,12 @@ def add_label_to_chr(infile: Path, outfile: Path, label: str) -> None:
 
 
 def concat_clean_mostcons(beds: list[Path], outfile: Path) -> Path:
-    sd = ["sd", r"multiz\.\d+|\+$", "."]
-    buffer = io.BytesIO()
-    for infile in beds:
-        with subp.popen_zcat(infile, stdout=subp.PIPE) as pzcat:
-            p = subp.run(sd, stdin=pzcat.stdout, stdout=subp.PIPE)
-            buffer.write(p.stdout)
-    htslib.bgzip(buffer.getvalue(), outfile)
+    patt = r"multiz\.\d+|\+$"
+    if_ = fs.is_outdated(outfile, beds)
+    with htslib.popen_bgzip(outfile, if_=if_) as bgzip:
+        for infile in beds:
+            with subp.popen_zcat(infile, stdout=subp.PIPE, if_=if_) as zcat:
+                subp.run_sd(patt, ".", stdin=zcat.stdout, stdout=bgzip.stdin, if_=if_)
     htslib.tabix(outfile)
     return outfile
 

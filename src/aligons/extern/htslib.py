@@ -65,10 +65,7 @@ def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
     fs.expect_suffix(outfile, ".gz")
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-        with (
-            outfile.open("wb") as fout,
-            subp.popen(["bgzip", "-@2"], stdin=subp.PIPE, stdout=fout) as bgz,
-        ):
+        with popen_bgzip(outfile) as bgz:
             assert bgz.stdin is not None
             if ".gff" in outfile.name:
                 header = collect_gff3_header(infiles)
@@ -109,6 +106,17 @@ def bgzip(data: bytes | IO[bytes] | None, outfile: Path, *, if_: bool = True) ->
         else:
             subp.run(["bgzip", "-@2"], stdin=data, stdout=fout, if_=if_)
     return outfile
+
+
+def popen_bgzip(
+    outfile: Path, *, stdin: subp.FILE = subp.PIPE, if_: bool = True
+) -> subp.Popen[bytes]:
+    fs.expect_suffix(outfile, ".gz")
+    if outfile.exists():
+        _log.info("overwriting {outfile}")
+    if_ = if_ and not cli.dry_run
+    with subp.open_(outfile, "wb", if_=if_) as fout:
+        return subp.popen(["bgzip", "-@2"], stdin=stdin, stdout=fout, if_=if_)
 
 
 def try_index(bgz: Path | cli.FuturePath) -> Path:
