@@ -144,8 +144,26 @@ def _zcat_args(infile: Path) -> Args:
 
 
 def popen_sd(
-    pattern: str, repl: str = "", *, stdin: FILE = PIPE, stdout: FILE = PIPE
+    pattern: str,
+    repl: str = "",
+    *,
+    stdin: FILE = PIPE,
+    stdout: FILE = PIPE,
+    if_: bool = True,
 ) -> Popen[bytes]:
     if pattern:
-        return popen(["sd", pattern, repl], stdin=stdin, stdout=stdout)
-    return popen(["cat"], stdin=stdin, stdout=PIPE, quiet=True)
+        return popen(["sd", pattern, repl], stdin=stdin, stdout=stdout, if_=if_)
+    return popen(["cat"], stdin=stdin, stdout=PIPE, quiet=True, if_=if_)
+
+
+def run_sd(
+    pattern: str,
+    repl: str = "",
+    *,
+    stdin: FILE = PIPE,
+    stdout: FILE = PIPE,
+    if_: bool = True,
+) -> CompletedProcess[bytes]:
+    if pattern:
+        return run(["sd", pattern, repl], stdin=stdin, stdout=stdout, if_=if_)
+    return run(["cat"], stdin=stdin, stdout=PIPE, quiet=True, if_=if_)
