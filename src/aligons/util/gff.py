@@ -50,12 +50,13 @@ def iter_split(
     regions_gff = _read_sequence_region(path)
     files: list[Path] = []
     body = None
-    for seqid, seq_region in regions.items():
+    for seqid, seq_region_exp in regions.items():
         if re.search(r"scaffold|contig", seqid):
             _log.debug(f"ignoring {seqid} in {path}")
             continue
-        if (in_gff := regions_gff.get(seqid, "")) and seq_region != in_gff:
-            _log.warning(f"'{seq_region}' != '{in_gff}'")
+        seq_region = regions_gff.get(seqid, seq_region_exp)
+        if seq_region.split() != seq_region_exp.split():
+            _log.warning(f"'{seq_region}' != '{seq_region_exp}'")
         outfile = path.with_name(f"{stem}.chromosome.{seqid}.gff3.gz")
         files.append(outfile)
         _log.info(f"{outfile}")
@@ -79,12 +80,12 @@ def _read_sequence_region(path: Path) -> dict[str, bytes]:
     regions: dict[str, bytes] = {}
     comments: list[bytes] = []
     # solgenomics has dirty headers without space: ##sequence-regionSL4.0ch01
-    pattern = re.compile(rb"(##sequence-region)\s*(.+)", re.S)
+    pattern = re.compile(rb"##sequence-region\s*(.+)", re.S)
     for line in lines:
         if mobj := pattern.match(line):
-            value = mobj.group(2)
-            seqid = value.split()[0].decode()
-            regions[seqid] = b" ".join(mobj.groups())
+            value = mobj.group(1)
+            seqid = value.split(maxsplit=1)[0].decode()
+            regions[seqid] = mobj.group(0)
         else:
             comments.append(line)
     if not regions:
@@ -126,7 +127,7 @@ def _sort_body(content: bytes) -> bytes:
         _read_body(content)
         .lazy()
         .filter(pl.col("start") < pl.col("end"))  # SL2.40: end 338074 < begin 338105
-        .sort(["seqid", "start"])
+        .sort([pl.col("seqid").str.pad_start(4, "0"), "start"])
         .collect()
         .write_csv(bio, include_header=False, separator="\t")
     )
@@ -155,17 +156,6 @@ def _read_body(source: Path | str | bytes) -> pl.DataFrame:
             "phase",
             "attributes",
         ],
-    )
-
-
-def extract_cds_bed(infile: Path) -> pl.DataFrame:
-    return _to_bed(_read_body(infile).lazy().filter(pl.col("type") == "CDS")).collect()
-
-
-def _to_bed(x: pl.LazyFrame) -> pl.LazyFrame:
-    return x.select(["seqid", "start", "end"]).with_columns(
-        start=pl.col("start") - 1,
-        end=pl.col("end") - 1,
     )
 
 
