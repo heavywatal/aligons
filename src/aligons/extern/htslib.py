@@ -1,8 +1,6 @@
 import concurrent.futures as confu
-import gzip
 import logging
 import re
-from collections.abc import Iterable
 from pathlib import Path
 from typing import IO
 
@@ -68,10 +66,10 @@ def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
         with popen_bgzip(outfile) as bgz:
             assert bgz.stdin is not None
             if ".gff" in outfile.name:
-                header = collect_gff3_header(infiles)
-                bgz.stdin.write(header)
+                lines = gff.collect_sequence_region(infiles)
+                bgz.stdin.writelines([b"##gff-version 3\n", *lines])
                 bgz.stdin.flush()
-                _log.debug(header.decode())
+                _log.debug(f"{lines}")
             for infile in infiles:
                 if ".gff" in outfile.name:
                     gff.sort_clean_chromosome(infile, bgz.stdin)
@@ -81,17 +79,17 @@ def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
     return outfile
 
 
-def collect_gff3_header(infiles: Iterable[Path]) -> bytes:
-    header = b"##gff-version 3\n"
-    for file in infiles:
-        with gzip.open(file, "rt") as fin:
-            for line in fin:
-                if line.startswith("##sequence-region"):
-                    header += line.encode()
-                    break
-                if not line.startswith("#"):
-                    break
-    return header
+def split_gff3(path: Path, fasize: Path) -> list[Path]:
+    regions: dict[str, bytes] = {}
+    with fasize.open("rt") as fin:
+        for line in fin:
+            seqid, length = line.split()
+            regions[seqid] = f"##sequence-region {seqid} 1 {length}\n".encode()
+    files: list[Path] = []
+    for outfile, buffer in gff.iter_split(path, regions):
+        files.append(outfile)
+        bgzip(buffer.getvalue(), outfile)
+    return files
 
 
 def bgzip(data: bytes | IO[bytes] | None, outfile: Path, *, if_: bool = True) -> Path:

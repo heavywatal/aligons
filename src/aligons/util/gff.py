@@ -1,8 +1,8 @@
-import gzip
 import io
 import logging
 import re
 import typing
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 import polars as pl
@@ -25,35 +25,26 @@ class GFF:
         self.body = _read_body(source)
 
     def write(self, iobytes: typing.IO[bytes]) -> None:
-        iobytes.write(self.header)
+        iobytes.writelines(self.header)
         iobytes = typing.cast(io.BytesIO, iobytes)
         self.body.write_csv(iobytes, include_header=False, separator="\t")
 
 
-def _read_header(source: Path) -> bytes:
-    header = b""
-    with subp.popen_zcat(source) as zcat:
-        assert zcat.stdout, source
-        for line in zcat.stdout:
-            if not line.startswith(b"#"):
-                break
-            header += line
-    if not header.startswith(b"##gff-version"):
-        _log.warning("invalid GFF without ##gff-version")
-        return b"##gff-version 3\n"
-    return header
+def sort(content: bytes) -> bytes:
+    return _extract_header(content) + _sort_body(content)
 
 
-def split_with_fasize(path: Path, fasize: Path) -> list[Path]:
-    regions: dict[str, str] = {}
-    with fasize.open("rt") as fin:
-        for line in fin:
-            seqid, length = line.split()
-            regions[seqid] = f"##sequence-region {seqid} 1 {length}\n"
-    return split_with_hint(path, regions)
+def collect_sequence_region(infiles: Iterable[Path]) -> list[bytes]:
+    lines: list[bytes] = []
+    for file in infiles:
+        for line in _read_sequence_region(file).values():
+            lines.append(line)  # noqa: PERF402
+    return lines
 
 
-def split_with_hint(path: Path, regions: dict[str, str]) -> list[Path]:
+def iter_split(
+    path: Path, regions: dict[str, bytes]
+) -> Iterator[tuple[Path, io.BytesIO]]:
     stem = path.stem.removesuffix(".gff").removesuffix(".gff3")
     _log.debug(f"{stem=}")
     regions_gff = _read_sequence_region(path)
@@ -73,61 +64,70 @@ def split_with_hint(path: Path, regions: dict[str, str]) -> list[Path]:
         if body is None:
             body = _read_body(path).lazy()
         data = body.filter(pl.col("seqid") == seqid).sort(["start"]).collect()
-        with gzip.open(outfile, "wt") as fout:
-            fout.write("##gff-version 3\n")
-            fout.write(seq_region)
-            fout.write(data.write_csv(include_header=False, separator="\t"))
-    return files
+        buffer = io.BytesIO()
+        buffer.write(b"##gff-version 3\n")
+        buffer.write(seq_region)
+        data.write_csv(buffer, include_header=False, separator="\t")
+        yield outfile, buffer
 
 
-def sort(content: bytes) -> bytes:
-    return _extract_header(content) + _sort_body(content)
-
-
-def _read_sequence_region(path: Path) -> dict[str, str]:
-    lines: list[str] = []
+def _read_sequence_region(path: Path) -> dict[str, bytes]:
     if not path.exists():
         return {}
-    with gzip.open(path, "rt") as fin:
-        for line in fin:
-            if not line.startswith("#"):
-                break
-            lines.append(line)
-    if not lines or not lines[0].startswith("##gff-version"):
-        _log.warning(f"{path}:invalid GFF without ##gff-version")
-    else:
-        lines.pop(0)
-    regions: dict[str, str] = {}
-    comments: list[str] = []
+    lines = _read_header(path)
+    lines.pop(0)  # gff-version
+    regions: dict[str, bytes] = {}
+    comments: list[bytes] = []
     # solgenomics has dirty headers without space: ##sequence-regionSL4.0ch01
-    pattern = re.compile(r"(##sequence-region)\s*(.+)", re.S)
+    pattern = re.compile(rb"(##sequence-region)\s*(.+)", re.S)
     for line in lines:
         if mobj := pattern.match(line):
             value = mobj.group(2)
-            regions[value.split()[0]] = " ".join(mobj.groups())
+            seqid = value.split()[0].decode()
+            regions[seqid] = b" ".join(mobj.groups())
         else:
             comments.append(line)
     if not regions:
         _log.info(f"{path}:unfriendly GFF without ##sequence-region")
     if comments:
-        ignored = "".join(comments)
+        ignored = b"".join(comments)
         _log.warning(f"{path}:ignoring comments in GFF:\n{ignored}")
     return regions
 
 
+def _read_header(source: Path) -> list[bytes]:
+    lines: list[bytes] = []
+    with subp.popen_zcat(source) as zcat:
+        assert zcat.stdout, source
+        for line in zcat.stdout:
+            if not line.startswith(b"#"):
+                break
+            lines.append(line)
+    if not lines or not lines[0].startswith(b"##gff-version"):
+        _log.warning(f"{source}:invalid GFF without ##gff-version")
+        lines = [b"##gff-version 3\n", *lines]
+    return lines
+
+
 def _extract_header(content: bytes) -> bytes:
-    if m := re.match(rb"##gff-version.+?(?=^[^#])", content, re.M | re.S):
-        return m.group(0)
-    _log.warning("invalid GFF without ##gff-version")
-    return b"##gff-version 3\n"
+    if m := re.match(rb"#.+?(?=^[^#])", content, re.M | re.S):
+        header = m.group(0)
+    else:
+        header = b""
+    if not header.startswith(b"##gff-version"):
+        _log.warning("invalid GFF without ##gff-version")
+        header = b"##gff-version 3\n" + header
+    return header
 
 
 def _sort_body(content: bytes) -> bytes:
     bio = io.BytesIO()
     (
         _read_body(content)
+        .lazy()
         .filter(pl.col("start") < pl.col("end"))  # SL2.40: end 338074 < begin 338105
         .sort(["seqid", "start"])
+        .collect()
         .write_csv(bio, include_header=False, separator="\t")
     )
     return bio.getvalue()
@@ -136,12 +136,14 @@ def _sort_body(content: bytes) -> bytes:
 def _read_body(source: Path | str | bytes) -> pl.DataFrame:
     if isinstance(source, bytes):
         source = re.sub(rb"\n\n+", rb"\n", source)
+    # scan_csv does not read compressed files
     return pl.read_csv(
         source,
         separator="\t",
         comment_prefix="#",
         has_header=False,
-        dtypes=[pl.Utf8],
+        infer_schema_length=0,
+        dtypes={"start": pl.UInt64, "end": pl.UInt64},
         new_columns=[
             "seqid",
             "source",
@@ -157,10 +159,10 @@ def _read_body(source: Path | str | bytes) -> pl.DataFrame:
 
 
 def extract_cds_bed(infile: Path) -> pl.DataFrame:
-    return _to_bed(_read_body(infile).filter(pl.col("type") == "CDS"))
+    return _to_bed(_read_body(infile).lazy().filter(pl.col("type") == "CDS")).collect()
 
 
-def _to_bed(x: pl.DataFrame) -> pl.DataFrame:
+def _to_bed(x: pl.LazyFrame) -> pl.LazyFrame:
     return x.select(["seqid", "start", "end"]).with_columns(
         start=pl.col("start") - 1,
         end=pl.col("end") - 1,

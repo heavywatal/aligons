@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 from aligons.util import fs
 
+data_dir = Path(__file__).parent.parent / "_data"
+
 
 def test_is_outdated(tmp_path: Path):
     tmp_file = tmp_path / "newfile.txt"
@@ -77,7 +79,6 @@ def test_chdir(tmp_path: Path):
 
 
 def test_checksums(caplog: pytest.LogCaptureFixture):
-    data_dir = Path(__file__).with_name("data")
     fs.checksums(data_dir / "CHECKSUMS")
     assert not caplog.text
     fs.checkline("42 1 sorted.gff3", data_dir)
