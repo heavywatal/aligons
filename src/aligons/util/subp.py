@@ -140,7 +140,7 @@ def run_zcat(
 def _zcat_args(infile: Path) -> Args:
     if infile.suffix == ".zip":
         return ["unzip", "-p", infile]
-    return ["zstdcat", infile]
+    return ["zstdcat", "-q", infile]
 
 
 def popen_sd(
