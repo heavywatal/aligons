@@ -23,13 +23,7 @@ class GFF:
     def __init__(self, source: Path) -> None:
         self.header: list[bytes] = _read_header(source)
         self.body: pl.LazyFrame = _read_body(source)
-        if source.name.startswith("PGSC_DM_V403"):
-            self.body = self.body.with_columns(
-                pl.col("seqid").str.replace("^ST4.03ch", "chr")
-            )
-        if source.name.startswith("ITAG2.3"):
-            # SL2.40ch01: begin 338105 > end 338074
-            self.body = self.body.filter(pl.col("start") < pl.col("end"))
+        self._workaround(source)
 
     def sanitize(self) -> "GFF":
         self.body = (
@@ -37,6 +31,10 @@ class GFF:
             # remove chromosome for visualization
             .filter(pl.col("type") != "chromosome")
         )
+        return self
+
+    def seqid_replace(self, pattern: str, repl: str) -> "GFF":
+        self.body = self.body.with_columns(pl.col("seqid").str.replace(pattern, repl))
         return self
 
     def write(self, iobytes: typing.IO[bytes]) -> None:
@@ -48,6 +46,16 @@ class GFF:
         buffer = io.BytesIO()
         self.write(buffer)
         return buffer.getvalue().decode()
+
+    def _workaround(self, source: Path) -> None:
+        if (
+            source.name.startswith("PGSC_DM_V403")
+            and source.resolve().parent.parent.name == "spuddb.uga.edu"
+        ):
+            self.seqid_replace("^ST4.03ch", "chr")
+        if source.name.startswith("ITAG2.3"):
+            # SL2.40ch01: begin 338105 > end 338074
+            self.body = self.body.filter(pl.col("start") < pl.col("end"))
 
 
 def _read_header(source: Path) -> list[bytes]:
@@ -73,6 +81,8 @@ def _read_body(source: Path | bytes | io.BytesIO) -> pl.LazyFrame:
     if isinstance(source, bytes):
         source = re.sub(rb"\n\n+", rb"\n", source)
     # scan_csv does not read compressed files
+    if isinstance(source, Path) and source.suffix == ".zip":
+        source = subp.run_zcat(source).stdout
     return pl.read_csv(
         source,
         separator="\t",
