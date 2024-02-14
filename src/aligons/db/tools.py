@@ -30,11 +30,11 @@ def fetch_and_bgzip(
     dna_sm = "dna_sm" if softmasked else "dna"
     stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
     out_fa = prefix / f"fasta/{species}/{stem}.{dna_sm}.toplevel.fa.gz"
-    out_gff = prefix / f"gff3/{species}/{stem}.gff3.gz"
+    out_gff = prefix / f"gff3/{species}/{stem}.genome.gff3.gz"
     responses_fa = [dl_mirror_db(url_prefix + s) for s in sequences]
     ft_fa = cli.thread_submit(index_compress_concat, responses_fa, out_fa)
     response_gff = dl_mirror_db(url_prefix + annotation)
-    ft_gff = cli.thread_submit(index_compress, response_gff, out_gff)
+    ft_gff = cli.thread_submit(bgzip_or_symlink, response_gff, out_gff)
     return ft_fa, ft_gff
 
 
@@ -47,8 +47,8 @@ def dl_mirror_db(url: str) -> dl.Response:
 def process_genome(futures: tuple[cli.FuturePath, cli.FuturePath]) -> cli.FuturePath:
     ft_fa, ft_gff = futures
     fa = ft_fa.result()
-    ft_fasize = index_fasta([fa]) if ".dna_sm." in fa.name else split_mask_index(fa)
-    return index_gff3([ft_gff.result()], ft_fasize.result())
+    ft_gff.result()
+    return index_fasta([fa]) if ".dna_sm." in fa.name else split_mask_index(fa)
 
 
 def split_mask_index(toplevel_fa_gz: Path) -> cli.FuturePath:
@@ -64,13 +64,9 @@ def _symlink_masked(ft: cli.FuturePath) -> Path:
     return fs.symlink(masked, link, relative=True)
 
 
-def index_compress(response: dl.Response, outfile: Path) -> Path:
-    htslib.try_index(bgzip_or_symlink(response, outfile))
-    return outfile
-
-
 def index_compress_concat(responses: Iterable[dl.Response], outfile: Path) -> Path:
-    htslib.try_index(concat_bgzip(responses, outfile))
+    htslib.concat_bgzip([res.path for res in responses], outfile)
+    htslib.try_index(outfile)
     return outfile
 
 
@@ -80,16 +76,6 @@ def index_fasta(paths: list[Path]) -> cli.FuturePath:
         if "chromosome" in paths[0].name:
             _log.warning(f"splitting chromosome? {paths[0]}")
         paths = [f.result() for f in _split_toplevel_fa(paths[0])]
-    return cli.thread_submit(_create_genome_bgzip, paths)
-
-
-def index_gff3(paths: list[Path], fasize: Path | None = None) -> cli.FuturePath:
-    """Create bgzipped and indexed genome.gff3."""
-    if len(paths) == 1:
-        if "chromosome" in paths[0].name:
-            _log.warning(f"splitting chromosome? {paths[0]}")
-        assert fasize is not None, paths
-        paths = htslib.split_gff3(paths[0], fasize)
     return cli.thread_submit(_create_genome_bgzip, paths)
 
 
@@ -106,9 +92,7 @@ def _create_genome_bgzip(files: list[Path]) -> Path:
     outfile = files[0].with_name(outname)
     htslib.concat_bgzip(files, outfile)
     htslib.try_index(outfile)
-    if outfile.name.endswith(".fa.gz"):
-        return kent.faSize(outfile)
-    return outfile
+    return kent.faSize(outfile)
 
 
 def _split_toplevel_fa_work(fa_gz: Path) -> list[cli.FuturePath]:
@@ -136,18 +120,15 @@ def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
     if fs.is_outdated(outfile, infile) and not cli.dry_run:
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         if htslib.to_be_bgzipped(outfile.name):
-            fs.expect_suffix(outfile, ".gz")
-            with subp.popen_zcat(infile) as zcat:
-                if any(s in (".gff", ".gff3") for s in outfile.suffixes):
-                    assert zcat.stdout is not None
-                    if infile.name.startswith("PGSC_DM_V403"):
-                        content = clean_seqid_pgsc(zcat.stdout)
-                    else:
-                        content, _ = zcat.communicate()
-                    content = gff.sort(content)
-                    htslib.bgzip(content, outfile)
-                else:
+            if any(s in (".gff", ".gff3") for s in outfile.suffixes):
+                gff3 = gff.GFF(infile)
+                with htslib.popen_bgzip(outfile) as bgzip:
+                    assert bgzip.stdin
+                    gff3.sanitize().write(bgzip.stdin)
+            else:
+                with subp.popen_zcat(infile) as zcat:
                     htslib.bgzip(zcat.stdout, outfile)
+            htslib.try_index(outfile)
         elif outfile.suffix == infile.suffix:
             fs.symlink(infile, outfile, relative=True)
         elif outfile.suffix == ".gz":
@@ -159,14 +140,6 @@ def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
             raise ValueError(msg)
     _log.info(f"{outfile}")
     return outfile
-
-
-def concat_bgzip(responses: Iterable[dl.Response], outfile: Path) -> Path:
-    return htslib.concat_bgzip([res.path for res in responses], outfile)
-
-
-def clean_seqid_pgsc(stdin: subp.FILE) -> bytes:
-    return subp.popen_sd("^ST4.03ch", "chr", stdin=stdin).communicate()[0]
 
 
 if __name__ == "__main__":

@@ -31,7 +31,7 @@ def retrieve_deploy(query: str) -> cli.FuturePath:
     if outfile.name.endswith(".zip"):
         outfile = outfile.with_suffix(".gz")
     response = dl.fetch(url, rawfile)
-    return cli.thread_submit(tools.index_compress, response, outfile)
+    return cli.thread_submit(tools.bgzip_or_symlink, response, outfile)
 
 
 def iter_download_queries() -> Iterable[str]:

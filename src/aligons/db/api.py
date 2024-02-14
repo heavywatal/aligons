@@ -63,10 +63,6 @@ def list_chromosome_fa(species: str) -> Iterable[Path]:
     return fs.sorted_naturally(_glob("*.chromosome.*.fa.gz", species))
 
 
-def list_chromosome_gff3(species: str) -> Iterable[Path]:
-    return fs.sorted_naturally(_glob("*.chromosome*.gff3.gz", species))
-
-
 def get_file(pattern: str, species: str, subdir: str = "") -> Path:
     found = list(_glob(pattern, species, subdir))
     if not found:

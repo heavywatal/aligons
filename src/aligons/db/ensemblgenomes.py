@@ -126,26 +126,22 @@ def _readlines_compara_maf(file: Path) -> Iterable[bytes]:
 def download_via_ftp(species: list[str]) -> None:
     with FTPensemblgenomes() as ftp:
         species = ftp.remove_unavailable(species)
-        fasizes: list[cli.FuturePath] = []
+        futures: list[cli.FuturePath] = []
         for sp in species:
             fasta_originals = ftp.download_chr_sm_fasta(sp)
             fasta_copies = [_ln_or_bgzip(x, sp) for x in fasta_originals]
-            fasizes.append(tools.index_fasta(fasta_copies))
-        futures: list[cli.FuturePath] = []
-        for sp, future in zip(species, fasizes, strict=True):
-            gff3_originals = ftp.download_chr_gff3(sp)
-            gff3_copies = [_ln_or_bgzip(x, sp) for x in gff3_originals]
-            fasize = future.result()
-            futures.append(tools.index_gff3(gff3_copies, fasize))
+            futures.append(tools.index_fasta(fasta_copies))
+            src = ftp.download_gff3(sp)
+            dst = prefix() / "gff3" / sp / replace_label_gff3(src.name)
+            futures.append(cli.thread_submit(tools.bgzip_or_symlink, src, dst))
         cli.wait_raise(futures)
     if config["db"]["kmer"]:
         cli.wait_raise([tools.softmask(sp) for sp in species])
 
 
 def _ln_or_bgzip(src: Path, species: str) -> Path:
-    fmt = "fasta" if src.name.removesuffix(".gz").endswith(".fa") else "gff3"
     dstname = src.name.replace("primary_assembly", "chromosome")
-    dst = prefix() / fmt / species / dstname
+    dst = prefix() / "fasta" / species / dstname
     if ".chromosome." in dstname:
         fs.symlink(src, dst, relative=True)
     else:
@@ -182,13 +178,20 @@ class FTPensemblgenomes(dl.LazyFTP):
         fs.checksums(outdir / "CHECKSUMS")
         return [f for f in files if f.suffix == ".gz"]
 
-    def download_chr_gff3(self, species: str) -> list[Path]:
+    def download_gff3(self, species: str) -> Path:
         relpath = f"gff3/{species}"
         outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
-        files = [self.retrieve(x) for x in self.remove_duplicates(nlst)]
+        files = [x for x in nlst if x.endswith(f"{version()}.chr.gff3.gz")]
+        if len(files) == 0:
+            files = [x for x in nlst if x.endswith(f"{version()}.gff3.gz")]
+        assert len(files) == 1, files
+        res = self.retrieve(files[0])
+        for x in nlst:
+            if re.search("CHECKSUMS$|README$", x):
+                self.retrieve(x)
         fs.checksums(outdir / "CHECKSUMS")
-        return [f for f in files if f.suffix == ".gz"]
+        return res
 
     def download_maf(self, species: str) -> list[Path]:
         relpath = "maf/ensembl-compara/pairwise_alignments"
@@ -251,6 +254,16 @@ def _relpath_release() -> Path:
 
 def version() -> int:
     return int(os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"]))
+
+
+def replace_label_gff3(name: str, label: str = "genome") -> str:
+    pattern = rf"(?<=\.{version()}\.)(?:chromosome\.)?[^.]*\.?gff3(\.gz)?$"
+    return re.sub(pattern, rf"{label}.gff3\1", name, count=1)
+
+
+def replace_label_fa(name: str, label: str = "genome") -> str:
+    pattern = r"(dna(?:_[sr]m)?\.)[^.]*\.?[^.]*\.?fa(\.gz)?$"
+    return re.sub(pattern, rf"\1{label}.fa\2", name, count=1)
 
 
 if __name__ == "__main__":

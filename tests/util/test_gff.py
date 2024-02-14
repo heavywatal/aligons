@@ -21,20 +21,19 @@ def test_class(tmp_path: Path, caplog: pytest.LogCaptureFixture):
 def test_sort(caplog: pytest.LogCaptureFixture):
     source_gff = data_dir / "genome.gff3"
     sorted_gff = data_dir / "sorted.gff3"
-    with source_gff.open("rb") as fin:
-        content = fin.read()
-    res = gff.sort(content)
+    obj = gff.GFF(source_gff)
+    obj.sanitize()
     assert not caplog.text
     with sorted_gff.open("rt") as fin:
-        assert res.decode() == fin.read()
+        assert obj.to_string() == fin.read()
     if False:
         import re
 
         with sorted_gff.open("wb") as fout:
-            fout.write(res)
-        with (data_dir / "invalid.gff3").open("wb") as fout:
-            fout.write(b"# comment to ignore\n")
-            fout.write(re.sub(rb"#.+\n", b"", res))
+            obj.write(fout)
+        with (data_dir / "invalid.gff3").open("wt") as fout:
+            fout.write("# comment to ignore\n")
+            fout.write(re.sub(r"#.+\n", "", obj.to_string()))
 
 
 def test_invalid(caplog: pytest.LogCaptureFixture):
@@ -46,8 +45,7 @@ def test_invalid(caplog: pytest.LogCaptureFixture):
 
     caplog.set_level(logging.DEBUG)
     source_gff = data_dir / "invalid.gff3"
-    with source_gff.open("rb") as fin:
-        content = fin.read()
-    res = gff.sort(content)
+    obj = gff.GFF(source_gff)
+    obj.sanitize()
     assert "invalid GFF without ##gff-version" in caplog.text
-    assert b"##gff-version 3" in res
+    assert obj.to_string().startswith("##gff-version 3")

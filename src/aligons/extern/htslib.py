@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import IO
 
-from aligons.util import cli, fs, gff, subp
+from aligons.util import cli, fs, subp
 
 _log = logging.getLogger(__name__)
 
@@ -60,43 +60,21 @@ def faidx_query(bgz: Path, region: str, outfile: Path) -> Path:
 
 
 def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
-    fs.expect_suffix(outfile, ".gz")
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         with popen_bgzip(outfile) as bgz:
             assert bgz.stdin is not None
-            if ".gff" in outfile.name:
-                lines = gff.collect_sequence_region(infiles)
-                bgz.stdin.writelines([b"##gff-version 3\n", *lines])
-                bgz.stdin.flush()
-                _log.debug(f"{lines}")
             for infile in infiles:
-                if ".gff" in outfile.name:
-                    gff.sort_clean_chromosome(infile, bgz.stdin)
-                else:
-                    subp.run_zcat(infile, bgz.stdin)
+                subp.run_zcat(infile, bgz.stdin)
     _log.info(f"{outfile}")
     return outfile
-
-
-def split_gff3(path: Path, fasize: Path) -> list[Path]:
-    regions: dict[str, bytes] = {}
-    with fasize.open("rt") as fin:
-        for line in fin:
-            seqid, length = line.split()
-            regions[seqid] = f"##sequence-region {seqid} 1 {length}\n".encode()
-    files: list[Path] = []
-    for outfile, buffer in gff.iter_split(path, regions):
-        files.append(outfile)
-        bgzip(buffer.getvalue(), outfile)
-    return files
 
 
 def bgzip(data: bytes | IO[bytes] | None, outfile: Path, *, if_: bool = True) -> Path:
     """https://www.htslib.org/doc/bgzip.html."""
     fs.expect_suffix(outfile, ".gz")
     if outfile.exists():
-        _log.info("overwriting {outfile}")
+        _log.info(f"overwriting {outfile}")
     if_ = if_ and bool(data) and not cli.dry_run
     with subp.open_(outfile, "wb", if_=if_) as fout:
         if isinstance(data, bytes):
@@ -111,7 +89,7 @@ def popen_bgzip(
 ) -> subp.Popen[bytes]:
     fs.expect_suffix(outfile, ".gz")
     if outfile.exists():
-        _log.info("overwriting {outfile}")
+        _log.info(f"overwriting {outfile}")
     if_ = if_ and not cli.dry_run
     with subp.open_(outfile, "wb", if_=if_) as fout:
         return subp.popen(["bgzip", "-@2"], stdin=stdin, stdout=fout, if_=if_)
