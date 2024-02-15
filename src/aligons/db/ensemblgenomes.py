@@ -2,7 +2,7 @@
 
 - {db.root}/ftp.ensemblgenomes.org/pub/plants/release-{version}/
   - fasta/{species}/dna/{stem}.{version}.dna_sm.chromosome.{seqid}.fa.gz
-  - gff3/{species}/{stem}.{version}.chromosome.{seqid}.gff3.gz
+  - gff3/{species}/{stem}.{version}.chr.gff3.gz
   - maf/ensembl-compara/pairwise_alignments/
 """
 import logging
@@ -66,7 +66,7 @@ def _consolidate_compara_mafs(indir: Path) -> Path:
     query = phylo.lengthen(query_short)
     if not query:
         return Path(os.devnull)
-    outdir = prefix() / "maf" / target / query
+    outdir = prefix().with_name(f"ensembl-compara-{version()}") / target / query
     for seq, infiles in _list_mafs_by_seq(indir).items():
         if seq == "supercontig":
             continue
@@ -132,7 +132,7 @@ def download_via_ftp(species: list[str]) -> None:
             fasta_copies = [_ln_or_bgzip(x, sp) for x in fasta_originals]
             futures.append(tools.index_fasta(fasta_copies))
             src = ftp.download_gff3(sp)
-            dst = prefix() / "gff3" / sp / replace_label_gff3(src.name)
+            dst = prefix() / sp / replace_label_gff3(src.name)
             futures.append(cli.thread_submit(tools.bgzip_or_symlink, src, dst))
         cli.wait_raise(futures)
     if config["db"]["kmer"]:
@@ -141,7 +141,7 @@ def download_via_ftp(species: list[str]) -> None:
 
 def _ln_or_bgzip(src: Path, species: str) -> Path:
     dstname = src.name.replace("primary_assembly", "chromosome")
-    dst = prefix() / "fasta" / species / dstname
+    dst = prefix() / species / dstname
     if ".chromosome." in dstname:
         fs.symlink(src, dst, relative=True)
     else:

@@ -1,7 +1,7 @@
 """Soft-mask fasta sequences based on kmer frequencies.
 
-src: {db.api.prefix}/fasta/{species}/*.fa.gz
-dst: {db.api.prefix}/fasta/{species}/kmer/*.fa.gz
+src: *.fa.gz
+dst: kmer/*.fa.gz
 """
 import concurrent.futures as confu
 import logging

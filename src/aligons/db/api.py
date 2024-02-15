@@ -1,9 +1,6 @@
 """Interface to working data.
 
-prefix: {db.root}/{origin}/
-
-- fasta/{species}/
-- gff3/{species}/
+{db.root}/aligons/{origin}/{species}/
 """
 import csv
 import functools
@@ -40,8 +37,8 @@ def shorten(species: str) -> str:
 
 
 @functools.cache
-def species_names(fmt: str = "fasta") -> list[str]:
-    return [x.name for x in _species_dirs(fmt)]
+def species_names() -> list[str]:
+    return [x.name for x in _species_dirs()]
 
 
 def fasize(species: str) -> Path:
@@ -99,12 +96,9 @@ def sanitize_queries(target: str, queries: list[str]) -> list[str]:
     return list(query_set)
 
 
-def _species_dirs(fmt: str = "fasta", species: str = "") -> Iterable[Path]:
+def _species_dirs(species: str = "") -> Iterable[Path]:
     for prefix in _iter_prefix():
-        if not (fmt_dir := prefix / fmt).exists():
-            _log.warning(f"{fmt_dir} does not exist")
-            continue
-        for path in fmt_dir.iterdir():
+        for path in prefix.iterdir():
             if path.is_dir():
                 if species and (species.lower() != path.name.lower()):
                     continue
@@ -113,14 +107,13 @@ def _species_dirs(fmt: str = "fasta", species: str = "") -> Iterable[Path]:
 
 def _glob(pattern: str, species: str, subdir: str = "") -> Iterable[Path]:
     is_enough = False  # to allow duplicated species from multiple origins
-    for fmt in ("fasta", "gff3"):
-        for sp_dir in _species_dirs(fmt, species):
-            d = sp_dir / subdir
-            for x in fs.sorted_naturally(d.glob(pattern)):
-                is_enough = True
-                yield x
-            if is_enough:
-                break
+    for sp_dir in _species_dirs(species):
+        d = sp_dir / subdir
+        for x in fs.sorted_naturally(d.glob(pattern)):
+            is_enough = True
+            yield x
+        if is_enough:
+            break
 
 
 def prefix(relpath: str | Path = "") -> Path:

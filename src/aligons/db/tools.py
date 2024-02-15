@@ -29,8 +29,8 @@ def fetch_and_bgzip(
     softmasked = re.search(r"dna_sm|softmasked", sequences[0])
     dna_sm = "dna_sm" if softmasked else "dna"
     stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
-    out_fa = prefix / f"fasta/{species}/{stem}.{dna_sm}.toplevel.fa.gz"
-    out_gff = prefix / f"gff3/{species}/{stem}.genome.gff3.gz"
+    out_fa = prefix / species / f"{stem}.{dna_sm}.toplevel.fa.gz"
+    out_gff = prefix / species / f"{stem}.genome.gff3.gz"
     responses_fa = [dl_mirror_db(url_prefix + s) for s in sequences]
     ft_fa = cli.thread_submit(index_compress_concat, responses_fa, out_fa)
     response_gff = dl_mirror_db(url_prefix + annotation)
