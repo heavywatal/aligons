@@ -128,25 +128,15 @@ def download_via_ftp(species: list[str]) -> None:
         species = ftp.remove_unavailable(species)
         futures: list[cli.Future[Path]] = []
         for sp in species:
-            fasta_originals = ftp.download_chr_sm_fasta(sp)
-            fasta_copies = [_ln_or_bgzip(x, sp) for x in fasta_originals]
-            futures.append(tools.index_fasta(fasta_copies))
+            outdir = prefix() / sp
+            fas = ftp.download_chr_sm_fasta(sp)
+            genome = outdir / replace_label_fa(fas[0].name)
+            ft_genome = cli.thread_submit(tools.index_compress_concat, fas, genome)
+            futures.extend(tools.submit_2bit_chromosomes(ft_genome))
             src = ftp.download_gff3(sp)
-            dst = prefix() / sp / replace_label_gff3(src.name)
-            futures.append(cli.thread_submit(tools.bgzip_or_symlink, src, dst))
+            dst = outdir / replace_label_gff3(src.name)
+            futures.append(cli.thread_submit(tools.index_bgzip, src, dst))
         cli.wait_raise(futures)
-    if config["db"]["kmer"]:
-        cli.wait_raise([tools.softmask(sp) for sp in species])
-
-
-def _ln_or_bgzip(src: Path, species: str) -> Path:
-    dstname = src.name.replace("primary_assembly", "chromosome")
-    dst = prefix() / species / dstname
-    if ".chromosome." in dstname:
-        fs.symlink(src, dst, relative=True)
-    else:
-        tools.bgzip_or_symlink(src, dst)
-    return dst
 
 
 class FTPensemblgenomes(dl.LazyFTP):

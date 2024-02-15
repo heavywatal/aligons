@@ -6,7 +6,6 @@ dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 https://lastz.github.io/lastz/
 """
 import logging
-from collections.abc import Iterator
 from pathlib import Path
 
 from aligons.db import api
@@ -89,8 +88,8 @@ class PairwiseGenomeAlignment:
 
     def run(self) -> list[cli.Future[Path]]:
         pool = cli.ThreadPool()
-        target_chromosomes = list(iter_chromosome_2bit(self._target))
-        query_chromosomes = list(iter_chromosome_2bit(self._query))
+        target_chromosomes = list(api.iter_chromosome_2bit(self._target))
+        query_chromosomes = list(api.iter_chromosome_2bit(self._query))
         flists: list[list[cli.Future[Path]]] = [
             [pool.submit(self.align_chr, t, q) for q in query_chromosomes]
             for t in target_chromosomes
@@ -125,14 +124,6 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:
     is_to_run = fs.is_outdated(axtgz, [t2bit, q2bit])
     with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
         return subp.gzip(p.stdout, axtgz, if_=is_to_run)
-
-
-def iter_chromosome_2bit(species: str) -> Iterator[Path]:
-    fts = [
-        cli.thread_submit(kent.faToTwoBit, f) for f in api.list_chromosome_fa(species)
-    ]
-    for future in fts:
-        yield future.result()
 
 
 if __name__ == "__main__":

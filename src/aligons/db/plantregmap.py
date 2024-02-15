@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> None:
         cli.wait_raise(fts)
     if args.genome:
         pairs = list(iter_fetch_and_bgzip())
-        fts = [tools.process_genome(x) for x in pairs]
+        fts = [ft for x in pairs for ft in tools.process_genome(x)]
         cli.wait_raise(fts)
     if args.to_cram:
         maf = net_to_maf(args.to_cram)

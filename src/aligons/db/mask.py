@@ -28,6 +28,8 @@ def submit(
 ) -> cli.Future[Path]:
     infile = cli.result(infile)
     fs.expect_suffix(infile, ".gz", negate=True)
+    if ".dna_sm." in infile.name:
+        cli.thread_submit(cli.result, infile)
     if not species:
         species = "angiosperms"
     if outfile is None:

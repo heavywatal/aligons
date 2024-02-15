@@ -56,8 +56,8 @@ def genome_gff3(species: str) -> Path:
     return get_file("*.genome.gff3.gz", species, subdir)
 
 
-def list_chromosome_fa(species: str) -> Iterable[Path]:
-    return fs.sorted_naturally(_glob("*.chromosome.*.fa.gz", species))
+def iter_chromosome_2bit(species: str) -> Iterable[Path]:
+    return _glob("*.chromosome.*.2bit", species)
 
 
 def get_file(pattern: str, species: str, subdir: str = "") -> Path:

@@ -1,10 +1,9 @@
 import logging
-import os
 import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from aligons.extern import htslib, jellyfish, kent
+from aligons.extern import htslib, kent
 from aligons.util import cli, dl, fs, gff, subp
 
 from . import _rsrc, jgi, mask
@@ -32,9 +31,9 @@ def fetch_and_bgzip(
     out_fa = prefix / species / f"{stem}.{dna_sm}.toplevel.fa.gz"
     out_gff = prefix / species / f"{stem}.genome.gff3.gz"
     responses_fa = [dl_mirror_db(url_prefix + s) for s in sequences]
-    ft_fa = cli.thread_submit(index_compress_concat, responses_fa, out_fa)
+    ft_fa = cli.thread_submit(_index_compress_concat, responses_fa, out_fa)
     response_gff = dl_mirror_db(url_prefix + annotation)
-    ft_gff = cli.thread_submit(bgzip_or_symlink, response_gff, out_gff)
+    ft_gff = cli.thread_submit(index_bgzip, response_gff, out_gff)
     return ft_fa, ft_gff
 
 
@@ -46,74 +45,72 @@ def dl_mirror_db(url: str) -> dl.Response:
 
 def process_genome(
     futures: tuple[cli.Future[Path], cli.Future[Path]],
-) -> cli.Future[Path]:
+) -> list[cli.Future[Path]]:
     ft_fa, ft_gff = futures
-    fa = ft_fa.result()
-    ft_gff.result()
-    return index_fasta([fa]) if ".dna_sm." in fa.name else split_mask_index(fa)
+    ft_masked = mask.submit(ft_fa)
+    return [ft_gff, *submit_2bit_chromosomes(ft_masked)]
 
 
-def split_mask_index(toplevel_fa_gz: Path) -> cli.Future[Path]:
-    future_chromosomes = _split_toplevel_fa_work(toplevel_fa_gz)
-    future_masked = [mask.submit(f) for f in future_chromosomes]
-    links = [_symlink_masked(f) for f in future_masked]
-    return index_fasta(links)
+def _index_compress_concat(responses: Iterable[dl.Response], outfile: Path) -> Path:
+    return index_compress_concat([res.path for res in responses], outfile)
 
 
-def _symlink_masked(ft: cli.Future[Path]) -> Path:
-    masked = ft.result()
-    link = masked.parent.parent / masked.name
-    return fs.symlink(masked, link, relative=True)
-
-
-def index_compress_concat(responses: Iterable[dl.Response], outfile: Path) -> Path:
-    htslib.concat_bgzip([res.path for res in responses], outfile)
+def index_compress_concat(infiles: list[Path], outfile: Path) -> Path:
+    infiles = fs.sorted_naturally(infiles)
+    htslib.concat_bgzip(infiles, outfile)
     htslib.try_index(outfile)
     return outfile
 
 
-def index_fasta(paths: list[Path], outdir: Path | None = None) -> cli.Future[Path]:
-    """Create bgzipped and indexed genome.fa."""
-    if len(paths) == 1:
-        if "chromosome" in paths[0].name:
-            _log.warning(f"splitting chromosome? {paths[0]}")
-        paths = [f.result() for f in _split_toplevel_fa(paths[0])]
-    return cli.thread_submit(_create_genome_bgzip, paths, outdir)
-
-
-def _create_genome_bgzip(files: list[Path], outdir: Path | None = None) -> Path:
-    """Combine chromosome files and bgzip it."""
-    files = fs.sorted_naturally(files)
-    _log.debug(str(files))
-    if cli.dry_run and not files:
-        return Path(os.devnull)
-    name = files[0].name
-    ext = files[0].with_suffix("").suffix
-    (outname, count) = re.subn(rf"\.chromosome\..+{ext}", rf".genome{ext}", name)
-    assert count == 1, name
-    outdir = outdir or files[0].parent
-    outfile = outdir / outname
-    htslib.concat_bgzip(files, outfile)
+def index_bgzip(infile: Path | dl.Response, outfile: Path) -> Path:
+    if isinstance(infile, dl.Response):
+        infile = infile.path
+    if fs.is_outdated(outfile, infile):
+        if any(s in (".gff", ".gff3") for s in outfile.suffixes):
+            gff3 = gff.GFF(infile)
+            with htslib.popen_bgzip(outfile) as bgzip:
+                assert bgzip.stdin
+                gff3.sanitize().write(bgzip.stdin)
+        else:
+            with subp.popen_zcat(infile) as zcat:
+                htslib.bgzip(zcat.stdout, outfile)
     htslib.try_index(outfile)
-    return kent.faSize(outfile)
+    return outfile
 
 
-def _split_toplevel_fa_work(fa_gz: Path) -> list[cli.Future[Path]]:
-    fmt = "{stem}.{seqid}.fa"
-    outdir = fa_gz.with_name("_work")
-    return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"), outdir)
+def submit_2bit_chromosomes(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]:
+    genome = cli.result(genome)
+    fasize = read_fasize(genome)
+    fts: list[cli.Future[Path]] = []
+    fts.append(cli.thread_submit(kent.faToTwoBit, genome))
+    min_size = 1000000
+    for seqid, size in fasize.items():
+        if re.search(r"scaffold|contig", seqid):
+            _log.info(f"ignoring {seqid} in {genome}")
+            continue
+        if size < min_size:
+            _log.warning(f"{genome}:{seqid} {size} < {min_size}")
+            continue
+        name = genome.name.replace(".genome.fa.gz", f".chromosome.{seqid}.2bit", 1)
+        chr2bit = genome.with_name(name)
+        if fs.is_outdated(chr2bit, genome):
+            fts.append(cli.thread_submit(faidx_twobit, genome, seqid, chr2bit))
+    return fts
 
 
-def _split_toplevel_fa(fa_gz: Path) -> list[cli.Future[Path]]:
-    if "toplevel" not in fa_gz.name:
-        _log.warning(f"'toplevel' not in {fa_gz.name}")
-    fmt = "{stem}.{seqid}.fa.gz"
-    return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
+def faidx_twobit(fa_gz: Path, seqid: str, twobit: Path) -> Path:
+    with htslib.faidx_query(fa_gz, seqid) as p:
+        return kent.faToTwoBit(p.stdout, twobit)
 
 
-def softmask(species: str) -> cli.Future[Path]:
-    masked = jellyfish.run(species)
-    return index_fasta(masked)
+def read_fasize(genome: Path) -> dict[str, int]:
+    fasize = kent.faSize(genome)
+    res: dict[str, int] = {}
+    with fasize.open("rt") as fin:
+        for line in fin:
+            (seqid, size) = line.split(maxsplit=1)
+            res[seqid] = int(size)
+    return res
 
 
 def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
@@ -123,15 +120,7 @@ def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
     if fs.is_outdated(outfile, infile) and not cli.dry_run:
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         if htslib.to_be_bgzipped(outfile.name):
-            if any(s in (".gff", ".gff3") for s in outfile.suffixes):
-                gff3 = gff.GFF(infile)
-                with htslib.popen_bgzip(outfile) as bgzip:
-                    assert bgzip.stdin
-                    gff3.sanitize().write(bgzip.stdin)
-            else:
-                with subp.popen_zcat(infile) as zcat:
-                    htslib.bgzip(zcat.stdout, outfile)
-            htslib.try_index(outfile)
+            index_bgzip(infile, outfile)
         elif outfile.suffix == infile.suffix:
             fs.symlink(infile, outfile, relative=True)
         elif outfile.suffix == ".gz":

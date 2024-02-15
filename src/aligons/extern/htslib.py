@@ -1,5 +1,4 @@
 import logging
-import re
 from pathlib import Path
 from typing import IO
 
@@ -10,52 +9,14 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
-    parser.add_argument("-O", "--outdir", type=Path)
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
-    fts = split_fa_gz(args.infile, outdir=args.outdir)
-    cli.wait_raise(fts)
+    try_index(args.infile)
 
 
-def split_fa_gz(
-    bgz: Path,
-    fmt: str = "{stem}.part_{seqid}.fa.gz",
-    sub: tuple[str, str] = ("", ""),
-    outdir: Path | None = None,
-) -> list[cli.Future[Path]]:
-    if outdir is None:
-        outdir = bgz.parent
-    elif not cli.dry_run:
-        outdir.mkdir(0o755, parents=True, exist_ok=True)
-    stem = bgz.with_suffix("").stem
-    if sub[0]:
-        stem = re.sub(sub[0], sub[1], stem)
-    fai = faidx(bgz)
-    if cli.dry_run and not fai.exists():
-        return []
-    with fai.open("rt") as fin:
-        seqids = [line.split()[0] for line in fin]
-    fts: list[cli.Future[Path]] = []
-    for seqid in seqids:
-        if re.search(r"scaffold|contig", seqid):
-            _log.debug("ignoring {seqid} in {bgz}")
-            continue
-        outfile = outdir / fmt.format(stem=stem, seqid=seqid)
-        fts.append(cli.thread_submit(faidx_query, bgz, seqid, outfile))
-    return fts
-
-
-def faidx_query(bgz: Path, region: str, outfile: Path) -> Path:
+def faidx_query(bgz: Path, region: str, *, if_: bool = True) -> subp.Popen[bytes]:
     args: subp.Args = ["samtools", "faidx", bgz, region]
-    is_to_run = fs.is_outdated(outfile, bgz)
-    if outfile.suffix == ".gz":
-        with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
-            bgzip(p.stdout, outfile, if_=is_to_run)
-    else:
-        args.extend(["-o", outfile])
-        subp.run(args, if_=is_to_run)
-    _log.info(f"{outfile}")
-    return outfile
+    return subp.popen(args, stdout=subp.PIPE, if_=if_)
 
 
 def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:

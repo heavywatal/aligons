@@ -23,7 +23,7 @@ def main(argv: list[str] | None = None) -> None:
         cli.wait_raise(fts)
     if args.mask:
         pairs = list(iter_fetch_and_bgzip())
-        fts = [tools.process_genome(x) for x in pairs]
+        fts = [ft for x in pairs for ft in tools.process_genome(x)]
         cli.wait_raise(fts)
 
 

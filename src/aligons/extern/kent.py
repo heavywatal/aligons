@@ -97,8 +97,26 @@ def bigWigToBed(infile: Path, min_width: int = 15) -> bytes:  # noqa: N802
     return buf.getvalue()
 
 
-def faToTwoBit(fa_gz: Path) -> Path:  # noqa: N802
-    outfile = fa_gz.with_suffix("").with_suffix(".2bit")
+def faToTwoBit(  # noqa: N802
+    fa: Path | cli.Future[Path] | subp.FILE, twobit: Path | None = None
+) -> Path:
+    if isinstance(fa, Path | cli.Future):
+        return _faToTwoBit_f(fa, twobit)
+    assert twobit is not None
+    return _faToTwoBit_s(fa, twobit)
+
+
+def _faToTwoBit_s(stdin: subp.FILE, outfile: Path, *, if_: bool = True) -> Path:  # noqa: N802
+    fs.expect_suffix(outfile, ".2bit")
+    subp.run(["faToTwoBit", "stdin", outfile], stdin=stdin, if_=if_)
+    return outfile
+
+
+def _faToTwoBit_f(fa_gz: Path | cli.Future[Path], outdir: Path | None = None) -> Path:  # noqa: N802
+    fa_gz = cli.result(fa_gz)
+    fs.expect_suffix(fa_gz, ".gz")
+    outdir = outdir or fa_gz.parent
+    outfile = outdir / fa_gz.with_suffix("").with_suffix(".2bit").name
     subp.run(["faToTwoBit", fa_gz, outfile], if_=fs.is_outdated(outfile, fa_gz))
     return outfile
 

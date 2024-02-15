@@ -22,20 +22,14 @@ def main(argv: list[str] | None = None) -> None:
     print(run(args.species))
 
 
-def run(species: str) -> list[Path]:
+def run(species: str) -> Path:
     genome = api.genome_fa(species)
     jf = count(genome)
     dumpfile = dump(jf)
     histofile = histo(jf)
     threshold = calc_threshold(histofile)
     log_config(histofile, threshold)
-    threads = config["jellyfish"]["count"]["threads"]
-    with cli.ThreadPoolExecutor(max_workers=threads) as pool:
-        fts = [
-            pool.submit(mask_genome, chromosome, dumpfile, threshold)
-            for chromosome in api.list_chromosome_fa(species)
-        ]
-    return [f.result() for f in fts]
+    return mask_genome(genome, dumpfile, threshold)
 
 
 def count(infile: Path) -> Path:
