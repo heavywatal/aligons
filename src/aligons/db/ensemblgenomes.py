@@ -225,21 +225,6 @@ class FTPensemblgenomes(dl.LazyFTP):
         return matched + misc
 
 
-def download_via_rsync(species: list[str]) -> None:
-    for sp in species:
-        options = "--include *_sm.chromosome.*.fa.gz --exclude *.gz"
-        rsync(f"fasta/{sp}/dna", options)
-        options = "--include *.chromosome.*.gff3.gz --exclude *.gz"
-        rsync(f"gff3/{sp}", options)
-
-
-def rsync(relpath: str, options: str = "") -> subp.CompletedProcess[bytes]:
-    remote_prefix = f"rsync://{_HOST}/all/{_relpath_release()}"
-    src = f"{remote_prefix}/{relpath}/"
-    dst = _prefix_mirror() / relpath
-    return subp.run(f"rsync -auv {options} {src} {dst}")
-
-
 def prefix() -> Path:
     return api.prefix(f"ensembl-{version()}")
 
