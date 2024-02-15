@@ -1,7 +1,7 @@
 """https://jbrowse.org.
 
 src: {vNN}/pairwise/{species}/{query}/cram/genome.cram
-src: {vNN}/multiple/{species}/{clade}/phastcons.bw
+src: {vNN}/conservation/{species}/{clade}/phastcons.bw
 dst: {document_root}/{jbrowse_XYZ}/{vNN}/{species}
 """
 import json
@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-a", "--admin", action="store_true")
     parser.add_argument("-u", "--upgrade", action="store_true")
-    parser.add_argument("indir", type=Path)  # multiple/oryza_sativa/
+    parser.add_argument("indir", type=Path)  # conservation/oryza_sativa/
     args = parser.parse_args(argv or None)
     jb = JBrowse()
     if args.admin:
@@ -67,11 +67,11 @@ class JBrowse:
 
 
 class JBrowseConfig:
-    def __init__(self, root: Path, multialign_species: Path) -> None:
+    def __init__(self, root: Path, cons_species: Path) -> None:
         self.load = config["jbrowse"]["load"]
-        self.multiple_dir = multialign_species
-        self.species = self.multiple_dir.name
-        vnn_dir = multialign_species.parent.parent.resolve()
+        self.cons_dir = cons_species
+        self.species = self.cons_dir.name
+        vnn_dir = cons_species.parent.parent.resolve()
         self.pairwise_dir = vnn_dir / "pairwise" / self.species
         self.relpath = Path(vnn_dir.name) / self.species
         self.target = root / self.relpath
@@ -89,7 +89,7 @@ class JBrowseConfig:
         self.target.mkdir(0o755, parents=True, exist_ok=True)
         self.add_assembly()
         self.add_track_gff()
-        clades = [x.name for x in self.multiple_dir.iterdir() if "-" not in x.name]
+        clades = [x.name for x in self.cons_dir.iterdir() if "-" not in x.name]
         _log.info(f"{clades}")
         clades = phylo.sorted_by_len_newicks(clades, reverse=True)
         for clade in clades:
@@ -103,7 +103,7 @@ class JBrowseConfig:
             self.add_track(cram, "alignment", trackid=query, subdir=query)
 
     def add_phast(self, clade: str) -> None:
-        clade_dir = self.multiple_dir / clade
+        clade_dir = self.cons_dir / clade
         for wig in clade_dir.glob("*.bw"):
             stem = wig.stem
             self.add_track(wig, "conservation", trackid=f"{stem}-{clade}", subdir=clade)

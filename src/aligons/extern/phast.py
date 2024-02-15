@@ -1,11 +1,10 @@
 """Phylogenetic Analysis with Space/Time Models.
 
 src: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
-dst: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
+dst: ./conservation/{target}/{clade}/phastcons.bw
 
 http://compgen.cshl.edu/phast/
 """
-import itertools
 import logging
 import re
 import sys
@@ -21,22 +20,19 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
-    parser.add_argument("--clean", action="store_true")
     parser.add_argument("clade", type=Path)  # multiple/{target}/{clade}
     args = parser.parse_args(argv or None)
-    if args.clean:
-        clean(args.clade)
-        return
     run(args.clade)
 
 
 def run(path_clade: Path) -> tuple[Path, Path]:
-    (_cons_mod, noncons_mod) = prepare_mods(path_clade)
-    target = path_clade.parent.name
+    outdir = prepare_conservation(path_clade)
+    (_cons_mod, noncons_mod) = estimate_models(outdir)
+    target = outdir.parent.name
     chrom_sizes = api.fasize(target)
     futures = [
         cli.thread_submit(phastCons, maf, chrom_sizes, None, noncons_mod)
-        for maf in fs.sorted_naturally(path_clade.glob("chromosome.*/multiz.maf"))
+        for maf in fs.sorted_naturally(outdir.glob("chromosome.*/multiz.maf"))
     ]
     chrom_bws: list[Path] = []
     chrom_beds: list[Path] = []
@@ -44,7 +40,7 @@ def run(path_clade: Path) -> tuple[Path, Path]:
         res = ft.result()
         chrom_bws.append(res[0])
         chrom_beds.append(res[1])
-    bigwig = kent.bigWigCat(path_clade / "phastcons.bw", chrom_bws)
+    bigwig = kent.bigWigCat(outdir / "phastcons.bw", chrom_bws)
     mostcons = bigwig.with_name("most-cons.bed.gz")
     concat_clean_mostcons(chrom_beds, mostcons)
     return bigwig, mostcons
@@ -59,7 +55,9 @@ def phastCons(  # noqa: N802
     bw = wig.with_suffix(".bw")
     estimate_base = msa.with_name("estimate")
     seqname = msa.parent.name.split(".", 1)[1]  # remove "chromosome."
-    opts = ["--most-conserved", bed, "--score", "--seqname", seqname]
+    opts = ["--most-conserved", bed, "--score"]
+    opts.extend(["--seqname", seqname])  # column 1 in bed (default: msa.stem)
+    opts.extend(["--idpref", seqname])  # column 4 prefix in bed (default: msa.stem)
     if cons_mod is None:  # option 2
         opts.extend(["--estimate-rho", estimate_base])
         mod = f"{noncons_mod}"
@@ -79,19 +77,31 @@ def phastCons(  # noqa: N802
     return (bw, bed)
 
 
-def prepare_mods(clade: Path) -> tuple[Path, Path]:
-    target = clade.parent.name
+def prepare_conservation(multiple_target_clade: Path) -> Path:
+    clade = multiple_target_clade.name
+    target = multiple_target_clade.parent.name
+    cons_dir = multiple_target_clade.parent.parent.with_name("conservation")
+    outdir = cons_dir / target / clade
+    if not cli.dry_run:
+        outdir.mkdir(parents=True, exist_ok=True)
+    for maf in multiple_target_clade.glob("chromosome*/multiz.maf"):
+        ln = outdir / maf.parent.name / maf.name
+        fs.symlink(maf, ln, relative=True)
+    return outdir
+
+
+def estimate_models(cons_target_clade: Path) -> tuple[Path, Path]:
+    target = cons_target_clade.parent.name
     if not cli.dry_run:
         assert cds_gff3(target).exists()
-    cons_mod = clade / "phylofit.cons.mod"
-    noncons_mod = clade / "phylofit.noncons.mod"
-    tree = phylo.get_subtree(clade.name.split("-"), phylo.shorten_names)
+    cons_mod = cons_target_clade / "phylofit.cons.mod"
+    noncons_mod = cons_target_clade / "phylofit.noncons.mod"
+    tree = phylo.get_subtree(cons_target_clade.name.split("-"), phylo.shorten_names)
     cfutures: list[cli.FuturePath] = []
     nfutures: list[cli.FuturePath] = []
     pool = cli.ThreadPool()
-    for chromosome in clade.glob("chromosome*"):
-        maf = chromosome / "multiz.maf"
-        seqid = chromosome.name.removeprefix("chromosome.")
+    for maf in cons_target_clade.glob("chromosome*/multiz.maf"):
+        seqid = maf.parent.name.removeprefix("chromosome.")
         cfutures.append(pool.submit(make_cons_mod, maf, target, seqid, tree))
         nfutures.append(pool.submit(make_noncons_mod, maf, target, seqid, tree))
     phyloBoot([f.result() for f in cfutures], cons_mod)
@@ -228,28 +238,13 @@ def cds_gff3(species: str) -> Path:
 
 
 def concat_clean_mostcons(beds: list[Path], outfile: Path) -> Path:
-    patt = r"multiz\.\d+|\+$"
     if_ = fs.is_outdated(outfile, beds)
     with htslib.popen_bgzip(outfile, if_=if_) as bgzip:
         for infile in beds:
             with subp.popen_zcat(infile, stdout=subp.PIPE, if_=if_) as zcat:
-                subp.run_sd(patt, ".", stdin=zcat.stdout, stdout=bgzip.stdin, if_=if_)
+                subp.run_sd(r"\+$", ".", stdin=zcat.stdout, stdout=bgzip.stdin, if_=if_)
     htslib.tabix(outfile)
     return outfile
-
-
-def clean(path: Path) -> None:
-    it = itertools.chain(
-        path.glob("*.mod"),
-        path.glob("*.ss"),
-        path.glob("chromosome*/*.mod"),
-        path.glob("chromosome*/*.ss"),
-        path.glob("chromosome*/phastcons.wig.gz"),
-    )
-    for file in it:
-        print(file)
-        if not cli.dry_run:
-            file.unlink()
 
 
 if __name__ == "__main__":
