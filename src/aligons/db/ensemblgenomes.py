@@ -12,6 +12,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
 
+from aligons.extern import kent
 from aligons.util import cli, config, dl, fs, subp
 
 from . import _rsrc, api, phylo, tools
@@ -126,17 +127,23 @@ def _readlines_compara_maf(file: Path) -> Iterable[bytes]:
 def download_via_ftp(species: list[str]) -> None:
     with FTPensemblgenomes() as ftp:
         species = ftp.remove_unavailable(species)
-        futures: list[cli.Future[Path]] = []
+        fts: list[cli.Future[Path]] = []
         for sp in species:
-            outdir = prefix() / sp
             fas = ftp.download_chr_sm_fasta(sp)
+            outdir = prefix() / sp
             genome = outdir / replace_label_fa(fas[0].name)
             ft_genome = cli.thread_submit(tools.index_compress_concat, fas, genome)
-            futures.extend(tools.submit_2bit_chromosomes(ft_genome))
+            if len(fas) > 1:
+                for fa in fas:
+                    fts.append(cli.thread_submit(kent.faToTwoBit, fa, outdir))  # noqa: PERF401
+                fts.append(cli.thread_submit(kent.faSize, ft_genome))
+            else:
+                fts.append(cli.thread_submit(tools.from_genome, ft_genome))
+            fts.append(cli.thread_submit(kent.faToTwoBit, ft_genome))
             src = ftp.download_gff3(sp)
             dst = outdir / replace_label_gff3(src.name)
-            futures.append(cli.thread_submit(tools.index_bgzip, src, dst))
-        cli.wait_raise(futures)
+            fts.append(cli.thread_submit(tools.index_bgzip, src, dst))
+        cli.wait_raise(fts)
 
 
 class FTPensemblgenomes(dl.LazyFTP):
@@ -164,7 +171,7 @@ class FTPensemblgenomes(dl.LazyFTP):
         relpath = f"fasta/{species}/dna"
         outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
-        files = [self.retrieve(x) for x in self.remove_duplicates(nlst, "_sm.")]
+        files = [self.retrieve(x) for x in self.remove_duplicates(nlst)]
         fs.checksums(outdir / "CHECKSUMS")
         return [f for f in files if f.suffix == ".gz"]
 
@@ -199,18 +206,15 @@ class FTPensemblgenomes(dl.LazyFTP):
             dirs.append(expanded.resolve())
         return dirs
 
-    def remove_duplicates(self, nlst: list[str], substr: str = "") -> list[str]:
+    def remove_duplicates(self, nlst: list[str]) -> list[str]:
         matched = [x for x in nlst if "chromosome" in x]
         if not matched:
             matched = [x for x in nlst if "primary_assembly" in x]
         if not matched:
             matched = [x for x in nlst if "toplevel" in x]
-        if not matched:
-            matched = [x for x in nlst if f"{version()}.gff3" in x]
         matched = [x for x in matched if "musa_acuminata_v2" not in x]  # v52
-        if substr:
-            matched = [x for x in matched if substr in x]
-        assert matched, substr
+        matched = [x for x in matched if ".dna_sm." in x and x.endswith(".fa.gz")]
+        assert matched, nlst
         misc = [x for x in nlst if re.search("CHECKSUMS$|README$", x)]
         return matched + misc
 

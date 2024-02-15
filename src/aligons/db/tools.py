@@ -48,7 +48,7 @@ def process_genome(
 ) -> list[cli.Future[Path]]:
     ft_fa, ft_gff = futures
     ft_masked = mask.submit(ft_fa)
-    return [ft_gff, *submit_2bit_chromosomes(ft_masked)]
+    return [ft_gff, cli.thread_submit(from_genome, ft_masked)]
 
 
 def _index_compress_concat(responses: Iterable[dl.Response], outfile: Path) -> Path:
@@ -78,12 +78,11 @@ def index_bgzip(infile: Path | dl.Response, outfile: Path) -> Path:
     return outfile
 
 
-def submit_2bit_chromosomes(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]:
+def from_genome(genome: Path | cli.Future[Path]) -> list[Path]:
     genome = cli.result(genome)
     fasize = read_fasize(genome)
-    fts: list[cli.Future[Path]] = []
-    fts.append(cli.thread_submit(kent.faToTwoBit, genome))
     min_size = 1000000
+    chr_2bits: list[Path] = []
     for seqid, size in fasize.items():
         if re.search(r"scaffold|contig", seqid):
             _log.info(f"ignoring {seqid} in {genome}")
@@ -94,8 +93,8 @@ def submit_2bit_chromosomes(genome: Path | cli.Future[Path]) -> list[cli.Future[
         name = genome.name.replace(".genome.fa.gz", f".chromosome.{seqid}.2bit", 1)
         chr2bit = genome.with_name(name)
         if fs.is_outdated(chr2bit, genome):
-            fts.append(cli.thread_submit(faidx_twobit, genome, seqid, chr2bit))
-    return fts
+            chr_2bits.append(faidx_twobit(genome, seqid, chr2bit))
+    return chr_2bits
 
 
 def faidx_twobit(fa_gz: Path, seqid: str, twobit: Path) -> Path:
