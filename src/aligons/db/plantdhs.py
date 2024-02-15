@@ -24,7 +24,7 @@ def main(argv: list[str] | None = None) -> None:
             print(x)
 
 
-def retrieve_deploy(query: str) -> cli.FuturePath:
+def retrieve_deploy(query: str) -> cli.Future[Path]:
     url = f"https://bioinfor.yzu.edu.cn/download/plantdhs/{query}"
     rawfile = _rsrc.db_root(_HOST) / query
     outfile = db_prefix() / query

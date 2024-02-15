@@ -37,7 +37,7 @@ def main(argv: list[str] | None = None) -> None:
         to_cram(maf)
 
 
-def iter_fetch_and_bgzip() -> Iterator[tuple[cli.FuturePath, cli.FuturePath]]:
+def iter_fetch_and_bgzip() -> Iterator[tuple[cli.Future[Path], cli.Future[Path]]]:
     for entry in _rsrc.iter_builtin_dataset("plantregmap.toml"):
         yield tools.fetch_and_bgzip(entry, db_prefix())
     for entry in iter_jgi_dataset():
@@ -56,7 +56,7 @@ def iter_jgi_dataset() -> Iterator[_rsrc.DataSet]:
         yield entry
 
 
-def retrieve_deploy(query: str) -> cli.FuturePath:
+def retrieve_deploy(query: str) -> cli.Future[Path]:
     url = f"http://{_HOST}/download_ftp.php?{query}"
     relpath = query.split("=", 1)[1]
     rawfile = _prefix_mirror() / relpath
@@ -117,12 +117,12 @@ def to_cram(maf: Path) -> Path:
     return outfile
 
 
-def download_via_ftp() -> list[cli.FuturePath]:
+def download_via_ftp() -> list[cli.Future[Path]]:
     targets = [
         "Oryza_sativa_Japonica_Group",
         "Solanum_lycopersicum",
     ]
-    fts: list[cli.FuturePath] = []
+    fts: list[cli.Future[Path]] = []
     with FTPplantregmap() as ftp:
         for species in targets:
             fts.extend(ftp.download(species))
@@ -192,8 +192,8 @@ class FTPplantregmap(dl.LazyFTP):
     def species_abbr_list(self) -> Path:
         return self.retrieve("Species_abbr.list")
 
-    def download(self, species: str) -> list[cli.FuturePath]:
-        fts: list[cli.FuturePath] = []
+    def download(self, species: str) -> list[cli.Future[Path]]:
+        fts: list[cli.Future[Path]] = []
         self.ls_cache(species)
         for bedgraph in self.download_conservation(species):
             fasize = api.fasize(species)

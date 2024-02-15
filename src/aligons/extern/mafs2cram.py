@@ -3,7 +3,6 @@
 src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 dst: ./pairwise/{target}/{query}/cram/genome.cram
 """
-import concurrent.futures as confu
 import logging
 import re
 from pathlib import Path
@@ -29,19 +28,19 @@ def main(argv: list[str] | None = None) -> None:
     cli.wait_raise([mafs2cram(path) for path in args.query])
 
 
-def run(target: Path, species: list[str]) -> list[cli.FuturePath]:
+def run(target: Path, species: list[str]) -> list[cli.Future[Path]]:
     query_names = api.sanitize_queries(target.name, species)
     return [mafs2cram(target / q) for q in query_names]
 
 
-def mafs2cram(path: Path) -> cli.FuturePath:
+def mafs2cram(path: Path) -> cli.Future[Path]:
     target_species = path.parent.name
     reference = api.genome_fa(target_species)
     outdir = path / "cram"
     if not cli.dry_run:
         outdir.mkdir(0o755, exist_ok=True)
     pool = cli.ThreadPool()
-    futures: list[confu.Future[Path]] = []
+    futures: list[cli.Future[Path]] = []
     for chr_dir in fs.sorted_naturally(path.glob("chromosome.*")):
         maf = chr_dir / "sing.maf"
         if not maf.exists():
@@ -52,7 +51,7 @@ def mafs2cram(path: Path) -> cli.FuturePath:
     return pool.submit(merge_crams, futures, outdir)
 
 
-def merge_crams(futures: list[confu.Future[Path]], outdir: Path) -> Path:
+def merge_crams(futures: list[cli.Future[Path]], outdir: Path) -> Path:
     crams: list[Path] = [f.result() for f in futures]
     outfile = outdir / "genome.cram"
     is_to_run = bool(crams) and fs.is_outdated(outfile, crams)
@@ -66,11 +65,10 @@ def merge_crams(futures: list[confu.Future[Path]], outdir: Path) -> Path:
 
 
 def maf2cram(
-    infile: cli.FuturePath | Path, reference: Path, outfile: Path | None = None
+    infile: cli.Future[Path] | Path, reference: Path, outfile: Path | None = None
 ) -> Path:
     """Supports sing.maf only: each alignment must have 2 sequences."""
-    if isinstance(infile, confu.Future):
-        infile = infile.result()
+    infile = cli.result(infile)
     if outfile is None:
         outfile = infile.with_suffix(".cram")
     is_to_run = fs.is_outdated(outfile, infile)

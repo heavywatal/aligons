@@ -21,7 +21,7 @@ def main(argv: list[str] | None = None) -> None:
 
 def fetch_and_bgzip(
     entry: _rsrc.DataSet, prefix: Path
-) -> tuple[cli.FuturePath, cli.FuturePath]:
+) -> tuple[cli.Future[Path], cli.Future[Path]]:
     url_prefix = entry["url_prefix"]
     species = entry["species"]
     annotation = entry["annotation"]
@@ -44,21 +44,23 @@ def dl_mirror_db(url: str) -> dl.Response:
     return dl.mirror(url, _rsrc.db_root())
 
 
-def process_genome(futures: tuple[cli.FuturePath, cli.FuturePath]) -> cli.FuturePath:
+def process_genome(
+    futures: tuple[cli.Future[Path], cli.Future[Path]],
+) -> cli.Future[Path]:
     ft_fa, ft_gff = futures
     fa = ft_fa.result()
     ft_gff.result()
     return index_fasta([fa]) if ".dna_sm." in fa.name else split_mask_index(fa)
 
 
-def split_mask_index(toplevel_fa_gz: Path) -> cli.FuturePath:
+def split_mask_index(toplevel_fa_gz: Path) -> cli.Future[Path]:
     future_chromosomes = _split_toplevel_fa_work(toplevel_fa_gz)
     future_masked = [mask.submit(f) for f in future_chromosomes]
     links = [_symlink_masked(f) for f in future_masked]
     return index_fasta(links)
 
 
-def _symlink_masked(ft: cli.FuturePath) -> Path:
+def _symlink_masked(ft: cli.Future[Path]) -> Path:
     masked = ft.result()
     link = masked.parent.parent / masked.name
     return fs.symlink(masked, link, relative=True)
@@ -70,16 +72,16 @@ def index_compress_concat(responses: Iterable[dl.Response], outfile: Path) -> Pa
     return outfile
 
 
-def index_fasta(paths: list[Path]) -> cli.FuturePath:
+def index_fasta(paths: list[Path], outdir: Path | None = None) -> cli.Future[Path]:
     """Create bgzipped and indexed genome.fa."""
     if len(paths) == 1:
         if "chromosome" in paths[0].name:
             _log.warning(f"splitting chromosome? {paths[0]}")
         paths = [f.result() for f in _split_toplevel_fa(paths[0])]
-    return cli.thread_submit(_create_genome_bgzip, paths)
+    return cli.thread_submit(_create_genome_bgzip, paths, outdir)
 
 
-def _create_genome_bgzip(files: list[Path]) -> Path:
+def _create_genome_bgzip(files: list[Path], outdir: Path | None = None) -> Path:
     """Combine chromosome files and bgzip it."""
     files = fs.sorted_naturally(files)
     _log.debug(str(files))
@@ -89,26 +91,27 @@ def _create_genome_bgzip(files: list[Path]) -> Path:
     ext = files[0].with_suffix("").suffix
     (outname, count) = re.subn(rf"\.chromosome\..+{ext}", rf".genome{ext}", name)
     assert count == 1, name
-    outfile = files[0].with_name(outname)
+    outdir = outdir or files[0].parent
+    outfile = outdir / outname
     htslib.concat_bgzip(files, outfile)
     htslib.try_index(outfile)
     return kent.faSize(outfile)
 
 
-def _split_toplevel_fa_work(fa_gz: Path) -> list[cli.FuturePath]:
+def _split_toplevel_fa_work(fa_gz: Path) -> list[cli.Future[Path]]:
     fmt = "{stem}.{seqid}.fa"
     outdir = fa_gz.with_name("_work")
     return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"), outdir)
 
 
-def _split_toplevel_fa(fa_gz: Path) -> list[cli.FuturePath]:
+def _split_toplevel_fa(fa_gz: Path) -> list[cli.Future[Path]]:
     if "toplevel" not in fa_gz.name:
         _log.warning(f"'toplevel' not in {fa_gz.name}")
     fmt = "{stem}.{seqid}.fa.gz"
     return htslib.split_fa_gz(fa_gz, fmt, (r"toplevel", "chromosome"))
 
 
-def softmask(species: str) -> cli.FuturePath:
+def softmask(species: str) -> cli.Future[Path]:
     masked = jellyfish.run(species)
     return index_fasta(masked)
 

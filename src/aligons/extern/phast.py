@@ -97,8 +97,8 @@ def estimate_models(cons_target_clade: Path) -> tuple[Path, Path]:
     cons_mod = cons_target_clade / "phylofit.cons.mod"
     noncons_mod = cons_target_clade / "phylofit.noncons.mod"
     tree = phylo.get_subtree(cons_target_clade.name.split("-"), phylo.shorten_names)
-    cfutures: list[cli.FuturePath] = []
-    nfutures: list[cli.FuturePath] = []
+    cfutures: list[cli.Future[Path]] = []
+    nfutures: list[cli.Future[Path]] = []
     pool = cli.ThreadPool()
     for maf in cons_target_clade.glob("chromosome*/multiz.maf"):
         seqid = maf.parent.name.removeprefix("chromosome.")

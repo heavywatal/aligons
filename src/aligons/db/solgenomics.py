@@ -17,7 +17,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv or None)
     _test_newick()
     if args.download:
-        fts: list[cli.FuturePath] = []
+        fts: list[cli.Future[Path]] = []
         for pair in iter_fetch_and_bgzip():
             fts.extend(pair)
         cli.wait_raise(fts)
@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> None:
         cli.wait_raise(fts)
 
 
-def iter_fetch_and_bgzip() -> Iterator[tuple[cli.FuturePath, cli.FuturePath]]:
+def iter_fetch_and_bgzip() -> Iterator[tuple[cli.Future[Path], cli.Future[Path]]]:
     for entry in _rsrc.iter_builtin_dataset("solgenomics.toml"):
         entry["url_prefix"] = "https://solgenomics.net/ftp/genomes/"
         yield tools.fetch_and_bgzip(entry, db_prefix())

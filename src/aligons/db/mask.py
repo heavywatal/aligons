@@ -3,7 +3,6 @@
 src: {stem}.dna.chromosome.{seqid}.fa
 dst: {stem}.dna_sm.chromosome.{seqid}.fa.gz
 """
-import concurrent.futures as confu
 import logging
 import re
 from pathlib import Path
@@ -23,12 +22,11 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def submit(
-    infile: cli.FuturePath | Path,
+    infile: cli.Future[Path] | Path,
     species: str | None = None,
     outfile: Path | None = None,
-) -> cli.FuturePath:
-    if isinstance(infile, confu.Future):
-        infile = infile.result()
+) -> cli.Future[Path]:
+    infile = cli.result(infile)
     fs.expect_suffix(infile, ".gz", negate=True)
     if not species:
         species = "angiosperms"
@@ -37,7 +35,7 @@ def submit(
         assert count == 1, infile
         outfile = infile.with_name(outname + ".gz")
     fs.expect_suffix(outfile, ".gz")
-    fts: list[cli.FuturePath] = []
+    fts: list[cli.Future[Path]] = []
     fts.append(cli.thread_submit(repeatmasker.repeatmasker, infile, species))
     fts.append(cli.thread_submit(sdust.run, infile))
     fts.append(cli.thread_submit(trf.run, infile))

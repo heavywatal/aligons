@@ -126,7 +126,7 @@ def _readlines_compara_maf(file: Path) -> Iterable[bytes]:
 def download_via_ftp(species: list[str]) -> None:
     with FTPensemblgenomes() as ftp:
         species = ftp.remove_unavailable(species)
-        futures: list[cli.FuturePath] = []
+        futures: list[cli.Future[Path]] = []
         for sp in species:
             fasta_originals = ftp.download_chr_sm_fasta(sp)
             fasta_copies = [_ln_or_bgzip(x, sp) for x in fasta_originals]

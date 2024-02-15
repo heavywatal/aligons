@@ -1,4 +1,3 @@
-import concurrent.futures as confu
 import contextlib
 import itertools
 import logging
@@ -90,7 +89,7 @@ def expect_suffix(file: Path, suffix: str, *, negate: bool = False) -> None:
 def checksums(file: Path) -> None:
     if cli.dry_run:  # pragma: no cover
         return
-    with confu.ThreadPoolExecutor() as pool:
+    with cli.ThreadPoolExecutor() as pool:
         with file.open("rt") as fin:
             lines = fin.readlines()
         pool.map(checkline, lines, itertools.repeat(file.parent))

@@ -1,4 +1,3 @@
-import concurrent.futures as confu
 import logging
 import re
 from pathlib import Path
@@ -23,7 +22,7 @@ def split_fa_gz(
     fmt: str = "{stem}.part_{seqid}.fa.gz",
     sub: tuple[str, str] = ("", ""),
     outdir: Path | None = None,
-) -> list[cli.FuturePath]:
+) -> list[cli.Future[Path]]:
     if outdir is None:
         outdir = bgz.parent
     elif not cli.dry_run:
@@ -36,7 +35,7 @@ def split_fa_gz(
         return []
     with fai.open("rt") as fin:
         seqids = [line.split()[0] for line in fin]
-    fts: list[cli.FuturePath] = []
+    fts: list[cli.Future[Path]] = []
     for seqid in seqids:
         if re.search(r"scaffold|contig", seqid):
             _log.debug("ignoring {seqid} in {bgz}")
@@ -95,9 +94,8 @@ def popen_bgzip(
         return subp.popen(["bgzip", "-@2"], stdin=stdin, stdout=fout, if_=if_)
 
 
-def try_index(bgz: Path | cli.FuturePath) -> Path:
-    if isinstance(bgz, confu.Future):
-        bgz = bgz.result()
+def try_index(bgz: Path | cli.Future[Path]) -> Path:
+    bgz = cli.result(bgz)
     if to_be_tabixed(bgz.name):
         return tabix(bgz)
     if to_be_faidxed(bgz.name):
@@ -105,33 +103,30 @@ def try_index(bgz: Path | cli.FuturePath) -> Path:
     return bgz
 
 
-def faidx(bgz: Path | cli.FuturePath) -> Path:
+def faidx(bgz: Path | cli.Future[Path]) -> Path:
     """https://www.htslib.org/doc/samtools-faidx.html."""
-    if isinstance(bgz, confu.Future):
-        bgz = bgz.result()
+    bgz = cli.result(bgz)
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
     subp.run(["samtools", "faidx", bgz], if_=fs.is_outdated(outfile, bgz))
     _log.info(f"{outfile}")
     return outfile
 
 
-def tabix(bgz: Path | cli.FuturePath) -> Path:
+def tabix(bgz: Path | cli.Future[Path]) -> Path:
     """https://www.htslib.org/doc/tabix.html.
 
     Use .csi instead of .tbi for chromosomes >512 Mbp e.g., atau, hvul.
     """
-    if isinstance(bgz, confu.Future):
-        bgz = bgz.result()
+    bgz = cli.result(bgz)
     outfile = bgz.with_suffix(bgz.suffix + ".csi")
     subp.run(["tabix", "--csi", bgz], if_=fs.is_outdated(outfile, bgz))
     _log.info(f"{outfile}")
     return outfile
 
 
-def index(cram: Path | cli.FuturePath) -> Path:
+def index(cram: Path | cli.Future[Path]) -> Path:
     """https://www.htslib.org/doc/samtools-index.html."""
-    if isinstance(cram, confu.Future):
-        cram = cram.result()
+    cram = cli.result(cram)
     outfile = cram.with_suffix(cram.suffix + ".crai")
     subp.run(["samtools", "index", cram], if_=fs.is_outdated(outfile, cram))
     _log.info(f"{outfile}")

@@ -1,13 +1,11 @@
 import argparse
-import concurrent.futures as confu
 import logging
 import os
 import threading
 from collections.abc import Callable, Iterable, Sequence
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
-
-type FuturePath = confu.Future[Path]
 
 dry_run = False
 
@@ -82,26 +80,30 @@ class ConsoleHandler(logging.StreamHandler):  # type: ignore[reportMissingTypeAr
 class ThreadPool:
     _instance = None
 
-    def __new__(cls, max_workers: int | None = None) -> confu.ThreadPoolExecutor:
+    def __new__(cls, max_workers: int | None = None) -> ThreadPoolExecutor:
         if cls._instance is None:
-            cls._instance = confu.ThreadPoolExecutor(max_workers)
+            cls._instance = ThreadPoolExecutor(max_workers)
         elif max_workers is not None:
             maxw = cls._instance._max_workers  # noqa: SLF001
             _log.warning(f"max_workers = {maxw}; ignored {max_workers}")
         return cls._instance
 
 
-def thread_submit(
-    fn: Callable[..., Any], /, *args: Any, **kwargs: Any
-) -> confu.Future[Any]:
+def thread_submit(fn: Callable[..., Any], /, *args: Any, **kwargs: Any) -> Future[Any]:
     if threading.current_thread() != threading.main_thread():
         _log.warning("submit() from non-main thread may cause deadlock.")
     return ThreadPool().submit(fn, *args, **kwargs)
 
 
-def wait_raise(futures: Iterable[confu.Future[Any]]) -> None:
-    for f in confu.as_completed(futures):
+def wait_raise(futures: Iterable[Future[Any]]) -> None:
+    for f in as_completed(futures):
         f.result()
+
+
+def result(x: Path | Future[Path]) -> Path:
+    if isinstance(x, Future):
+        return x.result()
+    return x
 
 
 def main(argv: list[str] | None = None) -> None:

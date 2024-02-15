@@ -22,7 +22,7 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def wait_maskfasta(
-    fi: Path, fts: list[cli.FuturePath], fo: Path, *, soft: bool = True
+    fi: Path, fts: list[cli.Future[Path]], fo: Path, *, soft: bool = True
 ) -> Path:
     fs.expect_suffix(fo, ".gz")
     beds = [f.result() for f in fts]

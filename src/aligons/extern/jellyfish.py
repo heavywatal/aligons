@@ -3,7 +3,6 @@
 src: *.fa.gz
 dst: kmer/*.fa.gz
 """
-import concurrent.futures as confu
 import logging
 from pathlib import Path
 
@@ -31,7 +30,7 @@ def run(species: str) -> list[Path]:
     threshold = calc_threshold(histofile)
     log_config(histofile, threshold)
     threads = config["jellyfish"]["count"]["threads"]
-    with confu.ThreadPoolExecutor(max_workers=threads) as pool:
+    with cli.ThreadPoolExecutor(max_workers=threads) as pool:
         fts = [
             pool.submit(mask_genome, chromosome, dumpfile, threshold)
             for chromosome in api.list_chromosome_fa(species)

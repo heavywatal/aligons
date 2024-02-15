@@ -5,7 +5,6 @@ dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 
 https://lastz.github.io/lastz/
 """
-import concurrent.futures as confu
 import logging
 from collections.abc import Iterator
 from pathlib import Path
@@ -28,7 +27,7 @@ def main(argv: list[str] | None = None) -> None:
 
 def run(target: str, queries: list[str]) -> Path:
     queries = api.sanitize_queries(target, queries)
-    futures: list[confu.Future[Path]] = []
+    futures: list[cli.Future[Path]] = []
     for query in queries:
         pa = PairwiseGenomeAlignment(target, query)
         futures.extend(pa.run())
@@ -51,7 +50,7 @@ class PairwiseChromosomeAlignment:
             q2bit = kent.faToTwoBit(api.genome_fa(query, row["chrom"]))
             self._queries[query] = q2bit
 
-    def submit(self) -> list[cli.FuturePath]:
+    def submit(self) -> list[cli.Future[Path]]:
         return [
             cli.thread_submit(self.chr_sing_maf, query, q2bit)
             for query, q2bit in self._queries.items()
@@ -88,11 +87,11 @@ class PairwiseGenomeAlignment:
         self._query_sizes = api.fasize(query)
         self._outdir = Path("pairwise") / target / query
 
-    def run(self) -> list[cli.FuturePath]:
+    def run(self) -> list[cli.Future[Path]]:
         pool = cli.ThreadPool()
         target_chromosomes = list(iter_chromosome_2bit(self._target))
         query_chromosomes = list(iter_chromosome_2bit(self._query))
-        flists: list[list[confu.Future[Path]]] = [
+        flists: list[list[cli.Future[Path]]] = [
             [pool.submit(self.align_chr, t, q) for q in query_chromosomes]
             for t in target_chromosomes
         ]
@@ -102,7 +101,7 @@ class PairwiseGenomeAlignment:
         axtgz = lastz(target_2bit, query_2bit, self._outdir)
         return kent.axtChain(axtgz, target_2bit, query_2bit)
 
-    def wait_integrate(self, futures: list[confu.Future[Path]]) -> Path:
+    def wait_integrate(self, futures: list[cli.Future[Path]]) -> Path:
         return self.integrate([f.result() for f in futures])
 
     def integrate(self, chains: list[Path]) -> Path:
