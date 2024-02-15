@@ -112,22 +112,27 @@ def _faToTwoBit_s(stdin: subp.FILE, outfile: Path, *, if_: bool = True) -> Path:
     return outfile
 
 
-def _faToTwoBit_f(fa_gz: Path | cli.Future[Path], outdir: Path | None = None) -> Path:  # noqa: N802
-    fa_gz = cli.result(fa_gz)
-    fs.expect_suffix(fa_gz, ".gz")
-    outdir = outdir or fa_gz.parent
-    outfile = outdir / fa_gz.with_suffix("").with_suffix(".2bit").name
-    subp.run(["faToTwoBit", fa_gz, outfile], if_=fs.is_outdated(outfile, fa_gz))
-    return outfile
+def _faToTwoBit_f(fa: Path | cli.Future[Path], outdir: Path | None = None) -> Path:  # noqa: N802
+    fa = cli.result(fa)
+    outdir = outdir or fa.parent
+    outfile = (outdir / fa.name.removesuffix(".gz")).with_suffix(".2bit")
+    if_ = fs.is_outdated(outfile, fa)
+    with subp.popen_zcat(fa, if_=if_) as zcat:
+        return _faToTwoBit_s(zcat.stdout, outfile, if_=if_)
 
 
-def faSize(genome_fa_gz: Path) -> Path:  # noqa: N802
+def faSize(genome_fa_gz: Path | cli.Future[Path]) -> Path:  # noqa: N802
+    genome_fa_gz = cli.result(genome_fa_gz)
     if not str(genome_fa_gz).endswith(("genome.fa.gz", os.devnull)):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
     outfile = genome_fa_gz.with_name("fasize.chrom.sizes")
-    is_to_run = fs.is_outdated(outfile, genome_fa_gz)
-    with subp.open_(outfile, "wb", if_=is_to_run) as fout:
-        subp.run(["faSize", "-detailed", genome_fa_gz], stdout=fout, if_=is_to_run)
+    if_ = fs.is_outdated(outfile, genome_fa_gz)
+    with (
+        subp.popen_zcat(genome_fa_gz, if_=if_) as zcat,
+        subp.open_(outfile, "wb", if_=if_) as fout,
+    ):
+        cmd = ["faSize", "-detailed", "stdin"]
+        subp.run(cmd, stdin=zcat.stdout, stdout=fout, if_=if_)
     _log.info(f"{outfile}")
     return outfile
 
