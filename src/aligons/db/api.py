@@ -45,15 +45,19 @@ def fasize(species: str) -> Path:
     return get_file("fasize.chrom.sizes", species)
 
 
-def genome_fa(species: str, seqid: str = "") -> Path:
+def genome_fa(species: str) -> Path:
     subdir = "kmer" if config["db"]["kmer"] else ""
-    pattern = f"*.chromosome.{seqid}.fa.gz" if seqid else "*.genome.fa.gz"
-    return get_file(pattern, species, subdir)
+    return get_file("*.genome.fa.gz", species, subdir)
 
 
 def genome_gff3(species: str) -> Path:
     subdir = "kmer" if config["db"]["kmer"] else ""
     return get_file("*.genome.gff3.gz", species, subdir)
+
+
+def chromosome_2bit(species: str, seqid: str) -> Path:
+    subdir = "kmer" if config["db"]["kmer"] else ""
+    return get_file(f"*.chromosome.{seqid}.2bit", species, subdir)
 
 
 def iter_chromosome_2bit(species: str) -> Iterable[Path]:
@@ -62,19 +66,6 @@ def iter_chromosome_2bit(species: str) -> Iterable[Path]:
 
 def get_file(pattern: str, species: str, subdir: str = "") -> Path:
     found = list(_glob(pattern, species, subdir))
-    if not found:
-        msg = f"{pattern} not found in {species}/{subdir}"
-        raise FileNotFoundError(msg)
-    if len(found) > 1:
-        msg = f"{pattern} is not unique in {species}/{subdir}: {found}"
-        raise ValueError(msg)
-    return found[0]
-
-
-def get_file_nolabel(pattern: str, species: str, subdir: str = "") -> Path:
-    it = _glob(pattern, species, subdir)
-    rex = re.compile(r"\.(chromosome|genome|toplevel)\.")
-    found = [x for x in it if not rex.search(x.name)]
     if not found:
         msg = f"{pattern} not found in {species}/{subdir}"
         raise FileNotFoundError(msg)

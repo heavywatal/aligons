@@ -35,18 +35,20 @@ def run(target: str, queries: list[str]) -> Path:
 
 
 class PairwiseChromosomeAlignment:
-    def __init__(self, bed: Path) -> None:
+    def __init__(self, bed: Path, queries: list[str]) -> None:
         bed_df = maf.read_bed(bed)
         rows = bed_df.iter_rows(named=True)
         row0 = next(rows)
         self._target = row0["name"]
         self._target_sizes = api.fasize(self._target)
-        self._t2bit = kent.faToTwoBit(api.genome_fa(self._target, row0["chrom"]))
+        self._t2bit = api.chromosome_2bit(self._target, row0["chrom"])
         self._target_dir = Path("pairwise") / self._target
         self._queries: dict[str, Path] = {}
         for row in rows:
             query = row["name"]
-            q2bit = kent.faToTwoBit(api.genome_fa(query, row["chrom"]))
+            if query not in queries:
+                continue
+            q2bit = api.chromosome_2bit(query, row["chrom"])
             self._queries[query] = q2bit
 
     def submit(self) -> list[cli.Future[Path]]:

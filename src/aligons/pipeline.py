@@ -1,5 +1,6 @@
 import itertools
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 
 from .db import api, phylo
@@ -16,36 +17,32 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-t", "--tips", type=int, default=0)
     parser.add_argument("-g", "--max-bp", type=float, default=float("inf"))
     parser.add_argument("--compara", action="store_true")
+    parser.add_argument("--bed", type=Path)
     parser.add_argument("target", choices=phylo.extract_tip_names(tree))
     parser.add_argument("clade", choices=phylo.extract_inner_names(tree))
     args = parser.parse_args(argv or None)
     log_config()
     if args.check_args:
         return
-    phastcons(args.target, args.clade, args.tips, args.max_bp, compara=args.compara)
+    if args.bed:
+        one_block(args.bed, args.clade)
+        return
+    genome_wide(args.target, args.clade, args.tips, args.max_bp, compara=args.compara)
 
 
-def phastcons_block(bed: Path, clade: str) -> None:
+def one_block(bed: Path, clade: str) -> None:
     lst_species = phylo.list_species(clade)
-    aln = lastz.PairwiseChromosomeAlignment(bed)
+    aln = lastz.PairwiseChromosomeAlignment(bed, lst_species)
     not_in_aln = set(lst_species) - {aln.target, *aln.queries}
     assert not not_in_aln, not_in_aln
     ref_fa = api.genome_fa(aln.target)
     fts = [cli.thread_submit(mafs2cram.maf2cram, ft, ref_fa) for ft in aln.submit()]
     for future in fts:
         htslib.index(future.result())
-    multiple = multiz.run(aln.target_dir, lst_species)
-    if not (clade_alias := multiple.with_name(clade)).exists():
-        clade_alias.symlink_to(multiple.name)
-    (bigwig, mostcons) = phast.run(multiple)
-    cds = phast.cds_gff3(aln.target)
-    cns_bed = mostcons.with_name("cns.bed.gz")
-    _subtract_cds(mostcons, cds, cns_bed)
-    cns0_bed = bigwig.with_name("cns0.bed.gz")
-    _subtract_cds(bigwig, cds, cns0_bed)
+    multiz_phast(aln.target_dir, lst_species, clade)
 
 
-def phastcons(
+def genome_wide(
     target: str, clade: str, tips: int, max_bp: float, *, compara: bool
 ) -> None:
     lst_species = phylo.list_species(clade)
@@ -60,11 +57,27 @@ def phastcons(
         if target not in species:
             continue
         _log.info(f"{species = }")
-        multiple = multiz.run(pairwise, species)
-        if n == len(lst_species):
-            multiple.with_name(clade).symlink_to(multiple.name)
-        (_bigwig, _cns_bed) = phast.run(multiple)
+        multiz_phast(pairwise, species, clade)
     cli.wait_raise(fts)
+
+
+def multiz_phast(pairwise: Path, lst_species: Sequence[str], clade: str) -> Path:
+    target = pairwise.name
+    multiple = multiz.run(pairwise, lst_species)
+    is_clade = lst_species == phylo.list_species(clade)
+    if is_clade:
+        clade_alias = multiple.with_name(clade)
+        fs.symlink(multiple, clade_alias, relative=True)
+    (bigwig, mostcons) = phast.run(multiple)
+    cds = phast.cds_gff3(target)
+    cns_bed = mostcons.with_name("cns.bed.gz")
+    _subtract_cds(mostcons, cds, cns_bed)
+    cns0_bed = bigwig.with_name("cns0.bed.gz")
+    _subtract_cds(bigwig, cds, cns0_bed)
+    if is_clade:
+        clade_alias = mostcons.parent.with_name(clade)
+        fs.symlink(mostcons.parent, clade_alias, relative=True)
+    return cns_bed
 
 
 def _subtract_cds(bed: Path, cds: Path, outfile: Path) -> Path:
