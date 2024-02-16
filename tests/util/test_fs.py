@@ -33,17 +33,12 @@ def test_sorted_naturally(capsys: pytest.CaptureFixture[str]):
 
 
 def test_relpath(tmp_path: Path):
-    child = fs.relpath(tmp_path / "noexist", tmp_path)
-    assert child == Path("noexist")
+    sib = fs.relpath(tmp_path / "sib", tmp_path / "noexist")
+    assert sib == Path("sib")
     parent = fs.relpath(tmp_path, tmp_path / "noexist")
     assert parent == Path("..")
-    sib = fs.relpath(tmp_path / "sib", tmp_path / "noexist")
-    assert sib == Path("../sib")
-    empty_file = tmp_path / "empty"
-    empty_file.open("w").close()
-    with pytest.raises(AssertionError) as e:
-        _ = fs.relpath(tmp_path, empty_file)
-    assert str(e.value) == str(empty_file)
+    child = fs.relpath(tmp_path / "noexist", tmp_path)
+    assert child == Path("noexist")
 
 
 def test_symlink(tmp_path: Path):

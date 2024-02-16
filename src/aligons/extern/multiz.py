@@ -8,7 +8,6 @@ https://github.com/multiz/multiz
 """
 import itertools
 import logging
-import os
 import shutil
 from collections.abc import Sequence
 from pathlib import Path
@@ -122,14 +121,8 @@ def prepare(indir: Path, outdir: Path, queries: Sequence[str]) -> Path:
         dstname = f"{phylo.shorten(target)}.{phylo.shorten(query)}.sing.maf"
         for chrdir in querypath.glob("chromosome.*"):
             src = chrdir / "sing.maf"
-            dstdir = outdir / chrdir.name
-            if not cli.dry_run:
-                dstdir.mkdir(0o755, exist_ok=True)
-            dst = dstdir / dstname
-            relsrc = os.path.relpath(src, dstdir)
-            _log.info(f"{dst}@\n -> {relsrc}")
-            if not dst.exists() and not cli.dry_run:
-                dst.symlink_to(relsrc)
+            link = outdir / chrdir.name / dstname
+            fs.symlink(src, link, relative=True)
     return outdir
 
 
