@@ -140,7 +140,9 @@ def print_stats(clade: str) -> None:
             nseqs = len(chrom_sizes_)
             print(f" {fasize:4.0f}Mbp {nseqs:2}", end="")
             gffsize = _gff3_size(species)
-            print(f" {gffsize:4.1f}MB")
+            print(f" {gffsize:4.1f}MB", end="")
+            x = ",".join(_sources(species))
+            print(f" {x}")
         except FileNotFoundError:
             print("")
 
@@ -155,6 +157,21 @@ def chrom_sizes(species: str) -> dict[str, int]:
 def _gff3_size(species: str) -> float:
     path = genome_gff3(species)
     return path.stat().st_size / 1e6
+
+
+def _sources(species: str) -> Iterable[str]:
+    for path in _species_dirs(species):
+        if path.glob("*.genome.*.gz"):
+            yield _nickname(path.parent.name)
+
+
+def _nickname(x: str) -> str:
+    x = re.sub(r"ensembl(-compara)?-(\d+)", r"en\1\2", x)
+    mapping = {
+        "plantregmap": "prm",
+        "solgenomics": "sol",
+    }
+    return mapping.get(x, x)
 
 
 if __name__ == "__main__":
