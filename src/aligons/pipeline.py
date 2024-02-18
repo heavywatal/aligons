@@ -64,7 +64,7 @@ def genome_wide(
 def multiz_phast(pairwise: Path, lst_species: Sequence[str], clade: str) -> Path:
     target = pairwise.name
     multiple = multiz.run(pairwise, lst_species)
-    is_clade = lst_species == phylo.list_species(clade)
+    is_clade = set(lst_species) == set(phylo.list_species(clade))
     if is_clade:
         clade_alias = multiple.with_name(clade)
         fs.symlink(multiple, clade_alias, relative=True)
