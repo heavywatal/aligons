@@ -131,11 +131,16 @@ def download_via_ftp(species: list[str]) -> None:
         for sp in species:
             fas = ftp.download_chr_sm_fasta(sp)
             outdir = prefix() / sp
-            genome = outdir / replace_label_fa(fas[0].name)
+            md = match_fa_name(fas[0].name)
+            genome = outdir / "{species}.{asm}.{dna}.genome.fa.gz".format(**md)
             ft_genome = cli.thread_submit(tools.index_compress_concat, fas, genome)
             if len(fas) > 1:
                 for fa in fas:
-                    fts.append(cli.thread_submit(kent.faToTwoBit, fa, outdir))  # noqa: PERF401
+                    md = match_fa_name(fa.name)
+                    assert md["seqid"], fa
+                    fmt = "{species}.{asm}.{dna}.chromosome.{seqid}.2bit"
+                    chr2bit = outdir / fmt.format(**md)
+                    fts.append(cli.thread_submit(kent.faToTwoBit, fa, chr2bit))
                 fts.append(cli.thread_submit(kent.faSize, ft_genome))
             else:
                 fts.append(cli.thread_submit(tools.from_genome, ft_genome))
@@ -240,9 +245,17 @@ def replace_label_gff3(name: str, label: str = "genome") -> str:
     return re.sub(pattern, rf"{label}.gff3\1", name, count=1)
 
 
-def replace_label_fa(name: str, label: str = "genome") -> str:
-    pattern = r"(dna(?:_[sr]m)?\.)[^.]*\.?[^.]*\.?fa(\.gz)?$"
-    return re.sub(pattern, rf"\1{label}.fa\2", name, count=1)
+def match_fa_name(name: str) -> dict[str, str | None]:
+    """<species>.<assembly>.<sequence type>.<id type>.<id>.fa.gz."""
+    assert name.endswith(".fa.gz"), name
+    pattern = (
+        r"^(?P<species>[^.]+)\.(?P<asm>.+)\."
+        r"(?P<dna>dna(?:_[sr]m)?)\."
+        r"(?P<type>[^.]+)\.?(?P<seqid>[\S]+)?$"
+    )
+    mobj = re.match(pattern, name.removesuffix(".fa.gz"))
+    assert mobj, name
+    return mobj.groupdict()
 
 
 if __name__ == "__main__":

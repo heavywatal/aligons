@@ -106,19 +106,19 @@ def faToTwoBit(  # noqa: N802
     return _faToTwoBit_s(fa, twobit)
 
 
-def _faToTwoBit_s(stdin: subp.FILE, outfile: Path, *, if_: bool = True) -> Path:  # noqa: N802
-    fs.expect_suffix(outfile, ".2bit")
-    subp.run(["faToTwoBit", "stdin", outfile], stdin=stdin, if_=if_)
-    return outfile
+def _faToTwoBit_s(stdin: subp.FILE, twobit: Path, *, if_: bool = True) -> Path:  # noqa: N802
+    fs.expect_suffix(twobit, ".2bit")
+    subp.run(["faToTwoBit", "stdin", twobit], stdin=stdin, if_=if_)
+    return twobit
 
 
-def _faToTwoBit_f(fa: Path | cli.Future[Path], outdir: Path | None = None) -> Path:  # noqa: N802
+def _faToTwoBit_f(fa: Path | cli.Future[Path], twobit: Path | None = None) -> Path:  # noqa: N802
     fa = cli.result(fa)
-    outdir = outdir or fa.parent
-    outfile = (outdir / fa.name.removesuffix(".gz")).with_suffix(".2bit")
-    if_ = fs.is_outdated(outfile, fa)
+    if twobit is None:
+        twobit = (fa.parent / fa.name.removesuffix(".gz")).with_suffix(".2bit")
+    if_ = fs.is_outdated(twobit, fa)
     with subp.popen_zcat(fa, if_=if_) as zcat:
-        return _faToTwoBit_s(zcat.stdout, outfile, if_=if_)
+        return _faToTwoBit_s(zcat.stdout, twobit, if_=if_)
 
 
 def faSize(genome_fa_gz: Path | cli.Future[Path]) -> Path:  # noqa: N802

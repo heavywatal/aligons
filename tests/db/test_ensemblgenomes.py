@@ -16,8 +16,24 @@ def test_replace_label_gff3():
     )
 
 
-def test_replace_label_fa():
-    for dna in ("dna", "dna_rm", "dna_sm"):
-        exp = f"stem.{dna}.genome.fa.gz"
-        assert ensemblgenomes.replace_label_fa(f"stem.{dna}.chromosome.1.fa.gz") == exp
-        assert ensemblgenomes.replace_label_fa(f"stem.{dna}.toplevel.fa.gz") == exp
+def test_match_fa_name():
+    fa = "Oryza_sativa.IRGSP-1.0.dna.toplevel.fa.gz"
+    md = ensemblgenomes.match_fa_name(fa)
+    assert md["species"] == "Oryza_sativa"
+    assert md["asm"] == "IRGSP-1.0"
+    assert md["dna"] == "dna"
+    assert md["type"] == "toplevel"
+    assert md["seqid"] is None
+    fmt = "{species}.{asm}.{dna}.genome.fa.gz"
+    assert fmt.format(**md) == "Oryza_sativa.IRGSP-1.0.dna.genome.fa.gz"
+    fa = "Panicum_hallii_fil2.PHallii_v3.1.dna_sm.chromosome.1.fa.gz"
+    md = ensemblgenomes.match_fa_name(fa)
+    assert md["species"] == "Panicum_hallii_fil2"
+    assert md["asm"] == "PHallii_v3.1"
+    assert md["dna"] == "dna_sm"
+    assert md["type"] == "chromosome"
+    assert md["seqid"] == "1"
+    fa = "H_vulgare.MorexV3_pseudomolecules_assembly.dna.primary_assembly.1H.fa.gz"
+    md = ensemblgenomes.match_fa_name(fa)
+    assert md["type"] == "primary_assembly"
+    assert md["seqid"] == "1H"
