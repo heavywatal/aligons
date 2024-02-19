@@ -127,26 +127,27 @@ def _readlines_compara_maf(file: Path) -> Iterable[bytes]:
 def download_via_ftp(species: list[str]) -> None:
     with FTPensemblgenomes() as ftp:
         species = ftp.remove_unavailable(species)
+        fmt_chr_2bit = "{species}.{asm}.{dna}.chromosome.{seqid}.2bit"
+        fmt_genome_fa = "{species}.{asm}.{dna}.genome.fa.gz"
+        fmt_genome_gff3 = "{species}.{asm}.{v}.genome.gff3.gz"
         fts: list[cli.Future[Path]] = []
         for sp in species:
             fas = ftp.download_chr_sm_fasta(sp)
             outdir = prefix() / sp
-            md = match_fa_name(fas[0].name)
-            genome = outdir / "{species}.{asm}.{dna}.genome.fa.gz".format(**md)
+            genome = outdir / fmt_genome_fa.format(**match_fa_name(fas[0].name))
             ft_genome = cli.thread_submit(tools.index_compress_concat, fas, genome)
             if len(fas) > 1:
                 for fa in fas:
                     md = match_fa_name(fa.name)
                     assert md["seqid"], fa
-                    fmt = "{species}.{asm}.{dna}.chromosome.{seqid}.2bit"
-                    chr2bit = outdir / fmt.format(**md)
-                    fts.append(cli.thread_submit(kent.faToTwoBit, fa, chr2bit))
+                    twobit = outdir / fmt_chr_2bit.format(**md)
+                    fts.append(cli.thread_submit(kent.faToTwoBit, fa, twobit))
                 fts.append(cli.thread_submit(kent.faSize, ft_genome))
             else:
                 fts.append(cli.thread_submit(tools.from_genome, ft_genome))
             fts.append(cli.thread_submit(kent.faToTwoBit, ft_genome))
             src = ftp.download_gff3(sp)
-            dst = outdir / replace_label_gff3(src.name)
+            dst = outdir / fmt_genome_gff3.format(**match_gff3_name(src.name))
             fts.append(cli.thread_submit(tools.index_bgzip, src, dst))
         cli.wait_raise(fts)
 
@@ -240,9 +241,16 @@ def version() -> int:
     return int(os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"]))
 
 
-def replace_label_gff3(name: str, label: str = "genome") -> str:
-    pattern = rf"(?<=\.{version()}\.)(?:chromosome\.)?[^.]*\.?gff3(\.gz)?$"
-    return re.sub(pattern, rf"{label}.gff3\1", name, count=1)
+def match_gff3_name(name: str) -> dict[str, str | None]:
+    """<species>.<assembly>.<version>.gff3.gz."""
+    assert name.endswith(".gff3.gz"), name
+    pattern = (
+        rf"^(?P<species>[^.]+)\.(?P<asm>.+)\.(?P<v>{version()})"
+        r"(?:\.(?P<type>\w+))?(?:\.(?P<seqid>[\S]+))?$"
+    )
+    mobj = re.match(pattern, name.removesuffix(".gff3.gz"))
+    assert mobj, name
+    return mobj.groupdict()
 
 
 def match_fa_name(name: str) -> dict[str, str | None]:
@@ -251,7 +259,7 @@ def match_fa_name(name: str) -> dict[str, str | None]:
     pattern = (
         r"^(?P<species>[^.]+)\.(?P<asm>.+)\."
         r"(?P<dna>dna(?:_[sr]m)?)\."
-        r"(?P<type>[^.]+)\.?(?P<seqid>[\S]+)?$"
+        r"(?P<type>[^.]+)(?:\.(?P<seqid>[\S]+))?$"
     )
     mobj = re.match(pattern, name.removesuffix(".fa.gz"))
     assert mobj, name

@@ -1,19 +1,39 @@
 from aligons.db import ensemblgenomes
 
 
-def test_replace_label_gff3():
+def test_match_gff3_name():
     v = ensemblgenomes.version()
-    exp = f"stem.{v}.genome.gff3.gz"
-    assert ensemblgenomes.replace_label_gff3(f"stem.{v}.chr.gff3.gz") == exp
-    assert ensemblgenomes.replace_label_gff3(f"stem.{v}.gff3.gz") == exp
-    assert ensemblgenomes.replace_label_gff3(f"stem.{v}.chromosome.{v}.gff3.gz") == exp
-    exp = f"stem.{v}.0.{v}.genome.gff3.gz"
-    assert ensemblgenomes.replace_label_gff3(f"stem.{v}.0.{v}.chr.gff3.gz") == exp
-    assert ensemblgenomes.replace_label_gff3(f"stem.{v}.0.{v}.gff3.gz") == exp
-    assert (
-        ensemblgenomes.replace_label_gff3(f"stem.{v}.0.{v}.chromosome.{v}.gff3.gz")
-        == exp
-    )
+    name = f"Oryza_sativa.IRGSP-1.0.{v}.gff3.gz"
+    md = ensemblgenomes.match_gff3_name(name)
+    assert md["species"] == "Oryza_sativa"
+    assert md["asm"] == "IRGSP-1.0"
+    assert md["v"] == f"{v}"
+    assert md["type"] is None
+    assert md["seqid"] is None
+    name = f"Oryza_sativa.IRGSP-1.0.{v}.chr.gff3.gz"
+    md = ensemblgenomes.match_gff3_name(name)
+    assert md["species"] == "Oryza_sativa"
+    assert md["asm"] == "IRGSP-1.0"
+    assert md["type"] == "chr"
+    assert md["seqid"] is None
+    fmt = "{species}.{asm}.{v}.genome.gff3.gz"
+    assert fmt.format(**md) == f"Oryza_sativa.IRGSP-1.0.{v}.genome.gff3.gz"
+    name = f"Oryza_sativa.IRGSP-1.0.{v}.chromosome.1.gff3.gz"
+    md = ensemblgenomes.match_gff3_name(name)
+    assert md["species"] == "Oryza_sativa"
+    assert md["asm"] == "IRGSP-1.0"
+    assert md["type"] == "chromosome"
+    assert md["seqid"] == "1"
+    name = f"H_vulgare.MorexV3_pseudomolecules_assembly.{v}.primary_assembly.1H.gff3.gz"
+    md = ensemblgenomes.match_gff3_name(name)
+    assert md["type"] == "primary_assembly"
+    assert md["seqid"] == "1H"
+    name = f"species.{v}.0.{v}.chr.gff3.gz"
+    md = ensemblgenomes.match_gff3_name(name)
+    assert md["species"] == "species"
+    assert md["asm"] == f"{v}.0"
+    assert md["type"] == "chr"
+    assert md["seqid"] is None
 
 
 def test_match_fa_name():
