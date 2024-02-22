@@ -29,6 +29,8 @@ def fetch_and_bgzip(
     dna_sm = "dna_sm" if softmasked else "dna"
     stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
     out_fa = prefix / species / f"{stem}.{dna_sm}.genome.fa.gz"
+    if not softmasked:
+        out_fa = out_fa.with_suffix("")
     out_gff = prefix / species / f"{stem}.genome.gff3.gz"
     responses_fa = [dl_mirror_db(url_prefix + s) for s in sequences]
     ft_fa = cli.thread_submit(_index_compress_concat, responses_fa, out_fa)
@@ -57,8 +59,13 @@ def _index_compress_concat(responses: Iterable[dl.Response], outfile: Path) -> P
 
 def index_compress_concat(infiles: list[Path], outfile: Path) -> Path:
     infiles = fs.sorted_naturally(infiles)
-    htslib.concat_bgzip(infiles, outfile)
-    htslib.try_index(outfile)
+    if outfile.suffix == ".gz":
+        htslib.concat_bgzip(infiles, outfile)
+        htslib.try_index(outfile)
+    else:
+        if not cli.dry_run:
+            outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
+        subp.run_zcat(infiles, outfile, if_=fs.is_outdated(outfile, infiles))
     return outfile
 
 
