@@ -142,9 +142,11 @@ def run_zcat(
 ) -> CompletedProcess[bytes]:
     args = _zcat_args(infile)
     if outfile is not None:
+        if args[0] == "unzip":
+            with open_(outfile, "wb", if_=if_) as fout:
+                return run(args, stdout=fout, if_=if_, quiet=True)
         args = [*args, "-o", outfile]
         stdout = None
-        assert args[0] != "unzip", args
     return run(args, stdout=stdout, if_=if_, quiet=True)
 
 
