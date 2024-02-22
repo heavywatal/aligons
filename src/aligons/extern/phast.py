@@ -241,7 +241,7 @@ def concat_clean_mostcons(beds: list[Path], outfile: Path) -> Path:
     if_ = fs.is_outdated(outfile, beds)
     with htslib.popen_bgzip(outfile, if_=if_) as bgzip:
         for infile in beds:
-            with subp.popen_zcat(infile, stdout=subp.PIPE, if_=if_) as zcat:
+            with subp.popen_zcat(infile, if_=if_) as zcat:
                 subp.run_sd(r"\+$", ".", stdin=zcat.stdout, stdout=bgzip.stdin, if_=if_)
     htslib.tabix(outfile)
     return outfile

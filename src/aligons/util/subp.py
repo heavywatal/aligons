@@ -127,20 +127,33 @@ def gzip(data: FILE | bytes, outfile: Path, *, if_: bool = True) -> Path:
     return outfile
 
 
-def popen_zcat(infile: Path, stdout: FILE = PIPE, *, if_: bool = True) -> Popen[bytes]:
+def popen_zcat(
+    infile: Path | Sequence[Path], *, stdout: FILE = PIPE, if_: bool = True
+) -> Popen[bytes]:
     return popen(_zcat_args(infile), stdout=stdout, if_=if_, quiet=True)
 
 
 def run_zcat(
-    infile: Path, stdout: FILE = PIPE, *, if_: bool = True
+    infile: Path | Sequence[Path],
+    outfile: Path | None = None,
+    *,
+    stdout: FILE = PIPE,
+    if_: bool = True,
 ) -> CompletedProcess[bytes]:
-    return run(_zcat_args(infile), stdout=stdout, if_=if_, quiet=True)
+    args = _zcat_args(infile)
+    if outfile is not None:
+        args = [*args, "-o", outfile]
+        stdout = None
+        assert args[0] != "unzip", args
+    return run(args, stdout=stdout, if_=if_, quiet=True)
 
 
-def _zcat_args(infile: Path) -> Args:
-    if infile.suffix == ".zip":
-        return ["unzip", "-p", infile]
-    return ["zstdcat", "-q", infile]
+def _zcat_args(infile: Path | Sequence[Path]) -> Args:
+    if isinstance(infile, Path):
+        infile = [infile]
+    if infile[0].suffix == ".zip":
+        return ["unzip", "-p", *infile]
+    return ["zstdcat", "-q", *infile]
 
 
 def popen_sd(

@@ -24,8 +24,7 @@ def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         with popen_bgzip(outfile) as bgz:
             assert bgz.stdin is not None
-            for infile in infiles:
-                subp.run_zcat(infile, bgz.stdin)
+            subp.run_zcat(infiles, stdout=bgz.stdin)
     _log.info(f"{outfile}")
     return outfile
 
