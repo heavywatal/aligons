@@ -32,9 +32,9 @@ def test_logging_config(caplog: pytest.LogCaptureFixture):
 
 
 def test_threadpool(caplog: pytest.LogCaptureFixture):
-    jobs = 2
-    seconds = 0.01
-    acceptance = 1.5
+    jobs = 4
+    seconds = 0.02
+    acceptance = 3
     cli.ThreadPool(jobs)
     start = time.time()
     fts = [cli.thread_submit(time.sleep, seconds) for _ in range(jobs)]
