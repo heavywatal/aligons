@@ -271,7 +271,7 @@ def parse_newick(newick: str, inner: str = "") -> Node:
     while newick != newick_old:
         newick_old = newick
         newick, nodes = _extract_tip_clade(newick, nodes)
-        if inner and (clade := nodes.get(inner, None)):
+        if inner and (clade := nodes.get(inner)):
             return clade
     root = nodes.popitem()[1]
     if nodes:

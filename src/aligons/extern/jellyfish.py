@@ -5,6 +5,7 @@ dst: kmer/*.fa.gz
 """
 import logging
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 import tomli_w
@@ -93,7 +94,7 @@ def calc_threshold(histofile: Path) -> int:
 
 def log_config(histofile: Path, freq: int) -> None:
     config_log = histofile.with_name("config.toml")
-    opts = {}
+    opts: dict[str, Any] = {}
     opts["jellyfish"] = config["jellyfish"]
     opts["dCNS"] = {"freq": freq}
     _log.debug(tomli_w.dumps(opts))
