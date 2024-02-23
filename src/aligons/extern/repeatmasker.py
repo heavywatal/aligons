@@ -64,7 +64,7 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True) -> Path:
     return outfile
 
 
-def read_out(infile: Path) -> pl.DataFrame:
+def read_out(infile: Path) -> pl.LazyFrame:
     fs.expect_suffix(infile, ".out")
     with infile.open("rb") as fin:
         content = re.sub(rb" *\n *", rb"\n", fin.read())
@@ -91,7 +91,7 @@ def read_out(infile: Path) -> pl.DataFrame:
             "rep_left",
             "id",
         ],
-    )
+    ).lazy()
 
 
 def test_species(species: str) -> bool:

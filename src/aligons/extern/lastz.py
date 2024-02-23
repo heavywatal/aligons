@@ -37,7 +37,7 @@ def run(target: str, queries: list[str]) -> Path:
 class PairwiseChromosomeAlignment:
     def __init__(self, bed: Path, queries: list[str]) -> None:
         bed_df = maf.read_bed(bed)
-        rows = bed_df.iter_rows(named=True)
+        rows = bed_df.collect().iter_rows(named=True)
         row0 = next(rows)
         self._target = row0["name"]
         self._target_sizes = api.fasize(self._target)

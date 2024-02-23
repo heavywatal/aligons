@@ -30,7 +30,7 @@ def subseqs_from_bed(infile: Path, flank: int = 0) -> Path:
         regions = to_one_based_inclusive(bed).with_columns(
             start=pl.col("start") - flank, end=pl.col("end") + flank
         )
-        for row in regions.iter_rows(named=True):
+        for row in regions.collect().iter_rows(named=True):
             fout.write(subseq(**row))
     return outfile
 
@@ -53,13 +53,13 @@ def maf_block_ranges(infile: Path) -> Path:
     outfile = infile.with_suffix(".bed")
     if fs.is_outdated(outfile, infile):
         maf_s = read_s(infile)
-        _log.debug(maf_s.write_csv(separator="\t", include_header=False))
+        _log.debug(maf_s.collect().write_csv(separator="\t", include_header=False))
         bed = to_bed(maf_s)
-        bed.write_csv(outfile, separator="\t", include_header=False)
+        bed.collect().write_csv(outfile, separator="\t", include_header=False)
     return outfile
 
 
-def to_one_based_inclusive(bed: pl.DataFrame) -> pl.DataFrame:
+def to_one_based_inclusive(bed: pl.LazyFrame) -> pl.LazyFrame:
     return bed.with_columns(
         start=pl.when(pl.col("strand") == "-")
         .then(pl.col("start"))
@@ -70,7 +70,7 @@ def to_one_based_inclusive(bed: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def read_bed(file: Path) -> pl.DataFrame:
+def read_bed(file: Path) -> pl.LazyFrame:
     """Note: zero-based, half-closed-half-open.
 
     E.g., the first 100 bases: start=0, end=100.
@@ -80,10 +80,10 @@ def read_bed(file: Path) -> pl.DataFrame:
         separator="\t",
         has_header=False,
         new_columns=["chrom", "start", "end", "name", "score", "strand"],
-    )
+    ).lazy()
 
 
-def to_bed(maf_s: pl.DataFrame) -> pl.DataFrame:
+def to_bed(maf_s: pl.LazyFrame) -> pl.LazyFrame:
     return (
         maf_s.with_columns(pl.col("seqid").str.split_exact(".", 1))
         .unnest("seqid")
@@ -100,7 +100,7 @@ def to_bed(maf_s: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def read_s(file: Path) -> pl.DataFrame:
+def read_s(file: Path) -> pl.LazyFrame:
     """Note: "This is a zero-based number".
 
     <https://genome.ucsc.edu/FAQ/FAQformat.html#format5>
@@ -116,7 +116,7 @@ def read_s(file: Path) -> pl.DataFrame:
         has_header=False,
         columns=range(1, 6),
         new_columns=["seqid", "start", "size", "strand", "fasize"],
-    )
+    ).lazy()
 
 
 if __name__ == "__main__":

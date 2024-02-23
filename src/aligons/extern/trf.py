@@ -99,11 +99,12 @@ def _block_to_bed(block: bytes) -> str:
         .with_columns(seqid=pl.lit(seqid), name=pl.lit("."), strand=pl.lit("."))
         .select(["seqid", "start", "end", "name", "score", "strand"])
         .sort("start")
+        .collect()
         .write_csv(separator="\t", include_header=False)
     )
 
 
-def _read_dat_body(source: Path | str | bytes) -> pl.DataFrame:
+def _read_dat_body(source: Path | str | bytes) -> pl.LazyFrame:
     return pl.read_csv(
         source,
         has_header=False,
@@ -126,7 +127,7 @@ def _read_dat_body(source: Path | str | bytes) -> pl.DataFrame:
             "seq1",
             "seq2",
         ],
-    )
+    ).lazy()
 
 
 if __name__ == "__main__":

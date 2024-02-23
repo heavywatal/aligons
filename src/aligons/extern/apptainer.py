@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> None:
 
 def pull_galaxy(prefix: Path) -> None:
     tsv = galaxy_index()
-    table = pl.read_csv(tsv, separator="\t")
+    table = pl.read_csv(tsv, separator="\t").lazy()
     imgdir = prefix / "biocontainers"
     bindir = prefix / "bin"
     if not cli.dry_run:
@@ -83,10 +83,11 @@ def make_sh(sif: Path, command: str = "", outdir: Path = Path()) -> Path:
     return outfile
 
 
-def latest_apps(table: pl.DataFrame) -> list[str]:
+def latest_apps(table: pl.LazyFrame) -> list[str]:
     return (
         table.filter(pl.col("app").is_in(_galaxy_apps.keys()))
         .select(name=pl.concat_str(["app", "tag"], separator=":"))
+        .collect()
         .to_series()
         .to_list()
     )
@@ -99,16 +100,16 @@ def galaxy_index() -> Path:
     if fs.is_outdated(cache_tsv, cache_html):
         content = dl.fetch(_galaxy_prefix, cache_html).content
         table = _parse_galaxy_index_html(content)
-        table.write_csv(cache_tsv, separator="\t")
+        table.collect().write_csv(cache_tsv, separator="\t")
     return cache_tsv
 
 
-def _parse_galaxy_index_html(content: bytes) -> pl.DataFrame:
+def _parse_galaxy_index_html(content: bytes) -> pl.LazyFrame:
     tsv = re.sub(rb"(</a>| ) +", rb"\t", content)
     cols = ["anchor", "time", "size"]
     raw = pl.read_csv(
         tsv, separator="\t", skip_rows=6, has_header=False, new_columns=cols
-    )
+    ).lazy()
     return (
         raw.filter(pl.col("anchor").str.starts_with("<a "))
         .with_columns(
