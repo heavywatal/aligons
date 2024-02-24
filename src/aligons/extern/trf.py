@@ -85,8 +85,8 @@ def dat_to_bed(dat: Path, bed: Path) -> Path:
 
 def _dat_to_bed_iter(infile: Path) -> Iterator[bytes]:
     content = subp.run_zcat(infile).stdout
-    for match in re.finditer(b"(?<=\n\nSequence: ).+?", content, re.DOTALL):
-        yield _block_to_bed(match.group(0)).encode()
+    for block in content.split(b"\n\nSequence: ")[1:]:
+        yield _block_to_bed(block).encode()
 
 
 def _block_to_bed(block: bytes) -> str:
