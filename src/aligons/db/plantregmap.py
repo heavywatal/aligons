@@ -29,9 +29,17 @@ def main(argv: list[str] | None = None) -> None:
         fts = [retrieve_deploy(q) for q in iter_download_queries()]
         cli.wait_raise(fts)
     if args.genome:
-        pairs = list(iter_fetch_and_bgzip())
-        fts = [ft for x in pairs for ft in tools.process_genome(x)]
+        fts_fa: list[cli.Future[Path]] = []
+        fts_gff: list[cli.Future[Path]] = []
+        for ft_fa, ft_gff in iter_fetch_and_bgzip():
+            fts_fa.append(ft_fa)
+            fts_gff.append(ft_gff)
+        fts: list[cli.Future[Path]] = []
+        for ft in cli.as_completed(fts_fa):
+            masked = tools.softmask(ft.result())
+            fts.extend(tools.genome_to_twobits(masked))
         cli.wait_raise(fts)
+        cli.wait_raise(fts_gff)
     if args.to_cram:
         maf = net_to_maf(args.to_cram)
         to_cram(maf)

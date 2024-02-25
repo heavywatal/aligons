@@ -14,11 +14,6 @@ def main(argv: list[str] | None = None) -> None:
     try_index(args.infile)
 
 
-def faidx_query(bgz: Path, region: str, *, if_: bool = True) -> subp.Popen[bytes]:
-    args: subp.Args = ["samtools", "faidx", bgz, region]
-    return subp.popen(args, stdout=subp.PIPE, if_=if_)
-
-
 def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
@@ -72,10 +67,32 @@ def try_index(bgz: Path | cli.Future[Path]) -> Path:
 def faidx(bgz: Path | cli.Future[Path]) -> Path:
     """https://www.htslib.org/doc/samtools-faidx.html."""
     bgz = cli.result(bgz)
+    fs.expect_suffix(bgz, ".gz")
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
     subp.run(["samtools", "faidx", bgz], if_=fs.is_outdated(outfile, bgz))
     _log.info(f"{outfile}")
     return outfile
+
+
+def faidx_query(bgz: Path | cli.Future[Path], region: str, outfile: Path) -> Path:
+    bgz = cli.result(bgz)
+    fs.expect_suffix(bgz, ".gz")
+    args = ["samtools", "faidx", bgz, region, "-o", outfile]
+    subp.run(args, if_=fs.is_outdated(outfile, bgz))
+    return outfile
+
+
+def popen_faidx_query(
+    bgz: Path | cli.Future[Path],
+    region: str,
+    *,
+    stdout: subp.FILE = subp.PIPE,
+    if_: bool = True,
+) -> subp.Popen[bytes]:
+    bgz = cli.result(bgz)
+    fs.expect_suffix(bgz, ".gz")
+    args: subp.Args = ["samtools", "faidx", bgz, region]
+    return subp.popen(args, stdout=stdout, if_=if_)
 
 
 def tabix(bgz: Path | cli.Future[Path]) -> Path:

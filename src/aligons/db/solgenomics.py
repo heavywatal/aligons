@@ -16,15 +16,21 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-D", "--download", action="store_true")
     args = parser.parse_args(argv or None)
     _test_newick()
-    if args.download:
+    if args.download or args.mask:
+        fts_fa: list[cli.Future[Path]] = []
+        fts_gff: list[cli.Future[Path]] = []
+        for ft_fa, ft_gff in iter_fetch_and_bgzip():
+            fts_fa.append(ft_fa)
+            fts_gff.append(ft_gff)
         fts: list[cli.Future[Path]] = []
-        for pair in iter_fetch_and_bgzip():
-            fts.extend(pair)
+        for ft in cli.as_completed(fts_fa):
+            if args.mask:
+                masked = tools.softmask(ft.result())
+                fts.extend(tools.genome_to_twobits(masked))
+            else:
+                print(ft.result())
         cli.wait_raise(fts)
-    if args.mask:
-        pairs = list(iter_fetch_and_bgzip())
-        fts = [ft for x in pairs for ft in tools.process_genome(x)]
-        cli.wait_raise(fts)
+        cli.wait_raise(fts_gff)
 
 
 def iter_fetch_and_bgzip() -> Iterator[tuple[cli.Future[Path], cli.Future[Path]]]:

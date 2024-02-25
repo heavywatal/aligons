@@ -98,12 +98,15 @@ def bigWigToBed(infile: Path, min_width: int = 15) -> bytes:  # noqa: N802
 
 
 def faToTwoBit(  # noqa: N802
-    fa: Path | cli.Future[Path] | subp.FILE, twobit: Path | None = None
+    fa: Path | cli.Future[Path] | subp.FILE,
+    twobit: Path | None = None,
+    *,
+    if_: bool = True,
 ) -> Path:
     if isinstance(fa, Path | cli.Future):
         return _faToTwoBit_f(fa, twobit)
     assert twobit is not None
-    return _faToTwoBit_s(fa, twobit)
+    return _faToTwoBit_s(fa, twobit, if_=if_)
 
 
 def _faToTwoBit_s(stdin: subp.FILE, twobit: Path, *, if_: bool = True) -> Path:  # noqa: N802
@@ -119,6 +122,16 @@ def _faToTwoBit_f(fa: Path | cli.Future[Path], twobit: Path | None = None) -> Pa
     if_ = fs.is_outdated(twobit, fa)
     with subp.popen_zcat(fa, if_=if_) as zcat:
         return _faToTwoBit_s(zcat.stdout, twobit, if_=if_)
+
+
+def read_fasize(genome: Path) -> dict[str, int]:
+    fasize = faSize(genome)
+    res: dict[str, int] = {}
+    with fasize.open("rt") as fin:
+        for line in fin:
+            (seqid, size) = line.split(maxsplit=1)
+            res[seqid] = int(size)
+    return res
 
 
 def faSize(genome_fa_gz: Path | cli.Future[Path]) -> Path:  # noqa: N802

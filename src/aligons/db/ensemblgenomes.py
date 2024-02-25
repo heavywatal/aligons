@@ -144,7 +144,7 @@ def download_via_ftp(species: list[str]) -> None:
                     fts.append(cli.thread_submit(kent.faToTwoBit, fa, twobit))
                 fts.append(cli.thread_submit(kent.faSize, ft_genome))
             else:
-                fts.append(cli.thread_submit(tools.from_genome, ft_genome))
+                fts.extend(tools.genome_to_twobits(ft_genome))
             fts.append(cli.thread_submit(kent.faToTwoBit, ft_genome))
             src = ftp.download_gff3(sp)
             dst = outdir / fmt_genome_gff3.format(**match_gff3_name(src.name))

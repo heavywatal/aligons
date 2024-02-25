@@ -29,8 +29,6 @@ def fetch_and_bgzip(
     dna_sm = "dna_sm" if softmasked else "dna"
     stem = f"{species}_{ver}" if (ver := entry.get("version", None)) else species
     out_fa = prefix / species / f"{stem}.{dna_sm}.genome.fa.gz"
-    if not softmasked:
-        out_fa = out_fa.with_suffix("")
     out_gff = prefix / species / f"{stem}.genome.gff3.gz"
     responses_fa = [dl_mirror_db(url_prefix + s) for s in sequences]
     ft_fa = cli.thread_submit(_index_compress_concat, responses_fa, out_fa)
@@ -45,27 +43,17 @@ def dl_mirror_db(url: str) -> dl.Response:
     return dl.mirror(url, _rsrc.db_root())
 
 
-def process_genome(
-    futures: tuple[cli.Future[Path], cli.Future[Path]],
-) -> list[cli.Future[Path]]:
-    ft_fa, ft_gff = futures
-    ft_masked = mask.submit(ft_fa)
-    return [ft_gff, cli.thread_submit(from_genome, ft_masked)]
-
-
 def _index_compress_concat(responses: Iterable[dl.Response], outfile: Path) -> Path:
     return index_compress_concat([res.path for res in responses], outfile)
 
 
-def index_compress_concat(infiles: list[Path], outfile: Path) -> Path:
+def index_compress_concat(
+    infiles: list[Path] | list[cli.Future[Path]], outfile: Path
+) -> Path:
+    infiles = [cli.result(f) for f in infiles]
     infiles = fs.sorted_naturally(infiles)
-    if outfile.suffix == ".gz":
-        htslib.concat_bgzip(infiles, outfile)
-        htslib.try_index(outfile)
-    else:
-        if not cli.dry_run:
-            outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-        subp.run_zcat(infiles, outfile, if_=fs.is_outdated(outfile, infiles))
+    htslib.concat_bgzip(infiles, outfile)
+    htslib.try_index(outfile)
     return outfile
 
 
@@ -85,11 +73,44 @@ def index_bgzip(infile: Path | dl.Response, outfile: Path) -> Path:
     return outfile
 
 
-def from_genome(genome: Path | cli.Future[Path]) -> list[Path]:
-    genome = cli.result(genome)
-    fasize = read_fasize(genome)
+def softmask(genome: Path) -> cli.Future[Path]:
+    if ".dna_sm." in genome.name:
+        fs.expect_suffix(genome, ".gz")
+        return cli.thread_submit(cli.result, genome)
+    (outname, count) = re.subn(r"\.dna\.", ".dna_sm.", genome.name)
+    assert count == 1, genome
+    species = genome.parent.name
+    masked = genome.parent / outname
+    ft_chromosomes = _split_genome_fa(genome, "_work")
+    fts = [mask.submit(ft, species) for ft in ft_chromosomes]
+    return cli.thread_submit(index_compress_concat, fts, masked)
+
+
+def _split_genome_fa(genome: Path, subdir: str) -> list[cli.Future[Path]]:
+    fasize = kent.read_fasize(genome)
+    _log.warning(f"{fasize = }")
     min_size = 1000000
-    chr_2bits: list[Path] = []
+    workdir = genome.parent / subdir
+    workdir.mkdir(0o755, exist_ok=True)
+    fts: list[cli.Future[Path]] = []
+    for seqid, size in fasize.items():
+        if re.search(r"scaffold|contig", seqid):
+            _log.info(f"ignoring {seqid} in {genome}")
+            continue
+        if size < min_size:
+            _log.warning(f"{genome}:{seqid} {size} < {min_size}")
+            continue
+        name = genome.name.replace(".genome.fa.gz", f".chromosome.{seqid}.fa", 1)
+        chr_fa = workdir / name
+        fts.append(cli.thread_submit(htslib.faidx_query, genome, seqid, chr_fa))
+    return fts
+
+
+def genome_to_twobits(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]:
+    genome = cli.result(genome)
+    fasize = kent.read_fasize(genome)
+    min_size = 1000000
+    fts: list[cli.Future[Path]] = []
     for seqid, size in fasize.items():
         if re.search(r"scaffold|contig", seqid):
             _log.info(f"ignoring {seqid} in {genome}")
@@ -99,24 +120,14 @@ def from_genome(genome: Path | cli.Future[Path]) -> list[Path]:
             continue
         name = genome.name.replace(".genome.fa.gz", f".chromosome.{seqid}.2bit", 1)
         chr2bit = genome.with_name(name)
-        if fs.is_outdated(chr2bit, genome):
-            chr_2bits.append(faidx_twobit(genome, seqid, chr2bit))
-    return chr_2bits
+        fts.append(cli.thread_submit(faidx_twobit, genome, seqid, chr2bit))
+    return fts
 
 
 def faidx_twobit(fa_gz: Path, seqid: str, twobit: Path) -> Path:
-    with htslib.faidx_query(fa_gz, seqid) as p:
-        return kent.faToTwoBit(p.stdout, twobit)
-
-
-def read_fasize(genome: Path) -> dict[str, int]:
-    fasize = kent.faSize(genome)
-    res: dict[str, int] = {}
-    with fasize.open("rt") as fin:
-        for line in fin:
-            (seqid, size) = line.split(maxsplit=1)
-            res[seqid] = int(size)
-    return res
+    if_ = fs.is_outdated(twobit, fa_gz)
+    with htslib.popen_faidx_query(fa_gz, seqid, if_=if_) as p:
+        return kent.faToTwoBit(p.stdout, twobit, if_=if_)
 
 
 def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
