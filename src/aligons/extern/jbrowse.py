@@ -123,7 +123,10 @@ class JBrowseConfig:
     def add_assembly(self) -> None:
         # --alias, --name, --displayName
         genome = api.genome_fa(self.species)
-        args: subp.Args = ["add-assembly"]
+        name = genome.name.split(".dna_sm.", 1)[0]
+        args: subp.Args = ["add-assembly", "--overwrite"]
+        args.extend(["--name", name])
+        args.extend(["--displayName", name])
         args.extend(["--target", self.target])
         args.extend(["--load", self.load])
         args.append(genome)
@@ -172,6 +175,8 @@ class JBrowseConfig:
         patt = r"_inProm|_CE_genome-wide"  # redundant subsets
         patt += r"|_H\dK\d"
         patt += r"|SV_all-qin"
+        patt += r"|PhyloP|\.net$"
+        patt += r"|_DNase$|_NPS$"
         patt += r"|^cns0|^most-cons|cns-poaceae|cns-monocot"
         rex = re.compile(patt)
         tracks = [x for x in self.tracks if not rex.search(x)]
