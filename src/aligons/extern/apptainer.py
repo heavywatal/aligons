@@ -20,7 +20,6 @@ _galaxy_apps = {
     "phast": ["phastCons", "phyloP", "phyloFit", "phyloBoot", "msa_view"],
     "repeatmasker": ["RepeatMasker", "/usr/local/share/RepeatMasker/famdb.py"],
     "samtools": ["samtools", "bgzip", "tabix"],
-    "seqkit": [],
     "trf": [],
     "ucsc-axtchain": ["axtChain"],
     "ucsc-axtsort": ["axtSort"],

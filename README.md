@@ -21,7 +21,7 @@ pip3 install -v -e ./aligons
 
 ```sh
 brew install lastz
-brew install samtools seqkit bedtools
+brew install samtools bedtools
 brew install zstd
 brew install heavywatal/last-bin --HEAD
 brew install heavywatal/multiz --HEAD
