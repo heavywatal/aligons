@@ -110,9 +110,7 @@ class PairwiseGenomeAlignment:
         net, _qnet = kent.chain_net(chain, self._target_sizes, self._query_sizes)
         sing_maf = net.with_name("sing.maf")
         kent.net_to_maf(net, chain, sing_maf, self._target, self._query)
-        if sing_maf.exists():
-            print(sing_maf)
-        return sing_maf
+        return fs.print_if_exists(sing_maf)
 
 
 def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:

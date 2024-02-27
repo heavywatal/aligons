@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv or None)
     bed = maf_block_ranges(args.infile)
     fa = subseqs_from_bed(bed, args.flank)
-    print(fa)
+    fs.print_if_exists(fa)
 
 
 def subseqs_from_bed(infile: Path, flank: int = 0) -> Path:

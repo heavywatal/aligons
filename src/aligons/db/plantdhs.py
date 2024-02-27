@@ -21,7 +21,7 @@ def main(argv: list[str] | None = None) -> None:
         cli.wait_raise(retrieve_deploy(q) for q in iter_download_queries())
     else:
         for x in fs.sorted_naturally(db_prefix().rglob(args.pattern)):
-            print(x)
+            fs.print_if_exists(x)
 
 
 def retrieve_deploy(query: str) -> cli.Future[Path]:

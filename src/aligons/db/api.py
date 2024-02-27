@@ -24,7 +24,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv or None)
     if args.species:
         for p in _glob("*", args.species):
-            print(p)
+            fs.print_if_exists(p)
     else:
         print_stats(args.clade)
 
@@ -124,18 +124,20 @@ def print_stats(clade: str) -> None:
     newick = phylo.get_subtree([clade])
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangulate(phylo.render_tips(root, [])):
-        print(f"{pre} {species}", end="")
+        words: list[str] = [pre, species]
         try:
             chrom_sizes_ = chrom_sizes(species)
             fasize = sum(chrom_sizes_.values()) / 1e6
             nseqs = len(chrom_sizes_)
-            print(f" {fasize:4.0f}Mbp {nseqs:2}", end="")
+            words.append(f"{fasize:4.0f}Mbp")
+            words.append(f"{nseqs:2}")
             gffsize = _gff3_size(species)
-            print(f" {gffsize:4.1f}MB", end="")
-            x = ",".join(_sources(species))
-            print(f" {x}")
+            words.append(f"{gffsize:4.1f}MB")
+            sources = ",".join(_sources(species))
+            words.append(f"{sources}")
         except FileNotFoundError:
-            print("")
+            pass
+        _log.info(" ".join(words))
 
 
 def chrom_sizes(species: str) -> dict[str, int]:

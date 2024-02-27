@@ -76,21 +76,21 @@ class JBrowseConfig:
         self.relpath = Path(vnn_dir.name) / self.species
         self.target = root / self.relpath
         self.tracks: list[str] = []
-        _log.info(f"{self.target}")
+        _log.info(self.target)
 
     def write_redirect_html(self, slug: str) -> None:
         url = f"/{slug}/?config={self.relpath}/config.json"
         if not cli.dry_run:
             with (self.target / "index.html").open("w") as fout:
                 fout.write(redirect_html(url))
-        print(f"http://localhost/{Path(slug, self.relpath)}/ -> {url}")
+        _log.info(f"http://localhost/{Path(slug, self.relpath)}/ -> {url}")
 
     def add(self) -> None:
         self.target.mkdir(0o755, parents=True, exist_ok=True)
         self.add_assembly()
         self.add_track_gff()
         clades = [x.name for x in self.cons_dir.iterdir() if "-" not in x.name]
-        _log.info(f"{clades}")
+        _log.info(clades)
         clades = phylo.sorted_by_len_newicks(clades, reverse=True)
         for clade in clades:
             self.add_phast(clade)
@@ -206,7 +206,7 @@ class JBrowseConfig:
         window_width = config["jbrowse"]["window_width"]
         chrom_sizes = api.chrom_sizes(self.target.name)
         asm_conf = find_config_assembly(self.target.name)
-        _log.info(f"{asm_conf}")
+        _log.info(asm_conf)
         location = asm_conf["location"]
         mobj = re.search(r"(\w+)\s*:\s*([\d,]+)\s*(?::|\.{2,})\s*([\d,]+)", location)
         assert mobj is not None, location

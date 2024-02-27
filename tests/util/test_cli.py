@@ -7,10 +7,10 @@ from aligons.util import cli
 
 def test_argparser():
     parser = cli.ArgumentParser("vdq")
-    assert parser.parse_args([]).verbosity == 0
-    assert parser.parse_args(["-v"]).verbosity == 1
-    assert parser.parse_args(["-vv"]).verbosity == 2  # noqa: PLR2004
-    assert parser.parse_args(["-q"]).verbosity == -1
+    assert parser.parse_args([]).verbose == 1
+    assert parser.parse_args(["-v"]).verbose == 2  # noqa: PLR2004
+    assert parser.parse_args(["-vv"]).verbose == 3  # noqa: PLR2004
+    assert parser.parse_args(["-q"]).verbose == 0
 
 
 def test_logging_config(caplog: pytest.LogCaptureFixture):

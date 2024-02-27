@@ -42,7 +42,7 @@ config = MappingProxyType[str, Any](_config_src)
 
 
 def log_config(path: Path = Path(".log.aligons.toml")) -> None:
-    _log.info(f"{config}")
+    _log.info(config)
     if path.exists():
         reference = _read_config(path)
         if _diff(reference, config):

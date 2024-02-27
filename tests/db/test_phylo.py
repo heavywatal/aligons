@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from aligons.db import phylo
 
@@ -153,12 +155,13 @@ def test_select_tips():
     assert phylo.select(tree, tips) == subtree
 
 
-def test_print_graph(capsys: pytest.CaptureFixture[str]):
+def test_print_graph(caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.INFO)
+    caplog.handler.setFormatter(logging.Formatter("%(msg)s"))
     newick = "(one:1,(two:2,three:3)anc:0.5)root"
     phylo.print_graph(newick, 1)
-    captured = capsys.readouterr()
     assert (
-        captured.out
+        caplog.text
         == """\
  root
 ├─ one
@@ -167,30 +170,30 @@ def test_print_graph(capsys: pytest.CaptureFixture[str]):
   └─ three
 """
     )
+    caplog.clear()
     phylo.print_graph(newick, 2)
-    captured = capsys.readouterr()
     assert (
-        captured.out
+        caplog.text
         == """\
 ┬─ one
 └─┬─ two
   └─ three
 """
     )
+    caplog.clear()
     phylo.print_graph(newick, 3)
-    captured = capsys.readouterr()
     assert (
-        captured.out
+        caplog.text
         == """\
 ┬─── one
 └─┬─ two
   └─ three
 """
     )
+    caplog.clear()
     phylo.print_graph(newick, 4)
-    captured = capsys.readouterr()
     assert (
-        captured.out
+        caplog.text
         == """\
 ┬───── one
 └─┬─── two

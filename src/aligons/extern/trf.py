@@ -33,8 +33,7 @@ def run(infile: Path) -> Path:
     outfile = infile.with_suffix(infile.suffix + ".trf.bed.gz")
     if fs.is_outdated(outfile, [infile, dat]) and not cli.dry_run:
         dat_to_bed(dat, outfile)
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def trf(infile: Path) -> Path:
@@ -74,8 +73,7 @@ def trf(infile: Path) -> Path:
         with pwd_dat.open("rb") as fin:
             subp.gzip(fin, dat)
         pwd_dat.unlink()
-    _log.info(f"{dat}")
-    return dat
+    return fs.print_if_exists(dat)
 
 
 def dat_to_bed(dat: Path, bed: Path) -> Path:

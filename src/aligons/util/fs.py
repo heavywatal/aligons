@@ -18,7 +18,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("path", nargs="+", type=Path)
     args = parser.parse_args(argv or None)
     for x in sorted_naturally(args.path):
-        print(x)
+        _log.info(x)
+
+
+def print_if_exists(path: Path) -> Path:
+    if path.exists():
+        _log.info(path)
+    return path
 
 
 def relpath(path: Path, start: Path = Path()) -> Path:
@@ -34,7 +40,7 @@ def symlink(path: Path, link: Path, *, relative: bool = False) -> Path:
             link.unlink()
         link.parent.mkdir(0o755, parents=True, exist_ok=True)
         link.symlink_to(path)
-    _log.info(f"{link}")
+    print_if_exists(link)
     return link
 
 

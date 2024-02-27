@@ -1,11 +1,13 @@
 import argparse
+import datetime
 import logging
 import os
+import sys
 import threading
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 dry_run = False
 
@@ -24,11 +26,12 @@ class ArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         group = self.add_mutually_exclusive_group()
-        group.add_argument("-v", "--verbose", action=ConfigLogging, const=1)
-        group.add_argument("-q", "--quiet", action=ConfigLogging, const=-1)
+        group.add_argument("-v", "--verbose", action="count", default=1)
+        group.add_argument("-q", "--quiet", action=DecreaseVerbosity, nargs=0)
         self.add_argument("-n", "--dry-run", action="store_true")
         self.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
 
+    @override
     def parse_args(  # type: ignore[reportIncompatibleMethodOverride]
         self,
         args: Sequence[str] | None = None,
@@ -37,9 +40,11 @@ class ArgumentParser(argparse.ArgumentParser):
         res = super().parse_args(args, namespace or argparse.Namespace())
         global dry_run  # noqa: PLW0603
         dry_run = res.dry_run
-        verbosity = res.verbosity
-        level = _verbosity_to_level.get(verbosity, logging.NOTSET)
-        logging.basicConfig(level=level, handlers=[ConsoleHandler()])
+        level = _verbosity_to_level.get(res.verbose, logging.NOTSET)
+        logging.basicConfig(
+            level=level,
+            handlers=[_stdout_handler(), _stderr_handler(), _file_handler()],
+        )
         logging.logThreads = False
         logging.logProcesses = False
         logging.logMultiprocessing = False
@@ -47,34 +52,45 @@ class ArgumentParser(argparse.ArgumentParser):
         return res
 
 
-class ConfigLogging(argparse.Action):
-    def __init__(
-        self,
-        option_strings: list[str],
-        dest: str,
-        nargs: int = 0,
-        default: int = 0,
-        **kwargs: Any,
-    ) -> None:
-        dest = "verbosity"
-        super().__init__(option_strings, dest, nargs=nargs, default=default, **kwargs)
-
+class DecreaseVerbosity(argparse.Action):
+    @override
     def __call__(
         self,
-        parser: argparse.ArgumentParser,  # noqa: ARG002
+        parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
-        values: str | Sequence[Any] | None,  # noqa: ARG002
-        option_string: str | None = None,  # noqa: ARG002
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
     ) -> None:
-        value = getattr(namespace, self.dest, 0)
-        setattr(namespace, self.dest, max(value + self.const, -2))
+        dest = "verbose"
+        count = getattr(namespace, dest, 0)
+        setattr(namespace, dest, max(count - 1, -3))
 
 
-class ConsoleHandler(logging.StreamHandler):  # type: ignore[reportMissingTypeArgument]
-    def format(self, record: logging.LogRecord) -> str:
-        if record.levelno < logging.WARNING:
-            return record.msg
-        return super().format(record)
+def _stdout_handler() -> logging.Handler:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    handler.addFilter(lambda rec: rec.levelno < logging.WARNING)
+    handler.setFormatter(logging.Formatter("%(msg)s"))
+    return handler
+
+
+def _stderr_handler() -> logging.Handler:
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setLevel(logging.WARNING)
+    return handler
+
+
+def _file_handler() -> logging.Handler:
+    today = _now().date()
+    logfile = f".aligons.{today}.log"
+    handler = logging.FileHandler(logfile, "a", delay=True)
+    handler.setLevel(logging.WARNING)
+    return handler
+
+
+def _now() -> datetime.datetime:
+    tz = datetime.datetime.now(datetime.UTC).astimezone().tzinfo
+    return datetime.datetime.now(tz=tz)
 
 
 class ThreadPool:
@@ -110,10 +126,10 @@ def main(argv: list[str] | None = None) -> None:
     parser = ArgumentParser()
     args = parser.parse_args(argv)
     level = _log.getEffectiveLevel()
-    print(f"{args = }")
-    print(f"{dry_run = }")
-    print(f"{level = }")
-    print(f"{logging.getLevelName(level) = }")
+    _log.info(f"{args = }")
+    _log.info(f"{dry_run = }")
+    _log.info(f"{level = }")
+    _log.info(f"{logging.getLevelName(level) = }")
     _log.debug("debug message")
     _log.info("info message")
     _log.warning("warning message")

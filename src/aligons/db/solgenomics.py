@@ -3,7 +3,7 @@ import logging
 from collections.abc import Iterator
 from pathlib import Path
 
-from aligons.util import cli
+from aligons.util import cli, fs
 
 from . import _rsrc, api, phylo, tools
 
@@ -28,7 +28,7 @@ def main(argv: list[str] | None = None) -> None:
                 masked = tools.softmask(ft.result())
                 fts.extend(tools.genome_to_twobits(masked))
             else:
-                print(ft.result())
+                fs.print_if_exists(ft.result())
         cli.wait_raise(fts)
         cli.wait_raise(fts_gff)
 

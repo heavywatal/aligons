@@ -30,7 +30,7 @@ def _run(clade: Path) -> Path:
     name = "phastcons.bw"
     wigs = [p / name for p in fs.sorted_naturally(clade.glob("chromosome.*"))]
     if (bigwig := bigWigCat(clade / name, wigs)).exists():
-        print(bigwig)
+        _log.info(bigwig)
         _log.info(bigWigInfo(bigwig).decode().rstrip())
     return bigwig
 
@@ -146,8 +146,7 @@ def faSize(genome_fa_gz: Path | cli.Future[Path]) -> Path:  # noqa: N802
     ):
         cmd = ["faSize", "-detailed", "stdin"]
         subp.run(cmd, stdin=zcat.stdout, stdout=fout, if_=if_)
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def axtChain(axt: Path, t2bit: Path, q2bit: Path) -> Path:  # noqa: N802

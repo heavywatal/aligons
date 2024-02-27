@@ -29,16 +29,16 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv or None)
     if args.versions:
         for x in sorted(_list_versions()):
-            print(x)
+            fs.print_if_exists(x)
     elif args.all:
         with FTPensemblgenomes() as ftp:
             for sp in ftp.available_species():
-                print(sp)
+                _log.info(sp)
         _log.info(f"{version()=}")
     elif (fmt_dir := _prefix_mirror() / args.fmt).exists():
         for x in fmt_dir.iterdir():
             if x.is_dir():
-                print(x)
+                _log.info(x)
     else:
         _log.warning(f"No local mirror of release-{version()}")
 
@@ -74,7 +74,7 @@ def _consolidate_compara_mafs(indir: Path) -> Path:
         chrdir = outdir / f"chromosome.{seq}"
         chrdir.mkdir(0o755, parents=True, exist_ok=True)
         sing_maf = chrdir / "sing.maf"
-        _log.info(str(sing_maf))
+        _log.info(sing_maf)
         if not fs.is_outdated(sing_maf, infiles):
             continue
         with (
@@ -86,13 +86,12 @@ def _consolidate_compara_mafs(indir: Path) -> Path:
             assert tsd.stdin
             tsd.stdin.write(b"##maf version=1 scoring=LASTZ_NET\n")
             for maf in infiles:
-                _log.debug(f"{maf}")
+                _log.debug(maf)
                 tsd.stdin.writelines(_readlines_compara_maf(maf))
             tsd.stdin.close()
             maff.communicate()
             # for padding, not for filtering
-    _log.info(f"{outdir}")
-    return outdir
+    return fs.print_if_exists(outdir)
 
 
 def _list_mafs_by_seq(indir: Path) -> dict[str, list[Path]]:

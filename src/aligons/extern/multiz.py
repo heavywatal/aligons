@@ -74,12 +74,10 @@ def multiz(path: Path, tree: str) -> Path:
         try:
             tmpdir.rmdir()
         except OSError as err:
-            _log.warning(str(err))
+            _log.warning(err)
     if out := comp.stdout.strip():
         _log.info(out)
-    if outfile.exists():
-        print(outfile)
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def roast(

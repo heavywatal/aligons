@@ -68,12 +68,12 @@ def phastCons(  # noqa: N802
     if_ = fs.is_outdated(bw, deps) or fs.is_outdated(bed, deps)
     with subp.open_(wig, "wb", if_=if_) as fout:
         subp.run(args, stdout=fout, if_=if_)
+    fs.print_if_exists(bed)
     emods = [estimate_base.with_suffix(x) for x in (".cons.mod", ".noncons.mod")]
     if emods[0].exists() and emods[1].exists():
         consEntropy(conf["target-coverage"], conf["expected-length"], *emods)
     kent.wigToBigWig(wig, chrom_sizes)
-    if bw.exists():
-        print(bw)
+    fs.print_if_exists(bw)
     return (bw, bed)
 
 
@@ -233,8 +233,7 @@ def cds_gff3(species: str) -> Path:
         with htslib.popen_bgzip(cds) as bgzip:
             assert bgzip.stdin, cds
             x.write(bgzip.stdin)
-        _log.info(f"{cds}")
-    return cds
+    return fs.print_if_exists(cds)
 
 
 def concat_clean_mostcons(beds: list[Path], outfile: Path) -> Path:
@@ -244,7 +243,7 @@ def concat_clean_mostcons(beds: list[Path], outfile: Path) -> Path:
             with subp.popen_zcat(infile, if_=if_) as zcat:
                 subp.run_sd(r"\+$", ".", stdin=zcat.stdout, stdout=bgzip.stdin, if_=if_)
     htslib.tabix(outfile)
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 if __name__ == "__main__":

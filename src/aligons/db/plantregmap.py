@@ -164,7 +164,7 @@ def shorten(species: str) -> str:
 
 def species_abbr() -> dict[str, str]:
     toml = db_prefix() / "Species_abbr.toml"
-    _log.info(f"{toml}")
+    _log.info(toml)
     if toml.exists():
         with toml.open("rb") as fin:
             obj = tomllib.load(fin)

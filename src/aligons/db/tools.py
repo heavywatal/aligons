@@ -147,8 +147,7 @@ def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
         else:
             msg = f"unexpected formats: {infile = }, {outfile = }"
             raise ValueError(msg)
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 if __name__ == "__main__":

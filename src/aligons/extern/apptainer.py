@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv or None)
     if args.all:
         tsv = galaxy_index()
-        print(tsv.open("rt").read())
+        _log.info(tsv.open("rt").read())
     elif args.download:
         pull_galaxy(args.prefix)
 
@@ -65,7 +65,7 @@ def pull_galaxy(prefix: Path) -> None:
         cmds = _galaxy_apps[key] or [key]
         for command in cmds:
             sh = make_sh(sif, command, bindir)
-            _log.info(f"{sh}")
+            _log.info(sh)
 
 
 def make_sh(sif: Path, command: str = "", outdir: Path = Path()) -> Path:
@@ -95,12 +95,11 @@ def latest_apps(table: pl.LazyFrame) -> list[str]:
 def galaxy_index() -> Path:
     cache_html = _cache_dir() / "singularity.html"
     cache_tsv = cache_html.with_suffix(".tsv")
-    _log.info(f"{cache_tsv}")
     if fs.is_outdated(cache_tsv, cache_html):
         content = dl.fetch(_galaxy_prefix, cache_html).content
         table = _parse_galaxy_index_html(content)
         table.collect().write_csv(cache_tsv, separator="\t")
-    return cache_tsv
+    return fs.print_if_exists(cache_tsv)
 
 
 def _parse_galaxy_index_html(content: bytes) -> pl.LazyFrame:

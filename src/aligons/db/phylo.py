@@ -26,11 +26,11 @@ def main(argv: list[str] | None = None) -> None:
     if not args.inner:
         tree = remove_inner(tree)
     if args.name:
-        print("\n".join(extract_names(tree)))
+        _log.info("\n".join(extract_names(tree)))
     elif args.graph:
         print_graph(tree, args.graph)
     else:
-        print(tree)
+        _log.info(tree)
 
 
 def sorted_by_len_newicks(clades: list[str], *, reverse: bool = False) -> list[str]:
@@ -184,7 +184,7 @@ def print_graph(newick: str, graph: int = 0) -> None:
     else:
         gen = render_nodes(root, [])
     for branch, label in gen:
-        print(f"{branch} {label}")
+        _log.info(f"{branch} {label}")
 
 
 class Node(NamedTuple):

@@ -59,9 +59,7 @@ def merge_crams(futures: list[cli.Future[Path]], outdir: Path) -> Path:
     cmd += " ".join([str(x) for x in crams])
     subp.run(cmd, if_=is_to_run)
     subp.run(["samtools", "index", outfile], if_=is_to_run)
-    if outfile.exists():
-        print(outfile)
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def maf2cram(
@@ -78,8 +76,7 @@ def maf2cram(
     sort_cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {outfile!s}"
     with subp.popen(sort_cmd, stdin=subp.PIPE, if_=is_to_run) as sort:
         subp.run(view_cmd, input=sam, stdout=sort.stdin, if_=is_to_run)
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def sanitize_sam(sam: bytes) -> bytes:

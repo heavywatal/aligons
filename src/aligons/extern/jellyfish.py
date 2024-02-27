@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("species", type=str)
     args = parser.parse_args(argv or None)
-    print(run(args.species))
+    fs.print_if_exists(run(args.species))
 
 
 def run(species: str) -> Path:

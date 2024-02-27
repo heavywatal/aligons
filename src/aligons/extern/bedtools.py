@@ -18,7 +18,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("bed", type=Path)
     args = parser.parse_args(argv or None)
     fi = subp.run_zcat(args.infile).stdout
-    print(maskfasta(fi, args.bed).decode())
+    _log.info(maskfasta(fi, args.bed).decode())
 
 
 def wait_maskfasta(
@@ -31,8 +31,7 @@ def wait_maskfasta(
         for bed in beds:
             content = maskfasta(content, bed, soft=soft)
         htslib.bgzip(content, fo)
-    _log.info(f"{fo}")
-    return fo
+    return fs.print_if_exists(fo)
 
 
 def maskfasta(fi: bytes, bed: Path, *, soft: bool = True) -> bytes:

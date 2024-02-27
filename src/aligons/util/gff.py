@@ -16,7 +16,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("infile", type=Path)
     args = parser.parse_args(argv or None)
     x = GFF(args.infile)
-    print(x.sanitize().to_string())
+    _log.info(x.sanitize().to_string())
 
 
 class GFF:

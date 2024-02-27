@@ -20,8 +20,7 @@ def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
         with popen_bgzip(outfile) as bgz:
             assert bgz.stdin is not None
             subp.run_zcat(infiles, stdout=bgz.stdin)
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def bgzip(data: bytes | IO[bytes] | None, outfile: Path, *, if_: bool = True) -> Path:
@@ -70,8 +69,7 @@ def faidx(bgz: Path | cli.Future[Path]) -> Path:
     fs.expect_suffix(bgz, ".gz")
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
     subp.run(["samtools", "faidx", bgz], if_=fs.is_outdated(outfile, bgz))
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def faidx_query(bgz: Path | cli.Future[Path], region: str, outfile: Path) -> Path:
@@ -103,8 +101,7 @@ def tabix(bgz: Path | cli.Future[Path]) -> Path:
     bgz = cli.result(bgz)
     outfile = bgz.with_suffix(bgz.suffix + ".csi")
     subp.run(["tabix", "--csi", bgz], if_=fs.is_outdated(outfile, bgz))
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def index(cram: Path | cli.Future[Path]) -> Path:
@@ -112,8 +109,7 @@ def index(cram: Path | cli.Future[Path]) -> Path:
     cram = cli.result(cram)
     outfile = cram.with_suffix(cram.suffix + ".crai")
     subp.run(["samtools", "index", cram], if_=fs.is_outdated(outfile, cram))
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def to_be_bgzipped(filename: str) -> bool:

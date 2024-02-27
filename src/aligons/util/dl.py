@@ -66,7 +66,7 @@ class Response:
     @property
     def content_force(self) -> bytes:
         if not self._content and self.path.exists():
-            _log.info(f"{self.path}")
+            _log.info(self.path)
             with self.path.open("rb") as fin:
                 self._content = fin.read()
         return self._content
@@ -89,7 +89,7 @@ class Response:
                 fout.write(chunk0)
                 for chunk in iter_content:
                     fout.write(chunk)
-            _log.info(f"{self._path}")
+            _log.info(self._path)
 
 
 _global_session = LazySession()
@@ -182,5 +182,5 @@ class LazyFTP(FTP):
                 _log.info(self.retrbinary(cmd, fout.write))
         if size_exp and (size_obs := outfile.stat().st_size) != size_exp:
             _log.warning(f"{outfile} ({size_obs=} != {size_exp=})")
-        _log.info(f"{outfile}")
+        _log.info(outfile)
         return outfile

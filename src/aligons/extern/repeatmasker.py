@@ -60,8 +60,7 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True) -> Path:
             if not line1.startswith("##gff-version 3"):
                 msg = f"RepeatMasker produced incomplete {outfile}:\n{line1}"
                 raise ValueError(msg)
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def read_out(infile: Path) -> pl.LazyFrame:

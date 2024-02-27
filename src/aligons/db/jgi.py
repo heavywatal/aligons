@@ -4,7 +4,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from xml.etree import ElementTree
 
-from aligons.util import cli, config, dl, tomli_w
+from aligons.util import cli, config, dl, fs, tomli_w
 
 from . import _rsrc, api
 
@@ -48,8 +48,7 @@ def dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
             outfile.parent.mkdir(0o755, exist_ok=True)
             with outfile.open("wb") as fout:
                 tomli_w.dump(dataset, fout)
-    _log.info(f"{outfile}")
-    return outfile
+    return fs.print_if_exists(outfile)
 
 
 def iter_dataset_xml(organism: str) -> Iterable[dict[str, str | list[str]]]:
@@ -62,7 +61,7 @@ def iter_dataset_xml(organism: str) -> Iterable[dict[str, str | list[str]]]:
 
 
 def as_dict(folder: ElementTree.Element) -> dict[str, str | list[str]]:
-    _log.debug(f"{folder.attrib}")
+    _log.debug(folder.attrib)
     try:
         elem_assem = next(finditer(r"softmasked\.fa\.gz$", folder, "filename"))
         elem_annot = next(finditer(r"gene\.gff3?\.gz$", folder, "filename"))
@@ -87,7 +86,7 @@ def _simplify_url(url: str) -> str:
 
 
 def iter_species_folder(root: ElementTree.Element) -> Iterator[ElementTree.Element]:
-    _log.info(f"{root.attrib}")
+    _log.info(root.attrib)
     for elem in root.iter("folder"):
         if elem.attrib["name"].split("_", 1)[0].istitle():
             yield elem
