@@ -1,5 +1,5 @@
-import gzip
 import logging
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -93,24 +93,38 @@ def test_open(tmp_path: Path):
 
 
 def test_gzip(tmp_path: Path):
+    content = b"hello"
     hello_gz = tmp_path / "hello.gz"
-    subp.gzip(b"hello", hello_gz, if_=False)
+    subp.gzip(content, hello_gz, if_=False)
     assert not hello_gz.exists()
-    subp.gzip(b"hello", hello_gz, if_=True)
-    with subp.popen_zcat(hello_gz) as zcat:
-        content, _ = zcat.communicate()
-    assert content == b"hello"
-    assert subp.run_zcat(hello_gz).stdout == b"hello"
-    with gzip.open(hello_gz, "rb") as fin:
+    subp.gzip(content, hello_gz, if_=True)
+    assert subp.run_zcat(hello_gz).stdout == content
+    hello_txt = hello_gz.with_suffix(".txt")
+    assert subp.run_zcat(hello_gz, hello_txt).stdout is None
+    with hello_txt.open("rb") as fin:
         assert fin.read() == content
     hello_gz.unlink()
     with subp.popen(hello, stdout=subp.PIPE) as phello:
         subp.gzip(phello.stdout, hello_gz)
-    with gzip.open(hello_gz, "rt") as fin:
-        assert fin.read().startswith("hello")
+    with subp.popen_zcat(hello_gz) as zcat:
+        res, _ = zcat.communicate()
+    assert res == content
+    hello_zip = tmp_path / "hello.zip"
+    with zipfile.ZipFile(hello_zip, "w") as zout:
+        zout.write(hello_txt)
+    hello_zip_txt = hello_zip.with_suffix(".zip.txt")
+    assert subp.run_zcat(hello_zip, hello_zip_txt).stdout is None
+    with hello_zip_txt.open("rb") as fin:
+        assert fin.read() == content
 
 
 def test_sd():
+    with (
+        subp.popen(hello, stdout=subp.PIPE) as phello,
+        subp.popen_sd("", stdin=phello.stdout) as sd,
+    ):
+        result, _ = sd.communicate()
+    assert result == b"hello"
     try:
         subp.run(["sd", "--version"], stdout=subp.subprocess.DEVNULL)
     except FileNotFoundError as e:
@@ -121,9 +135,6 @@ def test_sd():
     ):
         result, _ = sd.communicate()
     assert result == b"helloween"
-    with (
-        subp.popen(hello, stdout=subp.PIPE) as phello,
-        subp.popen_sd("", stdin=phello.stdout) as sd,
-    ):
-        result, _ = sd.communicate()
+    with subp.popen(hello, stdout=subp.PIPE) as phello:
+        result = subp.run_sd("", stdin=phello.stdout).stdout
     assert result == b"hello"

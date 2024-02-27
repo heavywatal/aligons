@@ -168,7 +168,8 @@ def popen_sd(
 ) -> Popen[bytes]:
     if pattern:
         return popen(["sd", pattern, repl], stdin=stdin, stdout=stdout, if_=if_)
-    return popen(["cat"], stdin=stdin, stdout=PIPE, quiet=True, if_=if_)
+    assert not repl, repl
+    return popen(["cat"], stdin=stdin, stdout=stdout, quiet=True, if_=if_)
 
 
 def run_sd(
@@ -179,6 +180,4 @@ def run_sd(
     stdout: FILE = PIPE,
     if_: bool = True,
 ) -> CompletedProcess[bytes]:
-    if pattern:
-        return run(["sd", pattern, repl], stdin=stdin, stdout=stdout, if_=if_)
-    return run(["cat"], stdin=stdin, stdout=PIPE, quiet=True, if_=if_)
+    return run(["sd", pattern, repl], stdin=stdin, stdout=stdout, if_=if_)
