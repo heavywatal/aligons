@@ -6,9 +6,7 @@ dst: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
 
 https://github.com/multiz/multiz
 """
-import itertools
 import logging
-import shutil
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -21,13 +19,9 @@ _log = logging.getLogger(__name__)
 def main(argv: list[str] | None = None) -> None:
     nodes_all = phylo.extract_names(phylo.get_tree())
     parser = cli.ArgumentParser()
-    parser.add_argument("--clean", action="store_true")
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa
     parser.add_argument("query", nargs="+", choices=nodes_all)
     args = parser.parse_args(argv or None)
-    if args.clean:
-        clean(Path("multiple") / args.indir.name)
-        return
     run(args.indir, args.query)
 
 
@@ -124,25 +118,6 @@ def prepare(indir: Path, outdir: Path, queries: Sequence[str]) -> Path:
             link = outdir / chrdir.name / dstname
             fs.symlink(src, link, relative=True)
     return outdir
-
-
-def clean(path: Path) -> None:
-    it = itertools.chain(
-        path.rglob("multiz.maf"),
-        path.rglob("roasted.sh"),
-        path.rglob("_tmp"),
-    )
-    for entry in it:
-        print(entry)
-        if not cli.dry_run:
-            rm_rf(entry)
-
-
-def rm_rf(path: Path) -> None:
-    if path.is_dir():
-        shutil.rmtree(path)
-    else:
-        path.unlink()
 
 
 if __name__ == "__main__":
