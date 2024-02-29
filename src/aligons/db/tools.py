@@ -88,7 +88,7 @@ def softmask(genome: Path) -> cli.Future[Path]:
 
 def _split_genome_fa(genome: Path, subdir: str) -> list[cli.Future[Path]]:
     fasize = kent.read_fasize(genome)
-    _log.warning(f"{fasize = }")
+    _log.debug(f"{fasize = }")
     min_size = 1000000
     workdir = genome.parent / subdir
     workdir.mkdir(0o755, exist_ok=True)
@@ -98,7 +98,7 @@ def _split_genome_fa(genome: Path, subdir: str) -> list[cli.Future[Path]]:
             _log.info(f"ignoring {seqid} in {genome}")
             continue
         if size < min_size:
-            _log.warning(f"{genome}:{seqid} {size} < {min_size}")
+            _log.info(f"{genome}:{seqid} {size} < {min_size}")
             continue
         name = genome.name.replace(".genome.fa.gz", f".chromosome.{seqid}.fa", 1)
         chr_fa = workdir / name
@@ -109,6 +109,7 @@ def _split_genome_fa(genome: Path, subdir: str) -> list[cli.Future[Path]]:
 def genome_to_twobits(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]:
     genome = cli.result(genome)
     fasize = kent.read_fasize(genome)
+    _log.debug(f"{fasize = }")
     min_size = 1000000
     fts: list[cli.Future[Path]] = []
     for seqid, size in fasize.items():
@@ -116,7 +117,7 @@ def genome_to_twobits(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]
             _log.info(f"ignoring {seqid} in {genome}")
             continue
         if size < min_size:
-            _log.warning(f"{genome}:{seqid} {size} < {min_size}")
+            _log.info(f"{genome}:{seqid} {size} < {min_size}")
             continue
         name = genome.name.replace(".genome.fa.gz", f".chromosome.{seqid}.2bit", 1)
         chr2bit = genome.with_name(name)
