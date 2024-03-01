@@ -6,6 +6,7 @@ dst: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
 
 https://github.com/multiz/multiz
 """
+
 import logging
 from collections.abc import Sequence
 from pathlib import Path

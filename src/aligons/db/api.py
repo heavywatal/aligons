@@ -2,6 +2,7 @@
 
 {db.root}/aligons/{origin}/{species}/
 """
+
 import csv
 import functools
 import logging

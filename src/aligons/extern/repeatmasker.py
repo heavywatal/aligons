@@ -6,6 +6,7 @@ https://github.com/rmhubley/RepeatMasker
 src: {basename}.fa
 dst: {basename}.fa.out.gff
 """
+
 import io
 import logging
 import re

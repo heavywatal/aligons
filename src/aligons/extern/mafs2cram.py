@@ -3,6 +3,7 @@
 src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 dst: ./pairwise/{target}/{query}/cram/genome.cram
 """
+
 import logging
 import re
 from pathlib import Path

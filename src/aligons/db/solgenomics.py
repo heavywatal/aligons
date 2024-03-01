@@ -1,4 +1,5 @@
 """https://solgenomics.net/ftp/genomes/."""
+
 import logging
 from collections.abc import Iterator
 from pathlib import Path

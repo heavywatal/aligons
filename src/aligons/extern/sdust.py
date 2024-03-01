@@ -5,6 +5,7 @@ https://github.com/lh3/sdust
 src: {basename}.fa(.gz)
 dst: {basename}.fa.sdust.bed.gz
 """
+
 import logging
 from pathlib import Path
 

@@ -3,6 +3,7 @@
 src: *.fa.gz
 dst: kmer/*.fa.gz
 """
+
 import logging
 from pathlib import Path
 from typing import Any

@@ -5,6 +5,7 @@
   - gff3/{species}/{stem}.{version}.chr.gff3.gz
   - maf/ensembl-compara/pairwise_alignments/
 """
+
 import logging
 import os
 import re

@@ -3,6 +3,7 @@
 src: {stem}.dna.chromosome.{seqid}.fa
 dst: {stem}.dna_sm.chromosome.{seqid}.fa.gz
 """
+
 import logging
 import re
 from pathlib import Path

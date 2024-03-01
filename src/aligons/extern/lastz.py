@@ -5,6 +5,7 @@ dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 
 https://lastz.github.io/lastz/
 """
+
 import logging
 from pathlib import Path
 

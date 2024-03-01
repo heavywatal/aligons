@@ -6,6 +6,7 @@ src: {basename}.fa
 dat: {basename}.fa.2.5.7.80.10.40.500.dat.gz
 out: {basename}.fa.trf.bed.gz
 """
+
 import logging
 import re
 from collections.abc import Iterator

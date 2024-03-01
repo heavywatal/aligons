@@ -4,6 +4,7 @@ src: {vNN}/pairwise/{species}/{query}/cram/genome.cram
 src: {vNN}/conservation/{species}/{clade}/phastcons.bw
 dst: {document_root}/{jbrowse_XYZ}/{vNN}/{species}
 """
+
 import json
 import logging
 import re
