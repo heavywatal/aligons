@@ -111,9 +111,7 @@ class LazyFTP(FTP):
         self.prefix = prefix
         self._size_cache: dict[str, int] = {}
         self._size_cache_toml = self.prefix / ".ftp_size_cache.toml"
-        super().__init__(
-            timeout=timeout or None  # pyright: ignore[reportArgumentType]
-        )
+        super().__init__(timeout=timeout or None)
 
     def quit(self) -> str:
         _log.info("ftp.quit()")
