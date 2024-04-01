@@ -48,7 +48,7 @@ def fasize(species: str) -> Path:
 
 def genome_fa(species: str) -> Path:
     subdir = "kmer" if config["db"]["kmer"] else ""
-    return get_file("*.genome.fa.gz", species, subdir)
+    return get_file("*.dna_sm.genome.fa.gz", species, subdir)
 
 
 def genome_gff3(species: str) -> Path:
