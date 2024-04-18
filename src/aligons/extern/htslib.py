@@ -28,15 +28,11 @@ def bgzip(data: bytes | IO[bytes] | None, outfile: Path, *, if_: bool = True) ->
     fs.expect_suffix(outfile, ".gz")
     if outfile.exists():
         _log.info(f"overwriting {outfile}")
-    if_ = if_ and bool(data) and not cli.dry_run
-    with subp.open_(outfile, "wb", if_=if_) as fout:
-        cmd = ["bgzip", "-@2"]
-        _args, msg = subp.prepare_args([*cmd, f">{outfile}"], if_=if_)
-        _log.info(msg)
-        if isinstance(data, bytes):
-            subp.run(cmd, input=data, stdout=fout, if_=if_, quiet=True)
-        else:
-            subp.run(cmd, stdin=data, stdout=fout, if_=if_, quiet=True)
+    cmd = ["bgzip", "-@2", "-o", outfile]
+    if isinstance(data, bytes):
+        subp.run(cmd, input=data, if_=if_)
+    else:
+        subp.run(cmd, stdin=data, if_=if_)
     return outfile
 
 
@@ -46,12 +42,8 @@ def popen_bgzip(
     fs.expect_suffix(outfile, ".gz")
     if outfile.exists():
         _log.info(f"overwriting {outfile}")
-    if_ = if_ and not cli.dry_run
-    with subp.open_(outfile, "wb", if_=if_) as fout:
-        cmd = ["bgzip", "-@2"]
-        _args, msg = subp.prepare_args([*cmd, outfile], if_=if_)
-        _log.info(msg)
-        return subp.popen(cmd, stdin=stdin, stdout=fout, if_=if_, quiet=True)
+    cmd = ["bgzip", "-@2", "-o", outfile]
+    return subp.popen(cmd, stdin=stdin, if_=if_)
 
 
 def try_index(bgz: Path | cli.Future[Path]) -> Path:
