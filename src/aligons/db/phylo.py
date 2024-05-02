@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable, Iterator, Sequence
 from pathlib import Path
 from typing import NamedTuple
 
-from aligons.util import cli, config
+from aligons.util import cli, config, resources_data
 
 _log = logging.getLogger(__name__)
 
@@ -107,40 +107,17 @@ def get_subtree(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x)
 
 @functools.cache
 def get_tree() -> str:
-    if not (tree := config["db"].get("tree", "")):
-        tree = make_newick()
-    elif "," not in tree:
+    tree = config["db"].get("tree", "") or read_builtin_newick()
+    if "," not in tree:
         with Path(tree).expanduser().open("rt") as fin:
             tree = fin.read()
-    return tree
+    tree = re.sub(r"\s", "", tree)
+    return tree.removesuffix(";")
 
 
 @functools.cache
-def make_newick() -> str:
-    ehrhartoideae = "(oryza_sativa,leersia_perrieri)ehrhartoideae"
-    pooideae = "(brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae"
-    andropogoneae = "(sorghum_bicolor,zea_mays)andropogoneae"
-    paniceae = "(setaria_italica,panicum_hallii_fil2)paniceae"
-    bep = f"({ehrhartoideae},{pooideae})bep"
-    pacmad = f"({andropogoneae},{paniceae})pacmad"
-    poaceae = f"({bep},{pacmad})poaceae"
-    poales = f"({poaceae},ananas_comosus)poales"
-    monocot = f"(({poales},musa_acuminata),dioscorea_rotundata,)monocot"
-
-    _lycopersicon = "(solanum_lycopersicum,solanum_pennellii)"
-    solanum = f"(({_lycopersicon},solanum_tuberosum),solanum_melongena)solanum"
-    solanaceae = f"(({solanum},capsicum_annuum),nicotiana_attenuata)solanaceae"
-    _convolvulaceae = "ipomoea_triloba"
-    solanales = f"({solanaceae},{_convolvulaceae})solanales"
-    _lamiales = "(olea_europaea_sylvestris,sesamum_indicum)lamiales"
-    lamiids = f"(({solanales},coffea_canephora),{_lamiales})lamiids"
-    _asteraceae = "(helianthus_annuus,lactuca_sativa)asteraceae"
-    _companulids = f"({_asteraceae},daucus_carota)"
-    _core_asterids = f"({lamiids},{_companulids})"
-    asterids = f"({_core_asterids},actinidia_chinensis)asterids"
-    eudicots = f"({asterids},arabidopsis_thaliana)eudicots"
-
-    return f"({eudicots},{monocot})angiospermae"
+def read_builtin_newick() -> str:
+    return resources_data("angiospermae.nhx").read_text()
 
 
 def list_species(clade: str = "") -> list[str]:
