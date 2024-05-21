@@ -13,16 +13,6 @@ jobs:
       with:
         python-version-file: pyproject.toml
         cache: 'pip'
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install tabix samtools
-    - name: Set up Homebrew
-      id: set-up-homebrew
-      uses: Homebrew/actions/setup-homebrew@master
-    - name: Install External Commands
-      run: |
-        brew install samtools
     - name: Install Python dependencies
       run: python -m pip install -U pip
     - name: Install this
@@ -31,6 +21,14 @@ jobs:
       run: python -m ruff check .
     - name: format
       run: python -m ruff format --diff .
+    - name: Set up Homebrew
+      run: |
+        echo "/home/linuxbrew/.linuxbrew/bin"  >> $GITHUB_PATH
+        echo "/home/linuxbrew/.linuxbrew/sbin" >> $GITHUB_PATH
+    - name: Install External Commands
+      run: |
+        brew update
+        brew install samtools
     - name: test
       run: python -m pytest --cov --cov-report=xml
     - uses: codecov/codecov-action@v4
