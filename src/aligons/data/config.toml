@@ -31,14 +31,14 @@ target-coverage = 0.25
 expected-length = 12
 
 [ensemblgenomes]
-version = 49
+version = 56
 
 [jgi]
 organism = "PhytozomeV12"
 
 [db]
 root = "~/db"
-origin = ["ensembl-{version}", "solgenomics", "plantregmap"]
+origin = ["naro", "ensembl-{version}", "solgenomics", "plantregmap"]
 kmer = false
 # tree = ""  # string in newick format or path to newick file
 

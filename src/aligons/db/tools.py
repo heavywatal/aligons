@@ -73,13 +73,13 @@ def index_bgzip(infile: Path | dl.Response, outfile: Path) -> Path:
     return outfile
 
 
-def softmask(genome: Path) -> cli.Future[Path]:
+def softmask(genome: Path, species: str = "") -> cli.Future[Path]:
     if ".dna_sm." in genome.name:
         fs.expect_suffix(genome, ".gz")
         return cli.thread_submit(cli.result, genome)
     (outname, count) = re.subn(r"\.dna\.", ".dna_sm.", genome.name)
     assert count == 1, genome
-    species = genome.parent.name
+    species = species or genome.parent.name
     masked = genome.parent / outname
     ft_chromosomes = _split_genome_fa(genome, "_work")
     fts = [mask.submit(ft, species) for ft in ft_chromosomes]

@@ -22,7 +22,31 @@
         )asterales
       )euasterids,actinidia_chinensis
     )asterids,
-    arabidopsis_thaliana
+    (
+      (
+        (
+          (arabidopsis_thaliana,arabidopsis_lyrata)arabidopsis,
+          camelina_sativa
+        )camelineae,
+        (brassica_rapa,arabis_alpina)
+      )brassicaceae,
+      (
+        (
+          (
+            (
+              (vigna_angularis,phaseolus_vulgaris)phaseolinae,
+              glycine_max
+            ),
+            cajanus_cajan
+          )phaseoleae,
+          (
+            (trifolium_pratense,medicago_truncatula)trifolieae,
+            pisum_sativum
+          )vicioids
+        ),
+        lupinus_angustifolius
+      )fabaceae
+    )rosids
   )eudicots,
   (
     ((
