@@ -1,3 +1,8 @@
+env:
+  HOMEBREW_NO_ANALYTICS: 1
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+
 on: push
 jobs:
   test:
@@ -17,7 +22,7 @@ jobs:
       uses: Homebrew/actions/setup-homebrew@master
     - name: Install External Commands
       run: |
-        brew install htslib
+        brew install samtools
     - name: Install Python dependencies
       run: python -m pip install -U pip
     - name: Install this
