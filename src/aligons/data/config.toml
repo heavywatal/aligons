@@ -34,11 +34,11 @@ expected-length = 12
 version = 56
 
 [jgi]
-organism = "PhytozomeV12"
+organism = "PhytozomeV13"
 
 [db]
 root = "~/db"
-origin = ["naro", "ensembl-{version}", "solgenomics", "plantregmap"]
+origin = ["naro", "phytozome-{version}", "ensembl-{version}", "solgenomics", "plantregmap"]
 kmer = false
 # tree = ""  # string in newick format or path to newick file
 

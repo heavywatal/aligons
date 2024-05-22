@@ -8,7 +8,7 @@ from pathlib import Path
 from aligons.extern import htslib, kent, mafs2cram
 from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
 
-from . import _rsrc, api, jgi, tools
+from . import _rsrc, api, tools
 
 _log = logging.getLogger(__name__)
 _HOST = "plantregmap.gao-lab.org"
@@ -49,20 +49,6 @@ def main(argv: list[str] | None = None) -> None:
 def iter_fetch_and_bgzip() -> Iterator[tuple[cli.Future[Path], cli.Future[Path]]]:
     for entry in _rsrc.iter_builtin_dataset("plantregmap.toml"):
         yield tools.fetch_and_bgzip(entry, db_prefix())
-    for entry in iter_jgi_dataset():
-        yield tools.fetch_and_bgzip(entry, db_prefix())
-
-
-def iter_jgi_dataset() -> Iterator[_rsrc.DataSet]:
-    long_species = [
-        "Brachypodium_distachyon",
-    ]
-    from_jgi = {jgi.shorten(x): x for x in long_species}
-    for entry in jgi.iter_dataset(from_jgi.keys()):
-        prm_species = from_jgi[entry["species"]]
-        entry["species"] = prm_species
-        entry["label"] = shorten(prm_species)
-        yield entry
 
 
 def retrieve_deploy(query: str) -> cli.Future[Path]:

@@ -119,8 +119,14 @@ def _iter_prefix() -> Iterable[Path]:
 
 
 def _iter_db_origin() -> Iterable[str]:
-    v = ensemblgenomes.version()
-    return (origin.format(version=v) for origin in config["db"]["origin"])
+    for origin in config["db"]["origin"]:
+        if origin.startswith("ensembl"):
+            yield origin.format(version=config["ensemblgenomes"]["version"])
+        elif origin.startswith("phytozome"):
+            v = config["jgi"]["organism"].removeprefix("PhytozomeV")
+            yield origin.format(version=v)
+        else:
+            yield origin
 
 
 def print_stats(clade: str) -> None:
@@ -164,6 +170,7 @@ def _sources(species: str) -> Iterable[str]:
 
 def _nickname(x: str) -> str:
     x = re.sub(r"ensembl(-compara)?-(\d+)", r"en\1\2", x)
+    x = re.sub(r"[pP]hytozome[-V](\d+)", r"pz\1", x)
     mapping = {
         "plantregmap": "prm",
         "solgenomics": "sol",
