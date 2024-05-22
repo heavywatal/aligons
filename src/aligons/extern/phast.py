@@ -31,9 +31,11 @@ def run(path_clade: Path) -> tuple[Path, Path]:
     (_cons_mod, noncons_mod) = estimate_models(outdir)
     target = outdir.parent.name
     chrom_sizes = api.fasize(target)
+    pattern = "chromosome.*/multiz.maf"
+    mafs = [x for x in outdir.glob(pattern) if not x.parent.name.endswith(".Pt")]
     futures = [
         cli.thread_submit(phastCons, maf, chrom_sizes, None, noncons_mod)
-        for maf in fs.sorted_naturally(outdir.glob("chromosome.*/multiz.maf"))
+        for maf in fs.sorted_naturally(mafs)
     ]
     chrom_bws: list[Path] = []
     chrom_beds: list[Path] = []
