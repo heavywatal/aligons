@@ -13,7 +13,7 @@ from pathlib import Path
 
 from aligons.util import cli, config, fs
 
-from . import _rsrc, ensemblgenomes, phylo, plantregmap
+from . import _rsrc, phylo, plantregmap
 
 _log = logging.getLogger(__name__)
 
@@ -90,6 +90,8 @@ def sanitize_queries(target: str, queries: list[str]) -> list[str]:
 
 def _species_dirs(species: str = "") -> Iterable[Path]:
     for prefix in _iter_prefix():
+        if not prefix.exists():
+            continue
         for path in prefix.iterdir():
             if path.is_dir():
                 if species and (species.lower() != path.name.lower()):
@@ -145,7 +147,8 @@ def chrom_sizes(species: str) -> dict[str, int]:
     path = fasize(species)
     with path.open() as fin:
         reader = csv.reader(fin, delimiter="\t")
-        return {x[0]: int(x[1]) for x in reader}
+        items = {x[0]: int(x[1]) for x in reader}
+    return {k: v for k, v in items.items() if not k.lower().startswith("scaffold")}
 
 
 def _gff3_size(species: str) -> float:

@@ -61,6 +61,8 @@ def index_bgzip(infile: Path | dl.Response, outfile: Path) -> Path:
     if isinstance(infile, dl.Response):
         infile = infile.path
     if fs.is_outdated(outfile, infile):
+        if not cli.dry_run:
+            outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         if any(s in (".gff", ".gff3") for s in outfile.suffixes):
             gff3 = gff.GFF(infile)
             with htslib.popen_bgzip(outfile) as bgzip:
