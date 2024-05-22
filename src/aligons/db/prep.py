@@ -39,6 +39,7 @@ def shumari_v2() -> tuple[cli.Future[Path], cli.Future[Path]]:
     ft_fa = cli.thread_submit(tools.index_bgzip, in_fa, out_fa)
     ft_gff3 = cli.thread_submit(tools.index_bgzip, in_gff3, out_gff3)
     ft_masked_fa = tools.softmask(ft_fa.result(), "fabaceae")
+    cli.wait_raise(tools.genome_to_twobits(ft_masked_fa))
     return ft_masked_fa, ft_gff3
 
 
