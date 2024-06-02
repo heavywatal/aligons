@@ -89,7 +89,7 @@ def _read_body(source: Path | bytes | io.BytesIO) -> pl.LazyFrame:
         comment_prefix="#",
         has_header=False,
         infer_schema_length=0,
-        dtypes={"start": pl.UInt64, "end": pl.UInt64},
+        schema_overrides={"start": pl.UInt64, "end": pl.UInt64},
         new_columns=[
             "seqid",
             "source",
