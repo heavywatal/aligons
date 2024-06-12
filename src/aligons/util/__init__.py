@@ -25,6 +25,8 @@ def update_nested(x: dict[str, Any], other: Mapping[str, Any]) -> dict[str, Any]
     for key, value in other.items():
         if isinstance(x_val := x.get(key), dict):
             update_nested(x_val, value)  # type: ignore[reportUnknownArgumentType]
+        elif key == "assemblies" and isinstance(value, list):
+            x[key].extend(value)
         else:
             x[key] = value
     return x
