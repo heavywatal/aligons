@@ -376,8 +376,12 @@ def find_config_assembly(species: str) -> dict[str, Any]:
     for entry in config["jbrowse"]["assemblies"]:
         if entry["species"] == species:
             return entry
-    msg = f"{species} not in jbrowse.assemblies"
-    raise ValueError(msg)
+    msg = f"{species} not in config.jbrowse.assemblies"
+    _log.warning(msg)
+    chrom_sizes = api.chrom_sizes(species)
+    key, value = next(iter(chrom_sizes.items()))
+    end = min(10000, value)
+    return {"species": species, "location": f"{key}:1..{end}"}
 
 
 if __name__ == "__main__":
