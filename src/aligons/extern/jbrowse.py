@@ -52,6 +52,7 @@ class JBrowse:
         jbc.add()
         jbc.add_external()
         jbc.configure()
+        jbc.set_default_session()
         jbc.write_redirect_html(self.slug)
 
     def _create(self) -> None:
@@ -176,7 +177,12 @@ class JBrowseConfig:
         args.extend(["--target", self.target])
         jbrowse(args)
 
-    def set_default_session(self, session: Path) -> None:
+    def set_default_session(self, session: Path | None = None) -> None:
+        if session is None:
+            obj = self.create_session_dict()
+            session = self.target / "session.json"
+            with session.open("w") as fout:
+                json.dump(obj, fout, indent=2)
         args: subp.Args = ["set-default-session"]
         args.extend(["--target", self.target])
         args.extend(["--session", session])
@@ -202,57 +208,34 @@ class JBrowseConfig:
             if track["adapter"]["type"].startswith("Bed"):
                 set_LinearBasicDisplay(track)
         assembly = cfg["assemblies"][0]
-        session = self.create_session_dict(self.select_tracks())
-        view = session["views"][0]
-        self.set_displayed_regions(view, assembly["name"])
-        for track in view["tracks"]:
-            track["type"] = cfg_tracks[track["configuration"]]
-            track["displays"] = [make_display(track)]
         if refnamealiases := self.make_refnamealiases():
             assembly["refNameAliases"] = refnamealiases
         cfg["configuration"] = make_configuration()
         with config_json.open("w") as fout:
             json.dump(cfg, fout, indent=2)
-        session_json = self.target / "session.json"
-        with session_json.open("w") as fout:
-            json.dump(session, fout, indent=2)
-        self.set_default_session(session_json)
 
-    def create_session_dict(self, tracks: list[str]) -> dict[str, Any]:
-        track_dicts = [{"type": "", "configuration": x} for x in tracks]
-        view_type = "LinearGenomeView"
-        view = {
-            "id": f"{view_type}-0",
-            "type": view_type,
-            "tracks": track_dicts,
-        }
+    def create_session_dict(self) -> dict[str, Any]:
+        config_json = self.target / "config.json"
+        with config_json.open() as fin:
+            cfg = json.load(fin)
+        assembly = cfg["assemblies"][0]
+        view = create_view(self.target.name, assembly["name"])
+        track_types: dict[str, str] = {}
+        for track in cfg["tracks"]:
+            track_types[track["trackId"]] = track["type"]
+        view_tracks: list[dict[str, Any]] = []
+        for track_id in self.select_tracks():
+            track: dict[str, Any] = {
+                "type": track_types[track_id],
+                "configuration": track_id,
+            }
+            track["displays"] = [make_display(track)]
+            view_tracks.append(track)
+        view["tracks"] = view_tracks
         return {
             "name": f"New {self.target.name} session",
             "views": [view],
         }
-
-    def set_displayed_regions(self, view: dict[str, Any], asm_name: str) -> None:
-        window_width = config["jbrowse"]["window_width"]
-        chrom_sizes = api.chrom_sizes(self.target.name)
-        asm_conf = find_config_assembly(self.target.name)
-        _log.info(asm_conf)
-        location = asm_conf["location"]
-        mobj = re.search(r"(\w+)\s*:\s*([\d,]+)\s*(?::|\.{2,})\s*([\d,]+)", location)
-        assert mobj is not None, location
-        chrom = mobj.group(1)
-        start = int(mobj.group(2).replace(",", ""))
-        end = int(mobj.group(3).replace(",", ""))
-        view["bpPerPx"] = round((end - start) / window_width, 2)
-        view["offsetPx"] = int(start / view["bpPerPx"])
-        view["displayedRegions"] = [
-            {
-                "refName": chrom,
-                "start": 0,
-                "end": chrom_sizes[chrom],
-                "reversed": False,
-                "assemblyName": asm_name,
-            },
-        ]
 
     def make_refnamealiases(self) -> dict[str, Any] | None:
         path = f"chromAlias/{self.species}.chromAlias.txt"
@@ -400,6 +383,36 @@ def npx_jbrowse(args: subp.Args, version: str = "") -> None:
 def redirect_html(url: str) -> str:
     meta = f"""<meta http-equiv="refresh" content="1; URL={url}">"""
     return f"""<html><head>{meta}</head><body>Redirecting</body></html>"""
+
+
+def create_view(species: str, assembly: str) -> dict[str, Any]:
+    asm_conf = find_config_assembly(species)
+    _log.info(asm_conf)
+    location = asm_conf["location"]
+    mobj = re.search(r"(\w+)\s*:\s*([\d,]+)\s*(?::|\.{2,})\s*([\d,]+)", location)
+    assert mobj is not None, location
+    chrom = mobj.group(1)
+    start = int(mobj.group(2).replace(",", ""))
+    end = int(mobj.group(3).replace(",", ""))
+    chrom_sizes = api.chrom_sizes(species)
+    region = {
+        "refName": chrom,
+        "start": 0,
+        "end": chrom_sizes[chrom],
+        "reversed": False,
+        "assemblyName": assembly,
+    }
+    window_width = config["jbrowse"]["window_width"]
+    bp_per_px = round((end - start) / window_width, 2)
+    view_type = "LinearGenomeView"
+    return {
+        "id": f"{view_type}-0",
+        "type": view_type,
+        "bpPerPx": bp_per_px,
+        "offsetPx": int(start / bp_per_px),
+        "displayedRegions": [region],
+        "tracks": [],
+    }
 
 
 def find_config_assembly(species: str) -> dict[str, Any]:
