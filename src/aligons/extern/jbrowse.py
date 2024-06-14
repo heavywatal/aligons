@@ -51,7 +51,6 @@ class JBrowse:
         jbc = JBrowseConfig(self.root, indir)
         jbc.add()
         jbc.add_external()
-        jbc.set_default_session()
         jbc.configure()
         jbc.write_redirect_html(self.slug)
 
@@ -177,11 +176,13 @@ class JBrowseConfig:
         args.extend(["--target", self.target])
         jbrowse(args)
 
-    def set_default_session(self) -> None:
+    def set_default_session(self, session: Path) -> None:
         args: subp.Args = ["set-default-session"]
         args.extend(["--target", self.target])
-        args.extend(["--name", f"New {self.target.name} session"])
-        args.extend(["--view", "LinearGenomeView"])
+        args.extend(["--session", session])
+        jbrowse(args)
+
+    def select_tracks(self) -> list[str]:
         patt = r"_inProm|_CE_genome-wide"  # redundant subsets
         patt += r"|_H\dK\d"
         patt += r"|SV_all-qin"
@@ -189,28 +190,46 @@ class JBrowseConfig:
         patt += r"|_DNase$|_NPS$"
         patt += r"|^cns0|^most-cons|cns-poaceae|cns-monocot"
         rex = re.compile(patt)
-        tracks = [x for x in self.tracks if not rex.search(x)]
-        args.extend(["--tracks", ",".join(tracks)])
-        jbrowse(args)
+        return [x for x in self.tracks if not rex.search(x)]
 
     def configure(self) -> None:
         config_json = self.target / "config.json"
         with config_json.open() as fin:
             cfg = json.load(fin)
+        cfg_tracks: dict[str, str] = {}
         for track in cfg["tracks"]:
+            cfg_tracks[track["trackId"]] = track["type"]
             if track["adapter"]["type"].startswith("Bed"):
                 set_LinearBasicDisplay(track)
         assembly = cfg["assemblies"][0]
-        session = cfg["defaultSession"]
+        session = self.create_session_dict(self.select_tracks())
         view = session["views"][0]
         self.set_displayed_regions(view, assembly["name"])
         for track in view["tracks"]:
+            track["type"] = cfg_tracks[track["configuration"]]
             track["displays"] = [make_display(track)]
         if refnamealiases := self.make_refnamealiases():
             assembly["refNameAliases"] = refnamealiases
         cfg["configuration"] = make_configuration()
         with config_json.open("w") as fout:
             json.dump(cfg, fout, indent=2)
+        session_json = self.target / "session.json"
+        with session_json.open("w") as fout:
+            json.dump(session, fout, indent=2)
+        self.set_default_session(session_json)
+
+    def create_session_dict(self, tracks: list[str]) -> dict[str, Any]:
+        track_dicts = [{"type": "", "configuration": x} for x in tracks]
+        view_type = "LinearGenomeView"
+        view = {
+            "id": f"{view_type}-0",
+            "type": view_type,
+            "tracks": track_dicts,
+        }
+        return {
+            "name": f"New {self.target.name} session",
+            "views": [view],
+        }
 
     def set_displayed_regions(self, view: dict[str, Any], asm_name: str) -> None:
         window_width = config["jbrowse"]["window_width"]
@@ -352,6 +371,8 @@ def add_plantregmap(jbc: JBrowseConfig, species: str) -> None:
         trackid = re.sub(r"_[^_]+\.gff\.gz$", "", path.name)
         jbc.add_track(path, "plantregmap", trackid=trackid)
     for path in fs.sorted_naturally(plantregmap.rglob("*.bed.gz", species)):
+        if "_work" in str(path):
+            continue
         trackid = re.sub(r"(_normal)?\.bed\.gz$", "", path.name)
         jbc.add_track(path, "plantregmap", trackid=trackid)
 
