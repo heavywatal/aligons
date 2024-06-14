@@ -55,7 +55,6 @@ lower_count = 10
 high = 1000
 
 [jbrowse]
-version = "2.10.1"
 document_root = "/var/www/html"
 load = "symlink"
 window_width = 1200

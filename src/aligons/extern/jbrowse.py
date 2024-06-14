@@ -35,12 +35,27 @@ def main(argv: list[str] | None = None) -> None:
 
 class JBrowse:
     def __init__(self) -> None:
-        self.version = config["jbrowse"]["version"]
+        self.version = self._version()
         document_root = Path(config["jbrowse"]["document_root"]).expanduser()
         self.slug = f"jbrowse-{self.version}"
         self.root = document_root / self.slug
 
-    def create(self) -> None:
+    def admin_server(self) -> None:
+        jbrowse(["admin-server", "--root", self.root])
+
+    def upgrade(self) -> None:
+        jbrowse(["upgrade", self.root])
+
+    def config(self, indir: Path) -> None:
+        self._create()
+        jbc = JBrowseConfig(self.root, indir)
+        jbc.add()
+        jbc.add_external()
+        jbc.set_default_session()
+        jbc.configure()
+        jbc.write_redirect_html(self.slug)
+
+    def _create(self) -> None:
         if not self.root.exists():
             args = ["create", self.root]
             args.append(f"--tag=v{self.version}")
@@ -51,20 +66,14 @@ class JBrowse:
                 msg = f"{version_txt=} != {self.version=}"
                 raise ValueError(msg)
 
-    def admin_server(self) -> None:
-        jbrowse(["admin-server", "--root", self.root])
+    def _version(self) -> str:
+        mobj = re.search(r"@jbrowse/cli/(\S+)", self._help())
+        assert mobj, self._help()
+        return mobj.group(1)
 
-    def upgrade(self) -> None:
-        jbrowse(["upgrade", self.root])
-
-    def config(self, indir: Path) -> None:
-        self.create()
-        jbc = JBrowseConfig(self.root, indir)
-        jbc.add()
-        jbc.add_external()
-        jbc.set_default_session()
-        jbc.configure()
-        jbc.write_redirect_html(self.slug)
+    def _help(self) -> str:
+        p = jbrowse(["help"], stdout=subp.PIPE)
+        return p.stdout.decode()
 
 
 class JBrowseConfig:
@@ -357,8 +366,8 @@ def add_papers_data(jbc: JBrowseConfig) -> None:
         jbc.add_track(f, "papers", trackid="SV_all-qin2021", subdir="suzuemon")
 
 
-def jbrowse(args: subp.Args) -> None:
-    subp.run(["jbrowse", *args])
+def jbrowse(args: subp.Args, **kwargs: Any) -> subp.CompletedProcess[Any]:
+    return subp.run(["jbrowse", *args], **kwargs)
 
 
 def npx_jbrowse(args: subp.Args, version: str = "") -> None:
