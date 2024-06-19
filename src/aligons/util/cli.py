@@ -100,8 +100,8 @@ class ThreadPool:
         if cls._instance is None:
             cls._instance = ThreadPoolExecutor(max_workers)
         elif max_workers is not None:
-            maxw = cls._instance._max_workers  # noqa: SLF001
-            _log.warning(f"max_workers = {maxw}; ignored {max_workers}")
+            max_w = cls._instance._max_workers  # noqa: SLF001
+            _log.warning(f"max_workers = {max_w}; ignored {max_workers}")
         return cls._instance
 
 

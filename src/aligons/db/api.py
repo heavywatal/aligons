@@ -132,16 +132,16 @@ def _iter_db_origin() -> Iterable[str]:
 def print_stats(clade: str) -> None:
     newick = phylo.get_subtree([clade])
     root = phylo.parse_newick(newick)
-    for pre, species in phylo.rectangulate(phylo.render_tips(root, [])):
+    for pre, species in phylo.rectangular(phylo.render_tips(root, [])):
         words: list[str] = [pre, species]
         try:
             chrom_sizes_ = chrom_sizes(species)
             fasize = sum(chrom_sizes_.values()) / 1e6
-            nseqs = len(chrom_sizes_)
+            n_seqs = len(chrom_sizes_)
             words.append(f"{fasize:4.0f}Mbp")
-            words.append(f"{nseqs:2}")
-            gffsize = _gff3_size(species)
-            words.append(f"{gffsize:4.1f}MB")
+            words.append(f"{n_seqs:2}")
+            gff_size = _gff3_size(species)
+            words.append(f"{gff_size:4.1f}MB")
             sources = ",".join(_sources(species))
             words.append(f"{sources}")
         except FileNotFoundError:

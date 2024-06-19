@@ -66,14 +66,14 @@ def sorted_naturally[T: str | Path](iterable: Iterable[T]) -> list[T]:
 
 
 def natural_key(x: str | Path) -> list[str]:
-    return [try_zeropad(s) for s in re.split(r"[\W_]", name_if_path(x))]
+    return [try_pad_zero(s) for s in re.split(r"[\W_]", name_if_path(x))]
 
 
 def name_if_path(x: str | Path) -> str:
     return x if isinstance(x, str) else x.name
 
 
-def try_zeropad(s: str) -> str:
+def try_pad_zero(s: str) -> str:
     try:
         return f"{int(s):03}"
     except (ValueError, TypeError):

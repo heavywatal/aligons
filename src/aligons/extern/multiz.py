@@ -39,9 +39,9 @@ def run(indir: Path, query: Sequence[str]) -> Path:
         query = phylo.extract_names(tree)
     outdir = Path("multiple") / target / dirname
     prepare(indir, outdir, query)
-    chromodirs = outdir.glob("chromosome.*")
+    chromo_dirs = outdir.glob("chromosome.*")
     pool = cli.ThreadPool()
-    cli.wait_raise(pool.submit(multiz, p, tree) for p in chromodirs)
+    cli.wait_raise(pool.submit(multiz, p, tree) for p in chromo_dirs)
     return outdir
 
 
@@ -65,8 +65,8 @@ def multiz(path: Path, tree: str) -> Path:
             stdout=subp.PIPE,
             stderr=subp.STDOUT,
         )
-    except subp.CalledProcessError as perr:
-        for line in perr.stdout.strip().splitlines():
+    except subp.CalledProcessError as p_err:
+        for line in p_err.stdout.strip().splitlines():
             _log.error(f"{path.name}:{line}")
         _log.error(outfile)
         raise
@@ -112,9 +112,9 @@ def prepare(indir: Path, outdir: Path, queries: Sequence[str]) -> Path:
         if not querypath.exists():
             _log.warning(f"not found {querypath}")
         dstname = f"{phylo.shorten(target)}.{phylo.shorten(query)}.sing.maf"
-        for chrdir in querypath.glob("chromosome.*"):
-            src = chrdir / "sing.maf"
-            link = outdir / chrdir.name / dstname
+        for chr_dir in querypath.glob("chromosome.*"):
+            src = chr_dir / "sing.maf"
+            link = outdir / chr_dir.name / dstname
             fs.symlink(src, link, relative=True)
     return outdir
 

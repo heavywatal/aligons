@@ -22,7 +22,7 @@ linearGap = "medium"
 # noSplit = false
 
 [multiz]
-R = 30  # (30) dynamic programing radius
+R = 30  # (30) dynamic programming radius
 M = 18  # (1) minimum block length of output
 
 [phastCons]

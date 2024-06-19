@@ -37,10 +37,10 @@ class GFF:
         self.body = self.body.with_columns(pl.col("seqid").str.replace(pattern, repl))
         return self
 
-    def write(self, iobytes: typing.IO[bytes]) -> None:
-        iobytes.writelines(self.header)
-        iobytes = typing.cast(io.BytesIO, iobytes)
-        self.body.collect().write_csv(iobytes, include_header=False, separator="\t")
+    def write(self, io_bytes: typing.IO[bytes]) -> None:
+        io_bytes.writelines(self.header)
+        io_bytes = typing.cast(io.BytesIO, io_bytes)
+        self.body.collect().write_csv(io_bytes, include_header=False, separator="\t")
 
     def to_string(self) -> str:
         buffer = io.BytesIO()

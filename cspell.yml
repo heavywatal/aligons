@@ -1,0 +1,28 @@
+import:
+  - ~/.cspell.json
+languageSettings:
+  - languageId: python
+    ignoreRegExpList:
+      - '"-+\w+"'
+      - '[ATCG]{5,}'
+  - languageId: toml
+    ignoreRegExpList:
+      - '".+\.(fa|fasta|gff|gz)"'
+words:
+  - bgzipped
+  - histo
+  - hvul
+  - morex
+  - NCATS
+  - noncons
+  - oesy
+  - osat
+  - perc
+  - PGSC
+  - phal
+  - shumari
+  - slyc
+  - spuddb
+  - suzuemon
+  - trackid
+  - Vangularis

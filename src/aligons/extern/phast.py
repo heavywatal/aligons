@@ -72,9 +72,9 @@ def phastCons(  # noqa: N802
     with subp.open_(wig, "wb", if_=if_) as fout:
         subp.run(args, stdout=fout, if_=if_)
     fs.print_if_exists(bed)
-    emods = [estimate_base.with_suffix(x) for x in (".cons.mod", ".noncons.mod")]
-    if emods[0].exists() and emods[1].exists():
-        consEntropy(conf["target-coverage"], conf["expected-length"], *emods)
+    e_mods = [estimate_base.with_suffix(x) for x in (".cons.mod", ".noncons.mod")]
+    if e_mods[0].exists() and e_mods[1].exists():
+        consEntropy(conf["target-coverage"], conf["expected-length"], *e_mods)
     kent.wigToBigWig(wig, chrom_sizes)
     fs.print_if_exists(bw)
     return (bw, bed)
@@ -100,15 +100,15 @@ def estimate_models(cons_target_clade: Path) -> tuple[Path, Path]:
     cons_mod = cons_target_clade / "phylofit.cons.mod"
     noncons_mod = cons_target_clade / "phylofit.noncons.mod"
     tree = phylo.get_subtree(cons_target_clade.name.split("-"), phylo.shorten_names)
-    cfutures: list[cli.Future[Path]] = []
-    nfutures: list[cli.Future[Path]] = []
+    c_futures: list[cli.Future[Path]] = []
+    n_futures: list[cli.Future[Path]] = []
     pool = cli.ThreadPool()
     for maf in cons_target_clade.glob("chromosome*/multiz.maf"):
         seqid = maf.parent.name.removeprefix("chromosome.")
-        cfutures.append(pool.submit(make_cons_mod, maf, target, seqid, tree))
-        nfutures.append(pool.submit(make_noncons_mod, maf, target, seqid, tree))
-    phyloBoot([f.result() for f in cfutures], cons_mod)
-    phyloBoot([f.result() for f in nfutures], noncons_mod)
+        c_futures.append(pool.submit(make_cons_mod, maf, target, seqid, tree))
+        n_futures.append(pool.submit(make_noncons_mod, maf, target, seqid, tree))
+    phyloBoot([f.result() for f in c_futures], cons_mod)
+    phyloBoot([f.result() for f in n_futures], noncons_mod)
     return (cons_mod, noncons_mod)
 
 

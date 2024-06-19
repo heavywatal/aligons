@@ -145,9 +145,9 @@ class JBrowseConfig:
 
     def add_track_gff(self) -> None:
         gff = api.genome_gff3(self.species)
-        ngff = gff.with_suffix("").with_suffix("").with_suffix(".name.gff3.gz")
-        if ngff.exists():
-            gff = ngff
+        named = gff.with_suffix("").with_suffix("").with_suffix(".name.gff3.gz")
+        if named.exists():
+            gff = named
         self.add_track(gff, trackid=gff.parent.name + ".gff3")
         self.text_index()
 

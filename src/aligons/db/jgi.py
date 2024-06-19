@@ -90,11 +90,11 @@ def _iter_dataset_xml(xml: Path, organism: str) -> Iterable[dict[str, str | list
 
 def _as_dict(folder: ElementTree.Element) -> dict[str, str | list[str]]:
     try:
-        elem_assem = next(_finditer(r"softmasked\.fa\.gz$", folder, "filename"))
+        elem_assembly = next(_finditer(r"softmasked\.fa\.gz$", folder, "filename"))
         elem_annot = next(_finditer(r"gene\.gff3?\.gz$", folder, "filename"))
     except StopIteration:
         return {}
-    fa_url = _simplify_url(elem_assem.attrib["url"])
+    fa_url = _simplify_url(elem_assembly.attrib["url"])
     gff_url = _simplify_url(elem_annot.attrib["url"])
     species, rev = _parse_filename_gff(Path(gff_url).name)
     version = folder.get("name") or rev

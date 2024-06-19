@@ -177,14 +177,14 @@ def chain_net(chain: Path, target_sizes: Path, query_sizes: Path) -> tuple[Path,
 
     chainPreNet - Remove chains that don't have a chance of being netted.
     """
-    tnet = chain.with_name("target.net")
-    qnet = chain.with_name("query.net")
-    tsyn = tnet.with_suffix(".net.gz")
-    qsyn = qnet.with_suffix(".net.gz")
-    if_ = fs.is_outdated(tsyn, chain) or fs.is_outdated(qsyn, chain)
+    t_net = chain.with_name("target.net")
+    q_net = chain.with_name("query.net")
+    t_syn = t_net.with_suffix(".net.gz")
+    q_syn = q_net.with_suffix(".net.gz")
+    if_ = fs.is_outdated(t_syn, chain) or fs.is_outdated(q_syn, chain)
     pre_args = ["chainPreNet", chain, target_sizes, query_sizes, "stdout"]
     opts = subp.optargs(config["chainNet"], "-")
-    cn_args = ["chainNet", *opts, "stdin", target_sizes, query_sizes, tnet, qnet]
+    cn_args = ["chainNet", *opts, "stdin", target_sizes, query_sizes, t_net, q_net]
     with subp.popen(pre_args, stdout=subp.PIPE, if_=if_) as p:
         try:
             subp.run(cn_args, stdin=p.stdout, if_=if_)
@@ -192,17 +192,17 @@ def chain_net(chain: Path, target_sizes: Path, query_sizes: Path) -> tuple[Path,
             # printMem() in chainNet/netSyntenic works only on Linux.
             if not e.stderr.startswith(b"Couldn't open /proc/self/stat"):
                 raise
-    return (netSyntenic(tnet, tsyn, if_=if_), netSyntenic(qnet, qsyn, if_=if_))
+    return (netSyntenic(t_net, t_syn, if_=if_), netSyntenic(q_net, q_syn, if_=if_))
 
 
-def netSyntenic(net: Path, synnet: Path, *, if_: bool) -> Path:  # noqa: N802
+def netSyntenic(net: Path, syn_net: Path, *, if_: bool) -> Path:  # noqa: N802
     """Add synteny info to net."""
     args = ["netSyntenic", net, "stdout"]
     with subp.popen(args, stdout=subp.PIPE, if_=if_) as p:
-        subp.gzip(p.stdout, synnet, if_=if_)
+        subp.gzip(p.stdout, syn_net, if_=if_)
     if net.exists() and if_ and not cli.dry_run:
         net.unlink()
-    return synnet
+    return syn_net
 
 
 def net_to_maf(net: Path, chain: Path, sing_maf: Path, target: str, query: str) -> Path:
@@ -211,13 +211,13 @@ def net_to_maf(net: Path, chain: Path, sing_maf: Path, target: str, query: str) 
         target, query = query, target
     sort = ["axtSort", "stdin", "stdout"]
     with (
-        netToAxt(net, chain, target, query, if_=if_) as ptoaxt,
-        subp.popen(sort, stdin=ptoaxt.stdout, stdout=subp.PIPE, if_=if_) as psort,
-        axtToMaf(psort.stdout, target, query, sing_maf, if_=if_) as paxttomaf,
+        netToAxt(net, chain, target, query, if_=if_) as p_toa,
+        subp.popen(sort, stdin=p_toa.stdout, stdout=subp.PIPE, if_=if_) as p_sort,
+        axtToMaf(p_sort.stdout, target, query, sing_maf, if_=if_) as p_axttomaf,
     ):
-        ptoaxt.stdout.close() if ptoaxt.stdout else None
-        psort.stdout.close() if psort.stdout else None
-        paxttomaf.communicate()
+        p_toa.stdout.close() if p_toa.stdout else None
+        p_sort.stdout.close() if p_sort.stdout else None
+        p_axttomaf.communicate()
     return sing_maf
 
 

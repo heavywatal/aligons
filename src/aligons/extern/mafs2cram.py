@@ -1,4 +1,4 @@
-"""Convert MAF to SAM/BAM/CRAM for visualzation.
+"""Convert MAF to SAM/BAM/CRAM for visualization.
 
 src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 dst: ./pairwise/{target}/{query}/cram/genome.cram
@@ -71,8 +71,8 @@ def maf2cram(
     if outfile is None:
         outfile = infile.with_suffix(".cram")
     is_to_run = fs.is_outdated(outfile, infile)
-    mafconv = subp.run(["maf-convert", "sam", infile], if_=is_to_run, stdout=subp.PIPE)
-    sam = sanitize_sam(mafconv.stdout)
+    maf_conv = subp.run(["maf-convert", "sam", infile], if_=is_to_run, stdout=subp.PIPE)
+    sam = sanitize_sam(maf_conv.stdout)
     view_cmd = f"samtools view --no-PG -h -C -@ 2 -T {reference!s}"
     sort_cmd = f"samtools sort --no-PG -O CRAM -@ 2 -o {outfile!s}"
     with subp.popen(sort_cmd, stdin=subp.PIPE, if_=is_to_run) as sort:

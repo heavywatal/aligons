@@ -63,7 +63,7 @@ class PairwiseChromosomeAlignment:
         query_sizes = api.fasize(query)
         axt = lastz(self._t2bit, q2bit, outdir)
         chain = kent.axtChain(axt, self._t2bit, q2bit)
-        net, _qnet = kent.chain_net(chain, self._target_sizes, query_sizes)
+        net, _q_net = kent.chain_net(chain, self._target_sizes, query_sizes)
         sing_maf = net.with_name("sing.maf")
         kent.net_to_maf(net, chain, sing_maf, self._target, query)
         return sing_maf
@@ -93,22 +93,22 @@ class PairwiseGenomeAlignment:
         pool = cli.ThreadPool()
         target_chromosomes = list(api.iter_chromosome_2bit(self._target))
         query_chromosomes = list(api.iter_chromosome_2bit(self._query))
-        flists: list[list[cli.Future[Path]]] = [
+        ll: list[list[cli.Future[Path]]] = [
             [pool.submit(self.align_chr, t, q) for q in query_chromosomes]
             for t in target_chromosomes
         ]
-        return [pool.submit(self.wait_integrate, futures) for futures in flists]
+        return [pool.submit(self.wait_integrate, futures) for futures in ll]
 
     def align_chr(self, target_2bit: Path, query_2bit: Path) -> Path:
-        axtgz = lastz(target_2bit, query_2bit, self._outdir)
-        return kent.axtChain(axtgz, target_2bit, query_2bit)
+        axt_gz = lastz(target_2bit, query_2bit, self._outdir)
+        return kent.axtChain(axt_gz, target_2bit, query_2bit)
 
     def wait_integrate(self, futures: list[cli.Future[Path]]) -> Path:
         return self.integrate([f.result() for f in futures])
 
     def integrate(self, chains: list[Path]) -> Path:
         chain = kent.chainMergeSort(chains)
-        net, _qnet = kent.chain_net(chain, self._target_sizes, self._query_sizes)
+        net, _q_net = kent.chain_net(chain, self._target_sizes, self._query_sizes)
         sing_maf = net.with_name("sing.maf")
         kent.net_to_maf(net, chain, sing_maf, self._target, self._query)
         return fs.print_if_exists(sing_maf)
@@ -120,11 +120,11 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:
     subdir = outdir / target_label
     if not cli.dry_run:
         subdir.mkdir(0o755, parents=True, exist_ok=True)
-    axtgz = subdir / f"{query_label}.axt.gz"
+    axt_gz = subdir / f"{query_label}.axt.gz"
     args = ["lastz", t2bit, q2bit, "--format=axt", *subp.optargs(config["lastz"])]
-    is_to_run = fs.is_outdated(axtgz, [t2bit, q2bit])
+    is_to_run = fs.is_outdated(axt_gz, [t2bit, q2bit])
     with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
-        return subp.gzip(p.stdout, axtgz, if_=is_to_run)
+        return subp.gzip(p.stdout, axt_gz, if_=is_to_run)
 
 
 if __name__ == "__main__":

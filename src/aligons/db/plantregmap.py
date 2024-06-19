@@ -237,15 +237,15 @@ def filter_chr_chainnet(infile: Path, outfile: Path, remove: str = "") -> Path:
     filename = infile.name.removesuffix(".gz")
     stem = Path(filename).stem
     _target, query = stem.split("_")
-    qspecies = lengthen(query)
-    qseqs = api.chrom_sizes(qspecies).keys()
+    q_species = lengthen(query)
+    q_seqs = api.chrom_sizes(q_species).keys()
     popen_filter = kent.netFilter if filename.endswith(".net") else kent.chainFilter
     with (
         subp.popen_zcat(infile) as zcat,
         subp.popen_sd(remove, stdin=zcat.stdout) as sd,
-        popen_filter(stdin=sd.stdout, q=",".join(qseqs)) as pfilter,
+        popen_filter(stdin=sd.stdout, q=",".join(q_seqs)) as p_filter,
     ):
-        return subp.gzip(pfilter.stdout, outfile)
+        return subp.gzip(p_filter.stdout, outfile)
 
 
 if __name__ == "__main__":

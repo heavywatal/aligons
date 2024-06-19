@@ -104,14 +104,14 @@ def test_gzip(tmp_path: Path):
     with hello_txt.open("rb") as fin:
         assert fin.read() == content
     hello_gz.unlink()
-    with subp.popen(hello, stdout=subp.PIPE) as phello:
-        subp.gzip(phello.stdout, hello_gz)
+    with subp.popen(hello, stdout=subp.PIPE) as p_hello:
+        subp.gzip(p_hello.stdout, hello_gz)
     with subp.popen_zcat(hello_gz) as zcat:
         res, _ = zcat.communicate()
     assert res == content
     hello_zip = tmp_path / "hello.zip"
-    with zipfile.ZipFile(hello_zip, "w") as zout:
-        zout.write(hello_txt)
+    with zipfile.ZipFile(hello_zip, "w") as fout:
+        fout.write(hello_txt)
     hello_zip_txt = hello_zip.with_suffix(".zip.txt")
     assert subp.run_zcat(hello_zip, hello_zip_txt).stdout is None
     with hello_zip_txt.open("rb") as fin:
@@ -120,8 +120,8 @@ def test_gzip(tmp_path: Path):
 
 def test_sd():
     with (
-        subp.popen(hello, stdout=subp.PIPE) as phello,
-        subp.popen_sd("", stdin=phello.stdout) as sd,
+        subp.popen(hello, stdout=subp.PIPE) as p_hello,
+        subp.popen_sd("", stdin=p_hello.stdout) as sd,
     ):
         result, _ = sd.communicate()
     assert result == b"hello"
@@ -130,11 +130,11 @@ def test_sd():
     except FileNotFoundError as e:
         pytest.skip(e.strerror)
     with (
-        subp.popen(hello, stdout=subp.PIPE) as phello,
-        subp.popen_sd("$", "ween", stdin=phello.stdout) as sd,
+        subp.popen(hello, stdout=subp.PIPE) as p_hello,
+        subp.popen_sd("$", "ween", stdin=p_hello.stdout) as sd,
     ):
         result, _ = sd.communicate()
     assert result == b"helloween"
-    with subp.popen(hello, stdout=subp.PIPE) as phello:
-        result = subp.run_sd("", stdin=phello.stdout).stdout
+    with subp.popen(hello, stdout=subp.PIPE) as p_hello:
+        result = subp.run_sd("", stdin=p_hello.stdout).stdout
     assert result == b"hello"

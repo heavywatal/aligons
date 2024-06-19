@@ -5,7 +5,7 @@ import pytest
 from aligons.util import cli
 
 
-def test_argparser():
+def test_arg_parser():
     parser = cli.ArgumentParser("vdq")
     assert parser.parse_args([]).verbose == 1
     assert parser.parse_args(["-v"]).verbose == 2  # noqa: PLR2004

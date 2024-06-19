@@ -72,9 +72,9 @@ def _consolidate_compara_mafs(indir: Path) -> Path:
     for seq, infiles in _list_mafs_by_seq(indir).items():
         if seq == "supercontig":
             continue
-        chrdir = outdir / f"chromosome.{seq}"
-        chrdir.mkdir(0o755, parents=True, exist_ok=True)
-        sing_maf = chrdir / "sing.maf"
+        chr_dir = outdir / f"chromosome.{seq}"
+        chr_dir.mkdir(0o755, parents=True, exist_ok=True)
+        sing_maf = chr_dir / "sing.maf"
         _log.info(sing_maf)
         if not fs.is_outdated(sing_maf, infiles):
             continue
@@ -82,7 +82,7 @@ def _consolidate_compara_mafs(indir: Path) -> Path:
             subp.popen_sd(target, target_short) as tsd,
             subp.popen_sd(query, query_short, stdin=tsd.stdout) as qsd,
             subp.open_(sing_maf, "wb") as fout,
-            subp.popen(["mafFilter", "stdin"], stdin=qsd.stdout, stdout=fout) as maff,
+            subp.popen(["mafFilter", "stdin"], stdin=qsd.stdout, stdout=fout) as fil,
         ):
             assert tsd.stdin
             tsd.stdin.write(b"##maf version=1 scoring=LASTZ_NET\n")
@@ -90,7 +90,7 @@ def _consolidate_compara_mafs(indir: Path) -> Path:
                 _log.debug(maf)
                 tsd.stdin.writelines(_readlines_compara_maf(maf))
             tsd.stdin.close()
-            maff.communicate()
+            fil.communicate()
             # for padding, not for filtering
     return fs.print_if_exists(outdir)
 
@@ -167,7 +167,7 @@ class FTPensemblgenomes(dl.LazyFTP):
             if sp in available:
                 filtered.append(sp)
             else:
-                _log.info(f"{sp} not found in ensemblegenomes {version()}")
+                _log.info(f"{sp} not found in ensemblgenomes {version()}")
         return filtered
 
     def available_species(self) -> list[str]:
@@ -204,9 +204,9 @@ class FTPensemblgenomes(dl.LazyFTP):
         files = [self.retrieve(x) for x in nlst if f"/{sp}_" in x]
         _log.debug(f"{outdir=}")
         dirs: list[Path] = []
-        for targz in files:
-            expanded = outdir / targz.name.removesuffix(".tar.gz")
-            tar = ["tar", "xzf", targz, "-C", outdir]
+        for tar_gz in files:
+            expanded = outdir / tar_gz.name.removesuffix(".tar.gz")
+            tar = ["tar", "xzf", tar_gz, "-C", outdir]
             subp.run(tar, if_=fs.is_outdated(expanded / "README.maf"))
             # TODO: MD5SUM
             dirs.append(expanded.resolve())

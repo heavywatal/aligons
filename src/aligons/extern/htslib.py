@@ -88,7 +88,7 @@ def popen_faidx_query(
 def tabix(bgz: Path | cli.Future[Path]) -> Path:
     """https://www.htslib.org/doc/tabix.html.
 
-    Use .csi instead of .tbi for chromosomes >512 Mbp e.g., atau, hvul.
+    Use .csi instead of .tbi for chromosomes >512 Mbp.
     """
     bgz = cli.result(bgz)
     outfile = bgz.with_suffix(bgz.suffix + ".csi")

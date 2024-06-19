@@ -51,14 +51,14 @@ def main(argv: list[str] | None = None) -> None:
 def pull_galaxy(prefix: Path) -> None:
     tsv = galaxy_index()
     table = pl.read_csv(tsv, separator="\t").lazy()
-    imgdir = prefix / "biocontainers"
+    img_dir = prefix / "biocontainers"
     bindir = prefix / "bin"
     if not cli.dry_run:
-        imgdir.mkdir(parents=True, exist_ok=True)
+        img_dir.mkdir(parents=True, exist_ok=True)
         bindir.mkdir(parents=True, exist_ok=True)
     for x in latest_apps(table):
         url = f"{_galaxy_prefix}{x}"
-        sif = dl.fetch(url, imgdir / x).path
+        sif = dl.fetch(url, img_dir / x).path
         if sif.name.startswith("phast:1.5"):
             continue
         key = sif.name.split(":", 1)[0]

@@ -7,7 +7,7 @@ data_dir = Path(__file__).parent.parent / "_data"
 
 
 def test_is_outdated(tmp_path: Path):
-    tmp_file = tmp_path / "newfile.txt"
+    tmp_file = tmp_path / "new_file.txt"
     assert not tmp_file.exists()
     assert fs.is_outdated(tmp_file)
     tmp_file.open("w").close()
@@ -39,20 +39,20 @@ def test_relpath(tmp_path: Path):
 
 
 def test_symlink(tmp_path: Path):
-    newlink = tmp_path / "link"
-    assert fs.symlink(tmp_path, newlink) == newlink
-    assert newlink.exists()
-    assert newlink.is_symlink()
-    assert fs.symlink(tmp_path, newlink) == newlink
+    new_link = tmp_path / "link"
+    assert fs.symlink(tmp_path, new_link) == new_link
+    assert new_link.exists()
+    assert new_link.is_symlink()
+    assert fs.symlink(tmp_path, new_link) == new_link
     assert len(list(tmp_path.iterdir())) == 1
     broken = fs.symlink(tmp_path / "noexist", tmp_path / "broken")
     assert broken.is_symlink()
     assert not broken.exists()
-    assert fs.symlink(newlink, broken).exists()
-    relsib = fs.symlink(tmp_path / "noexist", tmp_path / "relsib", relative=True)
-    assert relsib.readlink() == Path("noexist")
-    relparent = fs.symlink(tmp_path, tmp_path / "relparenrt", relative=True)
-    assert relparent.readlink() == Path("..")
+    assert fs.symlink(new_link, broken).exists()
+    rel_sib = fs.symlink(tmp_path / "noexist", tmp_path / "rel_sib", relative=True)
+    assert rel_sib.readlink() == Path("noexist")
+    rel_parent = fs.symlink(tmp_path, tmp_path / "rel_parent", relative=True)
+    assert rel_parent.readlink() == Path("..")
 
 
 def test_expect_suffix():

@@ -83,7 +83,7 @@ def select(newick: str, queries: Sequence[str]) -> str:
 
 
 def select_clade(newick: str, clade: str) -> str:
-    return newickize(parse_newick(newick, clade))
+    return to_newick(parse_newick(newick, clade))
 
 
 def select_tips(newick: str, tips: Sequence[str]) -> str:
@@ -97,7 +97,7 @@ def select_tips(newick: str, tips: Sequence[str]) -> str:
         filtered = re.sub(r"\(,\)", "", filtered)
     _log.debug(filtered)
     root = parse_newick(filtered)
-    return newickize(root)
+    return to_newick(root)
 
 
 def get_subtree(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x) -> str:
@@ -126,14 +126,14 @@ def list_species(clade: str = "") -> list[str]:
 
 def lengthen(species: str) -> str:
     try:
-        return next(_expand_shortnames([species]))
+        return next(_expand_short_names([species]))
     except StopIteration:
         _log.warning(f"cannot expand {species = }")
         return ""
 
 
-def _expand_shortnames(shortnames: list[str]) -> Iterator[str]:
-    return _filter_by_shortname(list_species(), shortnames)
+def _expand_short_names(short_names: list[str]) -> Iterator[str]:
+    return _filter_by_shortname(list_species(), short_names)
 
 
 def _filter_by_shortname(
@@ -153,7 +153,7 @@ def shorten(name: str) -> str:
 def print_graph(newick: str, graph: int = 0) -> None:
     root = parse_newick(newick)
     if graph >= 4:  # noqa: PLR2004
-        gen = rectangulate(render_tips(root, []))
+        gen = rectangular(render_tips(root, []))
     elif graph == 3:  # noqa: PLR2004
         gen = elongate(render_tips(root, []))
     elif graph == 2:  # noqa: PLR2004
@@ -184,15 +184,15 @@ NORMAL_BRICKS = Bricks()
 COMPACT_BRICKS = Bricks("┬─")
 
 
-def newickize(node: Node) -> str:
-    return _newickize(node) + ";"
+def to_newick(node: Node) -> str:
+    return _to_newick(node) + ";"
 
 
-def _newickize(node: Node) -> str:
+def _to_newick(node: Node) -> str:
     ret = ""
     if node.children:
         ret += "("
-        ret += ",".join([_newickize(child) for child in node.children])
+        ret += ",".join([_to_newick(child) for child in node.children])
         ret += ")"
     if "+" not in node.name:
         ret += node.name
@@ -284,7 +284,7 @@ def _parse_node_label(label: str) -> tuple[str, float | None]:
     return label.strip(), None
 
 
-def rectangulate(renderer: GraphGen) -> Iterable[tuple[str, str]]:
+def rectangular(renderer: GraphGen) -> Iterable[tuple[str, str]]:
     lines = list(renderer)
     widest = max(lines, key=lambda p: len(p[0]) + len(p[1]))
     max_width = len(widest[0]) + len(widest[1])

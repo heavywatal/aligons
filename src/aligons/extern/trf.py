@@ -41,7 +41,7 @@ def trf(infile: Path) -> Path:
     """Be careful of messy and dirty output from trf.
 
     - without `-ngs`
-      - returns non-zero even when it is "Done" successsfully.
+      - returns non-zero even when it is "Done" successfully.
       - writes ./{infile}.{params}.dat including verbose header.
     - with `-ngs`
       - returns 0 if successful.
@@ -58,8 +58,8 @@ def trf(infile: Path) -> Path:
         "delta": 7,
         "pm": 80,
         "pi": 10,
-        "minscore": 40,
-        "maxperiod": 500,
+        "min_score": 40,
+        "max_period": 500,
     }
     params = [str(x) for x in param_defaults.values()]
     dat = infile.with_name(".".join([infile.name, *params, "dat.gz"]))

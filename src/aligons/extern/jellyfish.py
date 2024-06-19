@@ -28,9 +28,9 @@ def run(species: str) -> Path:
     genome = api.genome_fa(species)
     jf = count(genome)
     dumpfile = dump(jf)
-    histofile = histo(jf)
-    threshold = calc_threshold(histofile)
-    log_config(histofile, threshold)
+    histo_file = histo(jf)
+    threshold = calc_threshold(histo_file)
+    log_config(histo_file, threshold)
     return mask_genome(genome, dumpfile, threshold)
 
 
@@ -52,14 +52,14 @@ def count(infile: Path) -> Path:
     return outfile
 
 
-def dump(jffile: Path) -> Path:
+def dump(jf_file: Path) -> Path:
     opts = config["jellyfish"]["dump"]
-    outfile = jffile.with_suffix(".dump.fa")
+    outfile = jf_file.with_suffix(".dump.fa")
     args: subp.Args = ["jellyfish", "dump"]
     args.extend(["-L", str(opts["lower_count"])])
     args.extend(["-o", outfile])
-    args.append(jffile)
-    is_to_run = fs.is_outdated(outfile, jffile)
+    args.append(jf_file)
+    is_to_run = fs.is_outdated(outfile, jf_file)
     subp.run(args, if_=is_to_run)
     hard_mask = "N" * config["jellyfish"]["count"]["mer_len"]
     if is_to_run and not cli.dry_run:
@@ -69,37 +69,37 @@ def dump(jffile: Path) -> Path:
     return outfile
 
 
-def histo(jffile: Path) -> Path:
+def histo(jf_file: Path) -> Path:
     opts = config["jellyfish"]["histo"]
-    outfile = jffile.with_suffix(".histo")
+    outfile = jf_file.with_suffix(".histo")
     args: subp.Args = ["jellyfish", "histo"]
     args.extend(["--high", str(opts["high"])])
     args.extend(["-o", outfile])
-    args.append(jffile)
-    subp.run(args, if_=fs.is_outdated(outfile, jffile))
+    args.append(jf_file)
+    subp.run(args, if_=fs.is_outdated(outfile, jf_file))
     return outfile
 
 
-def calc_threshold(histofile: Path) -> int:
+def calc_threshold(histo_file: Path) -> int:
     if cli.dry_run:
         return 65535
     cols = ["x", "y"]
-    daf = pl.read_csv(histofile, has_header=False, new_columns=cols, separator=" ")
+    daf = pl.read_csv(histo_file, has_header=False, new_columns=cols, separator=" ")
     y = daf["y"]
     ddy = y.diff(null_behavior="drop").diff(null_behavior="drop")
     x = daf["x"][: len(ddy)]
     i = (ddy**2 + x**2).arg_min()
-    assert i, histofile
+    assert i, histo_file
     return int(x[i])
 
 
-def log_config(histofile: Path, freq: int) -> None:
-    config_log = histofile.with_name("config.toml")
+def log_config(histo_file: Path, freq: int) -> None:
+    config_log = histo_file.with_name("config.toml")
     opts: dict[str, Any] = {}
     opts["jellyfish"] = config["jellyfish"]
     opts["dCNS"] = {"freq": freq}
     _log.debug(tomli_w.dumps(opts))
-    if fs.is_outdated(config_log, histofile) and not cli.dry_run:
+    if fs.is_outdated(config_log, histo_file) and not cli.dry_run:
         with config_log.open("wb") as fout:
             tomli_w.dump(opts, fout)
 
@@ -118,9 +118,9 @@ def mask_genome(infile: Path, kmer_fa: Path, freq: int = 50) -> Path:
     is_to_run = fs.is_outdated(outfile, [infile, kmer_fa])
     with (
         subp.popen_zcat(infile, if_=is_to_run) as zcat,
-        subp.popen(args, stdin=zcat.stdout, stdout=subp.PIPE, if_=is_to_run) as dcns,
+        subp.popen(args, stdin=zcat.stdout, stdout=subp.PIPE, if_=is_to_run) as pd,
     ):
-        subp.gzip(dcns.stdout, outfile, if_=is_to_run)
+        subp.gzip(pd.stdout, outfile, if_=is_to_run)
     return outfile
 
 
