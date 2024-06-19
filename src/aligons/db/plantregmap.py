@@ -65,8 +65,14 @@ def retrieve_deploy(query: str) -> cli.Future[Path]:
 
 
 def iter_download_queries() -> Iterator[str]:
+    targets = [
+        "Oryza_sativa_Japonica_Group",
+        "Arabidopsis_thaliana",
+        "Solanum_lycopersicum",
+    ]
+    pattern = "|".join(targets)
     for query in iter_download_queries_all():
-        if re.search(r"Oryza_sativa_Japonica|Solanum_lycopersicum", query):
+        if re.search(pattern, query):
             yield query
 
 
