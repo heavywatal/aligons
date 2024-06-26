@@ -25,7 +25,7 @@ def prefix() -> Path:
 def download() -> None:
     dataset: _rsrc.DataSet = {
         "url_prefix": "http://www.ricesuperpir.com/uploads/common",
-        "species": "oryza_sativa_t2t",
+        "species": "oryza_sativa",
         "version": "T2T-NIP",
         "draft": False,
         "label": "osat-t2t",
@@ -36,7 +36,8 @@ def download() -> None:
     fts: list[cli.Future[Path]] = []
     ft_fa, ft_gff = tools.fetch_and_bgzip(dataset, prefix())
     fts.append(ft_gff)
-    fts.extend(tools.genome_to_twobits(ft_fa))
+    masked = tools.softmask(ft_fa.result())
+    fts.extend(tools.genome_to_twobits(masked))
     cli.wait_raise(fts)
 
 
