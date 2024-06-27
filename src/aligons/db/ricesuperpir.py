@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 from aligons.extern import lastz
-from aligons.util import cli
+from aligons.util import cli, fs, subp
 
 from . import _rsrc, api, tools
 
@@ -21,7 +21,8 @@ def main(argv: list[str] | None = None) -> None:
     if args.download:
         download()
     if args.alignment:
-        alignment(old_query=args.old_query)
+        align_dir = alignment(old_query=args.old_query)
+        cat_chains(align_dir, old_query=args.old_query)
         return
     api.print_existing(species_label())
 
@@ -34,12 +35,24 @@ def species_label() -> str:
     return f"{prefix().name}/{species}"
 
 
-def alignment(*, old_query: bool = False) -> None:
+def alignment(*, old_query: bool = False) -> Path:
     target = species
     query = species_label()
     if old_query:
         target, query = query, target
-    lastz.run(target, [query])
+    return lastz.run(target, [query]) / query
+
+
+def cat_chains(align_dir: Path, *, old_query: bool = False) -> None:
+    chains = list(fs.sorted_naturally(align_dir.glob("chr*/target.chain.gz")))
+    target = "IRGSP-1.0"
+    query = "NIP-T2T"
+    if old_query:
+        target, query = query, target
+    stem = f"{target}To{query}"
+    outfile = Path(f"{stem}.over.chain.gz")
+    with subp.open_(outfile, "wb") as fout:
+        subp.run(["cat", *chains], stdout=fout)
 
 
 def download() -> None:
