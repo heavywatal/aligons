@@ -37,12 +37,12 @@ def popen(  # noqa: PLR0913
         _log.debug(cmd)
     else:
         _log.info(cmd)
-    return Popen(
+    return Popen(  # noqa: S603
         args,
         executable=executable,
         stdin=stdin,
         stdout=stdout,
-        shell=shell,  # noqa: S603
+        shell=shell,
     )
 
 
@@ -69,14 +69,14 @@ def run(  # noqa: PLR0913
         _log.info(cmd)
     if shell:
         args = cmd
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603
         args,
         executable=executable,
         stdin=stdin,
         input=input,
         stdout=stdout,
         stderr=stderr,
-        shell=shell,  # noqa: S603
+        shell=shell,
         cwd=cwd,
         text=text,
         check=check,

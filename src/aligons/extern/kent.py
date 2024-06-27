@@ -62,7 +62,7 @@ def wigToBigWig(wig: Path, chrom_sizes: Path, *, keep: bool = False) -> Path:  #
 
 
 def bedGraphToBigWig(infile: Path, chrom_sizes: Path) -> Path:  # noqa: N802
-    name, cnt = re.subn(r"\.bedgraph(\.gz)?$", ".bw", infile.name, flags=re.I)
+    name, cnt = re.subn(r"\.bedgraph(\.gz)?$", ".bw", infile.name, flags=re.IGNORECASE)
     assert cnt == 1, infile
     outfile = infile.with_name(name)
     is_to_run = fs.is_outdated(outfile, infile)

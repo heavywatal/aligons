@@ -52,8 +52,8 @@ def is_outdated(product: Path, source: Sequence[Path] | Path | None = None) -> b
     if isinstance(source, Sequence):
         source = [x for x in source if x.exists()]
         source = newest(source) if source else None
-    if source and source.exists() and product.stat().st_mtime < source.stat().st_mtime:
-        return True
+    if source and source.exists():
+        return product.stat().st_mtime < source.stat().st_mtime
     return False
 
 

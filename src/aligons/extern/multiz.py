@@ -57,10 +57,10 @@ def multiz(path: Path, tree: str) -> Path:
         with (path / "roasted.sh").open("w") as fout:
             fout.write(script)
     try:
-        comp = subp.run(
+        comp = subp.run(  # noqa: S604
             script,
             if_=is_to_run,
-            shell=True,  # noqa: S604
+            shell=True,
             cwd=path,
             stdout=subp.PIPE,
             stderr=subp.STDOUT,
