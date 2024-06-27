@@ -7,7 +7,7 @@ import csv
 import functools
 import logging
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from contextlib import suppress
 from pathlib import Path
 
@@ -24,10 +24,16 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-C", "--clade", default="angiospermae")
     args = parser.parse_args(argv or None)
     if args.species:
+        print_existing(args.species)
         for p in _glob("*", args.species):
             fs.print_if_exists(p)
     else:
         print_stats(args.clade)
+
+
+def print_existing(species: str) -> None:
+    for p in _glob("*", species):
+        fs.print_if_exists(p)
 
 
 def shorten(species: str) -> str:
@@ -77,22 +83,28 @@ def get_file(pattern: str, species: str, subdir: str = "") -> Path:
 
 
 def sanitize_queries(target: str, queries: list[str]) -> list[str]:
+    not_in_db: list[str] = []
+    for query in queries:
+        it = _species_dirs(query)
+        if next(it, None) is None:
+            not_in_db.append(query)
+    if not_in_db:
+        msg = f"{not_in_db} not in {species_names()}"
+        raise ValueError(msg)
     query_set = set(queries)
     with suppress(KeyError):
         query_set.remove(target)
     _log.debug(f"{query_set=}")
-    not_in_db = query_set - set(species_names())
-    if not_in_db:
-        msg = f"{not_in_db} not in {species_names()}"
-        raise ValueError(msg)
     return list(query_set)
 
 
-def _species_dirs(species: str = "") -> Iterable[Path]:
-    for prefix in _iter_prefix():
-        if not prefix.exists():
+def _species_dirs(species: str = "") -> Iterator[Path]:
+    if (path := prefix(species)).exists():  # {origin}/{species}
+        yield path
+    for prefix_origin in _iter_prefix():
+        if not prefix_origin.exists():
             continue
-        for path in prefix.iterdir():
+        for path in prefix_origin.iterdir():
             if path.is_dir():
                 if species and (species.lower() != path.name.lower()):
                     continue

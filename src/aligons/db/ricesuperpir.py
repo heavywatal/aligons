@@ -3,23 +3,39 @@
 import logging
 from pathlib import Path
 
+from aligons.extern import lastz
 from aligons.util import cli
 
 from . import _rsrc, api, tools
 
 _log = logging.getLogger(__name__)
+species = "oryza_sativa"
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
+    parser.add_argument("-A", "--alignment", action="store_true")
     args = parser.parse_args(argv or None)
     if args.download:
         download()
+    if args.alignment:
+        alignment()
+        return
+    api.print_existing(species_label())
 
 
 def prefix() -> Path:
     return api.prefix("ricesuperpir")
+
+
+def species_label() -> str:
+    return f"{prefix().name}/{species}"
+
+
+def alignment() -> None:
+    query = species_label()
+    lastz.run(species, [query])
 
 
 def download() -> None:

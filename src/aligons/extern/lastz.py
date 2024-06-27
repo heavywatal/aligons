@@ -40,7 +40,7 @@ class PairwiseChromosomeAlignment:
         bed_df = maf.read_bed(bed)
         rows = bed_df.collect().iter_rows(named=True)
         row0 = next(rows)
-        self._target = row0["name"]
+        self._target: str = row0["name"]
         self._target_sizes = api.fasize(self._target)
         self._t2bit = api.chromosome_2bit(self._target, row0["chrom"])
         self._target_dir = Path("pairwise") / self._target
