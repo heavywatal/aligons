@@ -241,6 +241,18 @@ def axtToMaf(  # noqa: N802
     return subp.popen(args, stdin=stdin, if_=if_)
 
 
+def net_chain_subset(net: Path, chain: Path) -> Path:
+    outfile = net.with_suffix("").with_suffix(".over.chain.gz")
+    ncs = ["netChainSubset", net, chain, "stdout"]
+    csi = ["chainStitchId", "stdin", "stdout"]
+    if_ = fs.is_outdated(outfile, [net, chain])
+    with (
+        subp.popen(ncs, stdout=subp.PIPE, if_=if_) as p_ncs,
+        subp.popen(csi, stdin=p_ncs.stdout, stdout=subp.PIPE, if_=if_) as p_csi,
+    ):
+        return subp.gzip(p_csi.stdout, outfile, if_=if_)
+
+
 def _popen(args: subp.Args, stdin: subp.FILE, **kwargs: str) -> subp.Popen[bytes]:
     opts = subp.optargs(kwargs, "-")
     return subp.popen([*args, *opts], stdin=stdin, stdout=subp.PIPE)

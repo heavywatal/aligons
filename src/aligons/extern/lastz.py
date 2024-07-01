@@ -109,6 +109,8 @@ class PairwiseGenomeAlignment:
     def integrate(self, chains: list[Path]) -> Path:
         chain = kent.chainMergeSort(chains)
         net, _q_net = kent.chain_net(chain, self._target_sizes, self._query_sizes)
+        if self._target.rsplit("/")[-1] == self._query.rsplit("/")[-1]:
+            fs.print_if_exists(kent.net_chain_subset(net, chain))
         sing_maf = net.with_name("sing.maf")
         kent.net_to_maf(net, chain, sing_maf, self._target, self._query)
         return fs.print_if_exists(sing_maf)

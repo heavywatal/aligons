@@ -44,15 +44,16 @@ def alignment(*, old_query: bool = False) -> Path:
 
 
 def cat_chains(align_dir: Path, *, old_query: bool = False) -> None:
-    chains = list(fs.sorted_naturally(align_dir.glob("chr*/target.chain.gz")))
+    chains = list(fs.sorted_naturally(align_dir.glob("chr*/target.over.chain.gz")))
     target = "IRGSP-1.0"
     query = "NIP-T2T"
     if old_query:
         target, query = query, target
     stem = f"{target}To{query}"
     outfile = Path(f"{stem}.over.chain.gz")
-    with subp.open_(outfile, "wb") as fout:
-        subp.run(["cat", *chains], stdout=fout)
+    if_ = fs.is_outdated(outfile, chains)
+    with subp.open_(outfile, "wb", if_=if_) as fout:
+        subp.run(["cat", *chains], stdout=fout, if_=if_)
 
 
 def download() -> None:
