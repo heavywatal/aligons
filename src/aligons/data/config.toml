@@ -59,6 +59,12 @@ document_root = "/var/www/html"
 load = "symlink"
 window_width = 1200
 
+[jbrowse.configuration.theme.palette]
+primary.main = "#186038"
+secondary.main = "#009259"
+tertiary.main = "#8fc21f"
+quaternary.main = "#d9e000"
+
 [[jbrowse.assemblies]]
 species = "oryza_sativa"
 location = "6:27,475,000..27,485,000"

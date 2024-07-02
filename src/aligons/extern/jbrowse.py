@@ -210,7 +210,7 @@ class JBrowseConfig:
         assembly = cfg["assemblies"][0]
         if refnamealiases := self.make_refnamealiases():
             assembly["refNameAliases"] = refnamealiases
-        cfg["configuration"] = make_configuration()
+        cfg["configuration"] = config["jbrowse"]["configuration"]
         with config_json.open("w") as fout:
             json.dump(cfg, fout, indent=2)
 
@@ -318,21 +318,6 @@ def clade_color(label: str, default: str = "#888888") -> str:
     }
     clade = label.rsplit("-", 1)[-1]
     return colors.get(clade, default)
-
-
-def make_configuration() -> dict[str, Any]:
-    return {"theme": make_theme()}
-
-
-def make_theme() -> dict[str, Any]:
-    return {
-        "palette": {
-            "primary": {"main": "#186038"},
-            "secondary": {"main": "#009259"},
-            "tertiary": {"main": "#8fc21f"},
-            "quaternary": {"main": "#d9e000"},
-        },
-    }
 
 
 def add_plantdhs(jbc: JBrowseConfig) -> None:
