@@ -374,12 +374,6 @@ def jbrowse(args: subp.Args, **kwargs: Any) -> subp.CompletedProcess[Any]:
     return subp.run(["jbrowse", *args], **kwargs)
 
 
-def npx_jbrowse(args: subp.Args, version: str = "") -> None:
-    pkg = "@jbrowse/cli"
-    pkg = f"{pkg}@{version}" if version else pkg
-    subp.run(["npx", pkg, *args])
-
-
 def redirect_html(url: str) -> str:
     meta = f"""<meta http-equiv="refresh" content="1; URL={url}">"""
     return f"""<html><head>{meta}</head><body>Redirecting</body></html>"""
