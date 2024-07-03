@@ -205,8 +205,10 @@ class JBrowseConfig:
         for track in cfg["tracks"]:
             display = make_display(track["trackId"], track["adapter"]["type"])
             track["displays"] = [display]
+        assembly = cfg["assemblies"][0]
+        assembly["sequence"]["name"] = assembly["name"] + ".fa"
+        assembly["sequence"]["displays"] = [LinearGCContentDisplay(assembly["name"])]
         if refnamealiases := self.make_refnamealiases():
-            assembly = cfg["assemblies"][0]
             assembly["refNameAliases"] = refnamealiases
         cfg["configuration"] = config["jbrowse"]["configuration"]
         with config_json.open("w") as fout:
@@ -222,14 +224,10 @@ class JBrowseConfig:
         for track in cfg["tracks"]:
             track_types[track["trackId"]] = track["type"]
         view_tracks: list[dict[str, Any]] = []
+        view_tracks.append(session_track_refseq(assembly["name"]))
         for track_id in self.select_tracks():
             track_type = track_types[track_id]
-            track: dict[str, Any] = {
-                "type": track_type,
-                "configuration": track_id,
-                "displays": [session_display(track_id, track_type)],
-            }
-            view_tracks.append(track)
+            view_tracks.append(session_track(track_id, track_type))
         view["tracks"] = view_tracks
         return {
             "name": f"New {self.target.name} session",
@@ -267,6 +265,18 @@ def make_display(track_id: str, adapter_type: str) -> dict[str, Any]:
     if adapter_type.startswith("Cram"):
         return LinearPileupDisplay(track_id)
     return {}
+
+
+def LinearGCContentDisplay(track_id: str, height: int = 20) -> dict[str, Any]:  # noqa: N802
+    display_type = "LinearGCContentDisplay"
+    return {
+        "type": display_type,
+        "displayId": f"{track_id}-{display_type}",
+        "height": height,
+        "minScore": 0,
+        "maxScore": 1,
+        "renderers": DensityRenderer("#000"),
+    }
 
 
 def LinearBasicDisplay(  # noqa: N802
@@ -313,6 +323,15 @@ def SvgFeatureRenderer(  # noqa: N802
     return item
 
 
+def DensityRenderer(color: str) -> dict[str, Any]:  # noqa: N802
+    return {
+        "DensityRenderer": {
+            "type": "DensityRenderer",
+            "posColor": color,
+        }
+    }
+
+
 def XYPlotRenderer(color: str) -> dict[str, Any]:  # noqa: N802
     return {
         "XYPlotRenderer": {
@@ -335,8 +354,28 @@ def clade_color(label: str, default: str = "#888888") -> str:
     return colors.get(clade, default)
 
 
+def session_track_refseq(asm_name: str) -> dict[str, Any]:
+    track_type = "ReferenceSequenceTrack"
+    display = session_display(asm_name, track_type)
+    display["rendererTypeNameState"] = "density"
+    return {
+        "type": track_type,
+        "configuration": f"{asm_name}-{track_type}",
+        "displays": [display],
+    }
+
+
+def session_track(track_id: str, track_type: str) -> dict[str, Any]:
+    return {
+        "type": track_type,
+        "configuration": track_id,
+        "displays": [session_display(track_id, track_type)],
+    }
+
+
 def session_display(track_id: str, track_type: str) -> dict[str, Any]:
     display_map = {
+        "ReferenceSequenceTrack": "LinearGCContentDisplay",
         "FeatureTrack": "LinearBasicDisplay",
         "QuantitativeTrack": "LinearWiggleDisplay",
         "AlignmentsTrack": "LinearPileupDisplay",
