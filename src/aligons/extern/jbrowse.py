@@ -268,11 +268,7 @@ def make_display(track_id: str, adapter_type: str) -> dict[str, Any]:
 
 
 def LinearGCContentDisplay(track_id: str, height: int = 20) -> dict[str, Any]:  # noqa: N802
-    display_type = "LinearGCContentDisplay"
-    return {
-        "type": display_type,
-        "displayId": f"{track_id}-{display_type}",
-        "height": height,
+    return _display("LinearGCContent", track_id, height) | {
         "minScore": 0,
         "maxScore": 1,
         "renderers": DensityRenderer("#000"),
@@ -283,31 +279,28 @@ def LinearBasicDisplay(  # noqa: N802
     track_id: str, height: int = 30, *, labels: bool = False, desc: bool = False
 ) -> dict[str, Any]:
     clade = track_id.rsplit("-", 1)[-1]
-    return {
-        "type": "LinearBasicDisplay",
-        "displayId": f"{track_id}-LinearBasicDisplay",
-        "height": height,
+    return _display("LinearBasic", track_id, height) | {
         "renderer": SvgFeatureRenderer(palette_get(clade), labels=labels, desc=desc),
     }
 
 
 def LinearWiggleDisplay(track_id: str, height: int = 40) -> dict[str, Any]:  # noqa: N802
+    item = _display("LinearWiggle", track_id, height)
     clade = track_id.rsplit("-", 1)[-1]
-    item: dict[str, Any] = {
-        "type": "LinearWiggleDisplay",
-        "displayId": f"{track_id}-LinearWiggleDisplay",
-        "height": height,
-        "renderers": XYPlotRenderer(palette_get(clade)),
-    }
+    item["renderers"] = XYPlotRenderer(palette_get(clade))
     if "phast" in track_id.lower():
         item["constraints"] = {"max": 1, "min": 0}
     return item
 
 
 def LinearPileupDisplay(track_id: str, height: int = 20) -> dict[str, Any]:  # noqa: N802
+    return _display("LinearPileup", track_id, height)
+
+
+def _display(prefix: str, track_id: str, height: int) -> dict[str, Any]:
     return {
-        "type": "LinearPileupDisplay",
-        "displayId": f"{track_id}-LinearPileupDisplay",
+        "type": f"{prefix}Display",
+        "displayId": f"{track_id}-{prefix}Display",
         "height": height,
     }
 
