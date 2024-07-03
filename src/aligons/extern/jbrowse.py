@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv or None)
     jb = JBrowse()
     if args.admin:
-        jb.admin_server()
+        jb.admin_server(args.indir)
         return
     if args.upgrade:
         jb.upgrade()
@@ -40,8 +40,15 @@ class JBrowse:
         self.slug = f"jbrowse-{self.version}"
         self.root = document_root / self.slug
 
-    def admin_server(self) -> None:
-        jbrowse(["admin-server", "--root", self.root])
+    def admin_server(self, indir: Path) -> None:
+        jbc = JBrowseConfig(self.root, indir)
+        cmd = ["jbrowse", "admin-server", "--root", self.root]
+        p = subp.Popen(cmd, stdout=subp.PIPE)
+        assert p.stdout is not None
+        for line in p.stdout:
+            if mobj := re.search(rb"https?://\S+", line):
+                url = mobj.group(0).decode()
+                _log.info(f"{url}&config={jbc.relpath}/config.json")
 
     def upgrade(self) -> None:
         jbrowse(["upgrade", self.root])
