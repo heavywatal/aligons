@@ -65,6 +65,16 @@ secondary.main = "#009259"
 tertiary.main = "#8fc21f"
 quaternary.main = "#d9e000"
 
+[jbrowse.palette]
+bep = "#C82828"
+poaceae = "#C8641E"
+monocot = "#C8B414"
+solanum = "#C82828"
+solanaceae = "#C8641E"
+lamiids = "#C8B414"
+fabaceae = "#C82828"
+brassicaceae = "#C82828"
+
 [[jbrowse.assemblies]]
 species = "oryza_sativa"
 location = "6:27,475,000..27,485,000"

@@ -282,20 +282,22 @@ def LinearGCContentDisplay(track_id: str, height: int = 20) -> dict[str, Any]:  
 def LinearBasicDisplay(  # noqa: N802
     track_id: str, height: int = 30, *, labels: bool = False, desc: bool = False
 ) -> dict[str, Any]:
+    clade = track_id.rsplit("-", 1)[-1]
     return {
         "type": "LinearBasicDisplay",
         "displayId": f"{track_id}-LinearBasicDisplay",
         "height": height,
-        "renderer": SvgFeatureRenderer(clade_color(track_id), labels=labels, desc=desc),
+        "renderer": SvgFeatureRenderer(palette_get(clade), labels=labels, desc=desc),
     }
 
 
 def LinearWiggleDisplay(track_id: str, height: int = 40) -> dict[str, Any]:  # noqa: N802
+    clade = track_id.rsplit("-", 1)[-1]
     item: dict[str, Any] = {
         "type": "LinearWiggleDisplay",
         "displayId": f"{track_id}-LinearWiggleDisplay",
         "height": height,
-        "renderers": XYPlotRenderer(clade_color(track_id)),
+        "renderers": XYPlotRenderer(palette_get(clade)),
     }
     if "phast" in track_id.lower():
         item["constraints"] = {"max": 1, "min": 0}
@@ -339,19 +341,6 @@ def XYPlotRenderer(color: str) -> dict[str, Any]:  # noqa: N802
             "color": color,
         }
     }
-
-
-def clade_color(label: str, default: str = "#888888") -> str:
-    colors = {
-        "bep": "#C82828",
-        "poaceae": "#C8641E",
-        "monocot": "#C8B414",
-        "solanum": "#C82828",
-        "solanaceae": "#C8641E",
-        "lamiids": "#C8B414",
-    }
-    clade = label.rsplit("-", 1)[-1]
-    return colors.get(clade, default)
 
 
 def session_track_refseq(asm_name: str) -> dict[str, Any]:
@@ -471,6 +460,10 @@ def find_config_assembly(species: str) -> dict[str, Any]:
     key, value = next(iter(chrom_sizes.items()))
     end = min(10000, value)
     return {"species": species, "location": f"{key}:1..{end}"}
+
+
+def palette_get(name: str, default: str = "#888") -> str:
+    return config["jbrowse"]["palette"].get(name, default)
 
 
 if __name__ == "__main__":
