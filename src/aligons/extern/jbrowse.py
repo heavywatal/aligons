@@ -202,13 +202,11 @@ class JBrowseConfig:
         config_json = self.target / "config.json"
         with config_json.open() as fin:
             cfg = json.load(fin)
-        cfg_tracks: dict[str, str] = {}
         for track in cfg["tracks"]:
-            cfg_tracks[track["trackId"]] = track["type"]
-            if track["adapter"]["type"].startswith("Bed"):
-                set_LinearBasicDisplay(track)
-        assembly = cfg["assemblies"][0]
+            display = make_display(track["trackId"], track["adapter"]["type"])
+            track["displays"] = [display]
         if refnamealiases := self.make_refnamealiases():
+            assembly = cfg["assemblies"][0]
             assembly["refNameAliases"] = refnamealiases
         cfg["configuration"] = config["jbrowse"]["configuration"]
         with config_json.open("w") as fout:
@@ -225,11 +223,12 @@ class JBrowseConfig:
             track_types[track["trackId"]] = track["type"]
         view_tracks: list[dict[str, Any]] = []
         for track_id in self.select_tracks():
+            track_type = track_types[track_id]
             track: dict[str, Any] = {
-                "type": track_types[track_id],
+                "type": track_type,
                 "configuration": track_id,
+                "displays": [session_display(track_id, track_type)],
             }
-            track["displays"] = [make_display(track)]
             view_tracks.append(track)
         view["tracks"] = view_tracks
         return {
@@ -256,55 +255,71 @@ class JBrowseConfig:
         }
 
 
-def make_display(track: dict[str, Any]) -> dict[str, Any]:
-    item = {}
-    if track["type"] == "FeatureTrack":
-        if "gff3" in track["configuration"]:
-            item = {
-                "type": "LinearBasicDisplay",
-                "height": 60,
-            }
-        else:  # bed
-            item = {
-                "type": "LinearBasicDisplay",
-                "height": 30,
-                "trackShowLabels": False,
-                "trackShowDescriptions": False,
-            }
-    elif track["type"] == "QuantitativeTrack":
-        item = make_LinearWiggleDisplay(track["configuration"])
-    elif track["type"] == "AlignmentsTrack":
-        item = {
-            "type": "LinearPileupDisplay",
-            "height": 20,
-        }
-    item["configuration"] = "-".join([track["configuration"], str(item["type"])])
-    return item
+def make_display(track_id: str, adapter_type: str) -> dict[str, Any]:
+    if adapter_type.startswith("Bed"):
+        return LinearBasicDisplay(track_id)
+    if adapter_type.startswith("Gff"):
+        if "gff3" in track_id:
+            return LinearBasicDisplay(track_id, 60, labels=True, desc=True)
+        return LinearBasicDisplay(track_id, 40)
+    if adapter_type.startswith("BigWig"):
+        return LinearWiggleDisplay(track_id)
+    if adapter_type.startswith("Cram"):
+        return LinearPileupDisplay(track_id)
+    return {}
 
 
-def set_LinearBasicDisplay(track: dict[str, Any]) -> None:  # noqa: N802
-    track["displays"] = [
-        {
-            "type": "LinearBasicDisplay",
-            "displayId": track["trackId"] + "-LinearBasicDisplay",
-            "renderer": {
-                "type": "SvgFeatureRenderer",
-                "color1": clade_color(track["trackId"]),
-                "height": 10,
-            },
-        }
-    ]
+def LinearBasicDisplay(  # noqa: N802
+    track_id: str, height: int = 30, *, labels: bool = False, desc: bool = False
+) -> dict[str, Any]:
+    return {
+        "type": "LinearBasicDisplay",
+        "displayId": f"{track_id}-LinearBasicDisplay",
+        "height": height,
+        "renderer": SvgFeatureRenderer(clade_color(track_id), labels=labels, desc=desc),
+    }
 
 
-def make_LinearWiggleDisplay(configuration: str) -> dict[str, Any]:  # noqa: N802
+def LinearWiggleDisplay(track_id: str, height: int = 40) -> dict[str, Any]:  # noqa: N802
     item: dict[str, Any] = {
         "type": "LinearWiggleDisplay",
-        "height": 40,
-        "color": clade_color(configuration),
+        "displayId": f"{track_id}-LinearWiggleDisplay",
+        "height": height,
+        "renderers": XYPlotRenderer(clade_color(track_id)),
     }
-    if "phast" in configuration.lower():
+    if "phast" in track_id.lower():
         item["constraints"] = {"max": 1, "min": 0}
     return item
+
+
+def LinearPileupDisplay(track_id: str, height: int = 20) -> dict[str, Any]:  # noqa: N802
+    return {
+        "type": "LinearPileupDisplay",
+        "displayId": f"{track_id}-LinearPileupDisplay",
+        "height": height,
+    }
+
+
+def SvgFeatureRenderer(  # noqa: N802
+    color1: str = "", *, labels: bool = False, desc: bool = False
+) -> dict[str, Any]:
+    item = {
+        "type": "SvgFeatureRenderer",
+        "showLabels": labels,
+        "showDescriptions": desc,
+    }
+    if color1:
+        item["color1"] = color1
+    return item
+
+
+def XYPlotRenderer(color: str) -> dict[str, Any]:  # noqa: N802
+    return {
+        "XYPlotRenderer": {
+            "type": "XYPlotRenderer",
+            "color": color,
+        }
+    }
 
 
 def clade_color(label: str, default: str = "#888888") -> str:
@@ -318,6 +333,19 @@ def clade_color(label: str, default: str = "#888888") -> str:
     }
     clade = label.rsplit("-", 1)[-1]
     return colors.get(clade, default)
+
+
+def session_display(track_id: str, track_type: str) -> dict[str, Any]:
+    display_map = {
+        "FeatureTrack": "LinearBasicDisplay",
+        "QuantitativeTrack": "LinearWiggleDisplay",
+        "AlignmentsTrack": "LinearPileupDisplay",
+    }
+    display_type = display_map[track_type]
+    return {
+        "type": display_type,
+        "configuration": f"{track_id}-{display_type}",
+    }
 
 
 def add_plantdhs(jbc: JBrowseConfig) -> None:
