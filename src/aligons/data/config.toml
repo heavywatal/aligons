@@ -1,10 +1,10 @@
 [lastz]
 step = 10
-gap = "400,30"  # open,extend
-xdrop = 910  # 10 * scores[A][A]
-hspthresh = 3000
-ydrop = 9400  # open + 30 * extend
-gappedthresh = 3000
+# gap = "400,30"  # open,extend
+# hspthresh = 3000
+# gappedthresh = 3000
+# xdrop = 910  # 10 * scores[A][A]
+# ydrop = 9400  # open + 30 * extend
 inner = 2000  # 0
 
 [axtChain]
