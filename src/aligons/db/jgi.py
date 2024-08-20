@@ -1,8 +1,8 @@
 import logging
 import re
+import xml.etree.ElementTree as ET
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-from xml.etree import ElementTree
 
 from aligons.util import cli, config, dl, fs, tomli_w
 
@@ -78,7 +78,7 @@ def _dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
 
 
 def _iter_dataset_xml(xml: Path, organism: str) -> Iterable[dict[str, str | list[str]]]:
-    tree = ElementTree.parse(xml)  # noqa: S314
+    tree = ET.parse(xml)  # noqa: S314
     xpath = f"folder[@name='{organism}']/folder"
     for sp_folder in tree.iterfind(xpath):
         _log.debug(sp_folder.attrib)
@@ -88,7 +88,7 @@ def _iter_dataset_xml(xml: Path, organism: str) -> Iterable[dict[str, str | list
                 yield d
 
 
-def _as_dict(folder: ElementTree.Element) -> dict[str, str | list[str]]:
+def _as_dict(folder: ET.Element) -> dict[str, str | list[str]]:
     try:
         elem_assembly = next(_finditer(r"softmasked\.fa\.gz$", folder, "filename"))
         elem_annot = next(_finditer(r"gene\.gff3?\.gz$", folder, "filename"))
@@ -118,9 +118,7 @@ def _parse_filename_gff(name: str) -> list[str]:
     return stem.split("_", 1)
 
 
-def _finditer(
-    pattern: str, folder: ElementTree.Element, attrib: str
-) -> Iterator[ElementTree.Element]:
+def _finditer(pattern: str, folder: ET.Element, attrib: str) -> Iterator[ET.Element]:
     for elem in folder.iter("file"):
         if re.search(pattern, elem.attrib[attrib]):
             yield elem
@@ -130,7 +128,7 @@ def _fetch_xml(organism: str) -> Path:
     outfile = _rsrc.db_root(_HOST) / (organism + ".xml")
     all_xml = _fetch_xml_impl("Phytozome")
     if fs.is_outdated(outfile, all_xml):
-        tree = ElementTree.parse(all_xml)  # noqa: S314
+        tree = ET.parse(all_xml)  # noqa: S314
         xpath = f"folder[@name!='{organism}']"
         for e in tree.getroot().findall(xpath):
             tree.getroot().remove(e)
