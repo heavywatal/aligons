@@ -31,14 +31,14 @@ def test_write_config(tmp_path: Path, caplog: pytest.LogCaptureFixture):
     assert "+" not in caplog.text
     with file.open("r") as fin:
         content = fin.read()
-    content = re.sub(r"(hspthresh) = \d+", r"\1 = 999", content)
+    content = re.sub(r"(inner) = \d+", r"\1 = 999", content)
     content = re.sub(r"\[multiz\][^[]+", "\n[MISSING]\nx = 999\n\n", content)
     modified = tmp_path / "aligons-mod.toml"
     with modified.open("w") as fout:
         fout.write(content)
     with pytest.raises(ValueError, match="config"):
         log_config(modified)
-    assert "'hspthresh': 999" in caplog.text
+    assert "'inner': 999" in caplog.text
     assert "-[multiz] {}" in caplog.text
     assert "+[multiz] {" in caplog.text
     assert "-[MISSING] {'x': 999}" in caplog.text
