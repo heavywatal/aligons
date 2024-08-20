@@ -21,6 +21,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-a", "--admin", action="store_true")
     parser.add_argument("-u", "--upgrade", action="store_true")
+    parser.add_argument("-l", "--list", action="store_true")
     parser.add_argument("indir", type=Path)  # conservation/oryza_sativa/
     args = parser.parse_args(argv or None)
     jb = JBrowse()
@@ -29,6 +30,10 @@ def main(argv: list[str] | None = None) -> None:
         return
     if args.upgrade:
         jb.upgrade()
+        return
+    if args.list:
+        for d in args.indir.iterdir():
+            jb.print_url(d)
         return
     jb.config(args.indir)
 
@@ -41,7 +46,7 @@ class JBrowse:
         self.root = document_root / self.slug
 
     def admin_server(self, indir: Path) -> None:
-        jbc = JBrowseConfig(self.root, indir)
+        jbc = JBrowseConfig(self.root, self.slug, indir)
         cmd = ["jbrowse", "admin-server", "--root", self.root]
         p = subp.Popen(cmd, stdout=subp.PIPE)
         assert p.stdout is not None
@@ -55,12 +60,17 @@ class JBrowse:
 
     def config(self, indir: Path) -> None:
         self._create()
-        jbc = JBrowseConfig(self.root, indir)
+        jbc = JBrowseConfig(self.root, self.slug, indir)
         jbc.add()
         jbc.add_external()
         jbc.configure()
         jbc.set_default_session()
-        jbc.write_redirect_html(self.slug)
+        jbc.write_redirect_html()
+
+    def print_url(self, indir: Path) -> None:
+        jbc = JBrowseConfig(self.root, self.slug, indir)
+        if jbc.target.exists():
+            _log.info(jbc.url)
 
     def _create(self) -> None:
         if not self.root.exists():
@@ -79,12 +89,12 @@ class JBrowse:
         return mobj.group(1)
 
     def _help(self) -> str:
-        p = jbrowse(["help"], stdout=subp.PIPE)
+        p = jbrowse(["help"], stdout=subp.PIPE, quiet=True)
         return p.stdout.decode()
 
 
 class JBrowseConfig:
-    def __init__(self, root: Path, cons_species: Path) -> None:
+    def __init__(self, root: Path, slug: str, cons_species: Path) -> None:
         self.load = config["jbrowse"]["load"]
         self.cons_dir = cons_species
         self.species = self.cons_dir.name
@@ -93,14 +103,16 @@ class JBrowseConfig:
         self.relpath = Path(vnn_dir.name) / self.species
         self.target = root / self.relpath
         self.tracks: list[str] = []
-        _log.info(self.target)
+        self.slug = slug
+        self.url = f"http://localhost/{slug}/{self.relpath}/"
+        _log.debug(self.target)
 
-    def write_redirect_html(self, slug: str) -> None:
-        url = f"/{slug}/?config={self.relpath}/config.json"
+    def write_redirect_html(self) -> None:
+        url = f"/{self.slug}/?config={self.relpath}/config.json"
         if not cli.dry_run:
             with (self.target / "index.html").open("w") as fout:
                 fout.write(redirect_html(url))
-        _log.info(f"http://localhost/{Path(slug, self.relpath)}/ -> {url}")
+        _log.info(f"{self.url}/ -> {url}")
 
     def add(self) -> None:
         self.target.mkdir(0o755, parents=True, exist_ok=True)
