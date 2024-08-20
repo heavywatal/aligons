@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+
 from aligons.db import phylo
 
 newick_standard = """(

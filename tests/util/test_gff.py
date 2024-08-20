@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import pytest
+
 from aligons.util import gff
 
 data_dir = Path(__file__).parent.parent / "_data"

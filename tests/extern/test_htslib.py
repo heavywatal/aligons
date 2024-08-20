@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import pytest
+
 from aligons.extern import htslib
 
 data_dir = Path(__file__).parent.parent / "_data"

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+
 from aligons.util import fs
 
 data_dir = Path(__file__).parent.parent / "_data"

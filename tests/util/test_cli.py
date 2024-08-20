@@ -2,6 +2,7 @@ import logging
 import time
 
 import pytest
+
 from aligons.util import cli
 
 

@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 
 import pytest
+
 from aligons.util import config, log_config, update_config_if_exists, update_nested
 
 
