@@ -126,7 +126,7 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path, **kwargs: Any) -> Path:
         subdir.mkdir(0o755, parents=True, exist_ok=True)
     axt_gz = subdir / f"{query_label}.axt.gz"
     opts = subp.optargs(config["lastz"] | kwargs)
-    args = ["lastz", t2bit, q2bit, "--format=axt", "--ambiguous=n", *opts]
+    args = ["lastz", t2bit, q2bit, "--format=axt", *opts]
     is_to_run = fs.is_outdated(axt_gz, [t2bit, q2bit])
     with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
         return subp.gzip(p.stdout, axt_gz, if_=is_to_run)
@@ -138,6 +138,7 @@ def _lastz_options(target: str, query: str) -> dict[str, Any]:
     if is_close:
         opts["seed"] = "match12"
         opts["match"] = "1,5"
+        opts["inner"] = int(config["lastz"].get("inner", 0) / 100)
     return opts
 
 
