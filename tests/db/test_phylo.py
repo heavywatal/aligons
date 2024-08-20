@@ -13,32 +13,32 @@ newick_standard = """(
 )poaceae:0.5;"""
 
 
-@pytest.fixture()
+@pytest.fixture
 def newick():
     return phylo.remove_whitespace(newick_standard)
 
 
-@pytest.fixture()
+@pytest.fixture
 def newick_cladogram(newick: str):
     return phylo.remove_lengths(newick)
 
 
-@pytest.fixture()
+@pytest.fixture
 def newick_popular(newick: str):  # mod
     return phylo.remove_inner_names(newick)
 
 
-@pytest.fixture()
+@pytest.fixture
 def newick_cladogram_tips(newick_cladogram: str):
     return phylo.remove_inner_names(newick_cladogram)
 
 
-@pytest.fixture()
+@pytest.fixture
 def newick_short(newick: str):  # mod
     return phylo.shorten_names(newick)
 
 
-@pytest.fixture()
+@pytest.fixture
 def newick_cladogram_short_tips(newick_cladogram_tips: str):  # mod
     return phylo.shorten_names(newick_cladogram_tips)
 

@@ -19,7 +19,7 @@ def tmp_path_module(tmp_path_factory: pytest.TempPathFactory):
     return tmp_path_factory.mktemp("dl")
 
 
-@pytest.fixture()
+@pytest.fixture
 def monkey_url(tmp_path_module: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path_module)
     monkeypatch.setattr(requests.Session, "request", mock_session_request)
