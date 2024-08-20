@@ -1,4 +1,5 @@
 [lastz]
+step = 10
 gap = "400,30"  # open,extend
 xdrop = 910  # 10 * scores[A][A]
 hspthresh = 3000

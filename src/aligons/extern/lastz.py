@@ -8,6 +8,7 @@ https://lastz.github.io/lastz/
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from aligons.db import api
 from aligons.util import cli, config, fs, maf, subp
@@ -88,6 +89,7 @@ class PairwiseGenomeAlignment:
         self._target_sizes = api.fasize(target)
         self._query_sizes = api.fasize(query)
         self._outdir = Path("pairwise") / target / query
+        self._lastz_opts = _lastz_options(target, query)
 
     def run(self) -> list[cli.Future[Path]]:
         pool = cli.ThreadPool()
@@ -100,7 +102,7 @@ class PairwiseGenomeAlignment:
         return [pool.submit(self.wait_integrate, futures) for futures in ll]
 
     def align_chr(self, target_2bit: Path, query_2bit: Path) -> Path:
-        axt_gz = lastz(target_2bit, query_2bit, self._outdir)
+        axt_gz = lastz(target_2bit, query_2bit, self._outdir, **self._lastz_opts)
         return kent.axtChain(axt_gz, target_2bit, query_2bit)
 
     def wait_integrate(self, futures: list[cli.Future[Path]]) -> Path:
@@ -116,17 +118,26 @@ class PairwiseGenomeAlignment:
         return fs.print_if_exists(sing_maf)
 
 
-def lastz(t2bit: Path, q2bit: Path, outdir: Path) -> Path:
+def lastz(t2bit: Path, q2bit: Path, outdir: Path, **kwargs: Any) -> Path:
     target_label = t2bit.stem.rsplit("dna_sm.", 1)[1]
     query_label = q2bit.stem.rsplit("dna_sm.", 1)[1]
     subdir = outdir / target_label
     if not cli.dry_run:
         subdir.mkdir(0o755, parents=True, exist_ok=True)
     axt_gz = subdir / f"{query_label}.axt.gz"
-    args = ["lastz", t2bit, q2bit, "--format=axt", *subp.optargs(config["lastz"])]
+    opts = subp.optargs(config["lastz"] | kwargs)
+    args = ["lastz", t2bit, q2bit, "--format=axt", "--ambiguous=n", *opts]
     is_to_run = fs.is_outdated(axt_gz, [t2bit, q2bit])
     with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
         return subp.gzip(p.stdout, axt_gz, if_=is_to_run)
+
+
+def _lastz_options(target: str, query: str) -> dict[str, Any]:
+    opts: dict[str, Any] = {}
+    close = target.split("_", 1)[0] == query.split("_", 1)[0]
+    if close:
+        opts["seed"] = "match12"
+    return opts
 
 
 if __name__ == "__main__":
