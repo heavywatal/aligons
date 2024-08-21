@@ -104,7 +104,8 @@ class JBrowseConfig:
         self.target = root / self.relpath
         self.tracks: list[str] = []
         self.slug = slug
-        self.url = f"http://localhost/{slug}/{self.relpath}/"
+        base_url = config["jbrowse"]["base_url"].rstrip("/")
+        self.url = f"{base_url}/{slug}/{self.relpath}/"
         _log.debug(self.target)
 
     def write_redirect_html(self) -> None:
@@ -112,7 +113,7 @@ class JBrowseConfig:
         if not cli.dry_run:
             with (self.target / "index.html").open("w") as fout:
                 fout.write(redirect_html(url))
-        _log.info(f"{self.url}/ -> {url}")
+        _log.info(f"{self.url} -> {url}")
 
     def add(self) -> None:
         self.target.mkdir(0o755, parents=True, exist_ok=True)
