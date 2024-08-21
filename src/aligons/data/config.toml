@@ -7,6 +7,9 @@ step = 10
 # ydrop = 9400  # open + 30 * extend
 inner = 2000  # 0
 
+[lastz.close]
+solanum_lycopersicum = ["solanum_pennellii"]
+
 [axtChain]
 minScore = 3000  # 1000
 linearGap = "medium"
