@@ -7,6 +7,7 @@ http://compgen.cshl.edu/phast/
 """
 
 import logging
+import os
 import re
 import sys
 from pathlib import Path
@@ -72,11 +73,11 @@ def phastCons(  # noqa: N802
     with subp.open_(wig, "wb", if_=if_) as fout:
         subp.run(args, stdout=fout, if_=if_)
     fs.print_if_exists(bed)
+    kent.wigToBigWig(wig, chrom_sizes)
+    fs.print_if_exists(bw)
     e_mods = [estimate_base.with_suffix(x) for x in (".cons.mod", ".noncons.mod")]
     if e_mods[0].exists() and e_mods[1].exists():
         consEntropy(conf["target-coverage"], conf["expected-length"], *e_mods)
-    kent.wigToBigWig(wig, chrom_sizes)
-    fs.print_if_exists(bw)
     return (bw, bed)
 
 
@@ -189,6 +190,12 @@ def phyloBoot(mods: list[Path], outfile: Path) -> None:  # noqa: N802
 def consEntropy(  # noqa: N802
     target_coverage: float, expected_length: int, cons_mod: Path, noncons_mod: Path
 ) -> Path:
+    with cons_mod.open("rt") as fin:
+        tree = extract_tree(fin.read())
+    tree_size = len(phylo.extract_tip_names(tree))
+    if tree_size > 12:  # noqa: PLR2004
+        _log.debug(f"{tree_size=} is too large for consEntropy: {tree}")
+        return Path(os.devnull)
     cov = str(target_coverage)
     exp_len = str(expected_length)
     args = ["consEntropy", cov, exp_len, cons_mod, noncons_mod]
@@ -208,12 +215,12 @@ def most_conserved_mod(mods: list[Path]) -> Path:
     for mod in mods:
         with mod.open() as fin:
             content = fin.read()
-            lengths = phylo.extract_lengths(extract_tree(content))
-            total = sum(lengths)
-            _log.debug(f"{mod}: {total}")
-            if total < shortest_length:
-                shortest_length = total
-                conserved = content
+        lengths = phylo.extract_lengths(extract_tree(content))
+        total = sum(lengths)
+        _log.debug(f"{mod}: {total}")
+        if total < shortest_length:
+            shortest_length = total
+            conserved = content
     _log.debug(f"{shortest_length=}")
     with outfile.open("w") as fout:
         fout.write(conserved)
