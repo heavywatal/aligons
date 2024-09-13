@@ -135,6 +135,7 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path, **kwargs: Any) -> Path:
 def _lastz_options(target: str, query: str) -> dict[str, Any]:
     opts: dict[str, Any] = {}
     if query in config["pairwise"]["close"].get(target, []):
+        opts["step"] = 10
         opts["seed"] = "match12"
         opts["match"] = "1,5"
         opts["inner"] = int(config["lastz"].get("inner", 0) / 100)

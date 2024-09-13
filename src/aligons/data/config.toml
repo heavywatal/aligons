@@ -1,5 +1,5 @@
 [lastz]
-step = 10
+step = 4
 # gap = "400,30"  # open,extend
 # hspthresh = 3000
 # gappedthresh = 3000
