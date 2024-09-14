@@ -84,17 +84,21 @@ def multiz(path: Path, tree: str) -> Path:
 def roast(
     sing_mafs: list[Path], tmpdir: str, outfile: str, tree: str
 ) -> subp.CompletedProcess[str]:
-    """Generate shell script to execute multiz."""
+    """Generate shell script to execute multiz.
+
+    Never use bash because it cannot pass {tree} to roast.
+    > roast.v3: tree specification contains too many '('
+    > roast.v3: improper character in tree specification: "
+    """
     options = config["multiz"]
     radius = options.get("R", 30)
     min_width = options.get("M", 1)
     ref_label = sing_mafs[0].name.split(".", 1)[0]
     tree = phylo.shorten_names(tree).replace(",", " ").rstrip(";")
-    args = (
-        f"roast - R={radius} M={min_width} T={tmpdir} E={ref_label} '{tree}' "
-        + " ".join([x.name for x in sing_mafs])
-        + f" {tmpdir}/{outfile}"
-    )
+    opts = [f"R={radius}", f"M={min_width}", f"T={tmpdir}"]
+    args = ["roast", "-", *opts, f"E={ref_label}", f"{tree}"]
+    args.extend([x.name for x in sing_mafs])
+    args.append(f"{tmpdir}/{outfile}")
     return subp.run(args, stdout=subp.PIPE, text=True)
 
 
