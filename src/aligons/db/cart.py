@@ -25,8 +25,12 @@ _files = [
 ]
 
 
-def db_prefix() -> Path:
-    return api.prefix("cart")
+def db_prefix(key: str = "") -> Path:
+    res = api.prefix("cart")
+    subdir = res / f"NIP_MH63_ZS97_{key}"
+    if subdir.exists():
+        return subdir
+    return res
 
 
 def main(argv: list[str] | None = None) -> None:

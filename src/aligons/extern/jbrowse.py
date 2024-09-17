@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from aligons.db import api, phylo, plantdhs, plantregmap
+from aligons.db import api, cart, phylo, plantdhs, plantregmap
 from aligons.util import cli, config, fs, resources_data, subp
 
 _log = logging.getLogger(__name__)
@@ -147,6 +147,7 @@ class JBrowseConfig:
             add_plantregmap(self, self.species)
             add_papers_data(self)
             add_plantdhs(self)
+            add_cart(self)
         elif self.species == "solanum_lycopersicum":
             add_plantregmap(self, self.species)
 
@@ -215,6 +216,7 @@ class JBrowseConfig:
         patt += r"|PhyloP|\.net$"
         patt += r"|_DNase$|_NPS$"
         patt += r"|^cns0|^most-cons|cns-poaceae|cns-monocot"
+        patt += r"|^NIP_"
         rex = re.compile(patt)
         return [x for x in self.tracks if not rex.search(x)]
 
@@ -387,6 +389,15 @@ def session_display(track_id: str, track_type: str) -> dict[str, Any]:
         "type": display_type,
         "configuration": f"{track_id}-{display_type}",
     }
+
+
+def add_cart(jbc: JBrowseConfig) -> None:
+    for path in fs.sorted_naturally(cart.db_prefix("bw").glob("NIP_*.bw")):
+        jbc.add_track(path, "CART-BigWig", trackid=path.stem)
+    for path in fs.sorted_naturally(cart.db_prefix("RNA").glob("NIP_*.bw")):
+        jbc.add_track(path, "CART-RNA", trackid=path.stem)
+    for path in fs.sorted_naturally(cart.db_prefix("Peaks").glob("NIP_*.bed.gz")):
+        jbc.add_track(path, "CART-Peaks", trackid=path.stem)
 
 
 def add_plantdhs(jbc: JBrowseConfig) -> None:
