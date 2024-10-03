@@ -57,15 +57,18 @@ def pull_galaxy(prefix: Path) -> None:
         img_dir.mkdir(parents=True, exist_ok=True)
         bindir.mkdir(parents=True, exist_ok=True)
     for x in latest_apps(table):
+        key = x.split(":", 1)[0]
+        if key.startswith("ucsc-") or key in ("phast", "repeatmasker"):
+            continue
         url = f"{_galaxy_prefix}{x}"
         sif = dl.fetch(url, img_dir / x).path
-        if sif.name.startswith("phast:1.5"):
-            continue
-        key = sif.name.split(":", 1)[0]
-        cmds = _galaxy_apps[key] or [key]
+        cmds = _galaxy_apps[key]
+        name = cmds[0] if cmds else key
+        sh = make_sh(sif, name, bindir)
+        _log.info(sh)
         for command in cmds:
-            sh = make_sh(sif, command, bindir)
-            _log.info(sh)
+            if command != sh.name:
+                fs.symlink(Path(sh.name), bindir / command)
 
 
 def make_sh(sif: Path, command: str = "", outdir: Path = Path()) -> Path:
@@ -73,11 +76,17 @@ def make_sh(sif: Path, command: str = "", outdir: Path = Path()) -> Path:
         command = sif.name.split(":", 1)[0]
     name = Path(command).name
     outfile = outdir / name
-    apptainer_exec = f"apptainer exec {sif.absolute()} {command} $@"
-    _log.debug(apptainer_exec)
+    content = (
+        "#!/bin/sh\n"
+        "APP=${0##*/}\n"
+        "SRC_DIR=$(cd $(dirname ${BASH_SOURCE:-$0}); pwd)\n"
+        "IMG_DIR=${SRC_DIR}/../biocontainers\n"
+        f"apptainer exec ${{IMG_DIR}}/{sif.name} $APP $@\n"
+    )
+    _log.debug(content)
     if not cli.dry_run:
         with outfile.open("w") as fout:
-            fout.write(f"#!/bin/sh\n{apptainer_exec}\n")
+            fout.write(content)
         outfile.chmod(0o775)
     return outfile
 
