@@ -5,34 +5,12 @@ from pathlib import Path
 import polars as pl
 
 from aligons.db import api
-from aligons.util import cli, dl, fs
+from aligons.util import cli, config, dl, fs
 
 _log = logging.getLogger(__name__)
 _galaxy_domain = "depot.galaxyproject.org"
 _galaxy_prefix = f"https://{_galaxy_domain}/singularity/"
-_galaxy_apps = {
-    "bedtools": [],
-    "jbrowse2": ["jbrowse"],
-    "jellyfish": [],
-    "last": ["maf-convert"],
-    "lastz": [],
-    "multiz": ["multiz", "roast", "maf_project"],
-    "phast": ["phastCons", "phyloP", "phyloFit", "phyloBoot", "msa_view"],
-    "repeatmasker": ["RepeatMasker", "/usr/local/share/RepeatMasker/famdb.py"],
-    "samtools": ["samtools", "bgzip", "tabix"],
-    "trf": [],
-    "ucsc-axtchain": ["axtChain"],
-    "ucsc-axtsort": ["axtSort"],
-    "ucsc-axttomaf": ["axtToMaf"],
-    "ucsc-chainmergesort": ["chainMergeSort"],
-    "ucsc-chainnet": ["chainNet"],
-    "ucsc-chainprenet": ["chainPreNet"],
-    "ucsc-fasize": ["faSize"],
-    "ucsc-fatotwobit": ["faToTwoBit"],
-    "ucsc-netsyntenic": ["netSyntenic"],
-    "ucsc-nettoaxt": ["netToAxt"],
-    "ucsc-wigtobigwib": ["wigToBigWig"],
-}
+_galaxy_apps = config["apptainer"]["galaxy_apps"]
 
 
 def main(argv: list[str] | None = None) -> None:
