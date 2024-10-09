@@ -52,7 +52,7 @@ def log_config(path: Path = Path(".log.aligons.toml")) -> None:
             raise ValueError(msg)
     else:
         with path.open("wb") as fout:
-            tomli_w.dump(_config_src, fout)
+            tomli_w.dump(config, fout)
 
 
 def _diff(lhs: Mapping[str, Any], rhs: Mapping[str, Any]) -> int:
