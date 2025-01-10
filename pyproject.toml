@@ -47,7 +47,6 @@ ignore = [
   "ANN401", # Any
   "S101", # assert
   "COM812", # trailing comma
-  "ISC001", # may conflict with formatter
   "TD",   # todo
   "FIX",  # todo
 ]

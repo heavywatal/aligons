@@ -172,8 +172,7 @@ def phyloFit(ss: Path, tree: str, *, conserved: bool) -> list[Path]:  # noqa: N8
         outfiles = [Path(f"{out_root}.mod")]
         option = ""
     cmd = (
-        f"phyloFit --tree {tree} --msa-format SS {option}"
-        f" --out-root {out_root} {ss!s}"
+        f"phyloFit --tree {tree} --msa-format SS {option} --out-root {out_root} {ss!s}"
     )
     subp.run(cmd, if_=fs.is_outdated(outfiles[0], ss))
     return outfiles
