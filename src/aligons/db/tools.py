@@ -141,7 +141,9 @@ def bgzip_or_symlink(infile: Path | dl.Response, outfile: Path) -> Path:
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         if htslib.to_be_bgzipped(outfile.name):
             index_bgzip(infile, outfile)
-        elif outfile.suffix == infile.suffix:
+        elif outfile.suffix == infile.suffix or (
+            outfile.suffix == ".bw" and infile.suffix.lower() == ".bigwig"
+        ):
             fs.symlink(infile, outfile, relative=True)
         elif outfile.suffix == ".gz":
             _log.debug(f"rare case: gzip {infile = } to {outfile = }")
