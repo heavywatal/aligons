@@ -1,0 +1,15 @@
+[[dataset]]
+species = "Oryza_sativa_MH63"
+version = "RS3"
+label = "OsMH63"
+clade = "bep"
+sequences = ["MH63RS3.fasta.gz"]
+annotation = "MH63RS3.gff.gz"
+
+[[dataset]]
+species = "Oryza_sativa_ZS97"
+version = "RS3"
+label = "OsZS97"
+clade = "bep"
+sequences = ["ZS97RS3.fasta.gz"]
+annotation = "ZS97RS3.gff.gz"
