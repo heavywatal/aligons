@@ -134,6 +134,9 @@ def test_shorten_labels(
 
 def test_shorten():
     assert phylo.shorten("Oryza_sativa") == "osat"
+    assert phylo.shorten("Oryza_sativa_MH63") == "mh63"
+    assert phylo.shorten("Oryza_sativa_ZS97") == "zs97"
+    assert phylo.shorten("Olea_europaea_sylvestris") == "oesy"
 
 
 def test_remove_whitespace():

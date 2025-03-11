@@ -121,7 +121,12 @@ def read_builtin_newick() -> str:
 
 
 def list_species(clade: str = "") -> list[str]:
-    return extract_names(get_subtree([clade] if clade else []))
+    tree = get_subtree([clade] if clade else [])
+    names = extract_names(tree)
+    exclude = config["db"]["exclude"]
+    if exclude:
+        names = list(filter(lambda x: x not in exclude, names))
+    return names
 
 
 def lengthen(species: str) -> str:
@@ -146,6 +151,10 @@ def shorten(name: str) -> str:
     """Oryza_sativa -> osat."""
     if name.lower() == "olea_europaea_sylvestris":
         return "oesy"
+    if name.lower() == "oryza_sativa_mh63":
+        return "mh63"
+    if name.lower() == "oryza_sativa_zs97":
+        return "zs97"
     split = name.lower().split("_")
     return split[0][0] + split[1][:3]
 

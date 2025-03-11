@@ -51,7 +51,10 @@
   (
     ((
       (
-        (oryza_sativa,leersia_perrieri)ehrhartoideae,
+        (
+          (oryza_sativa,(oryza_sativa_zs97,oryza_sativa_mh63))oryza,
+          leersia_perrieri
+        )ehrhartoideae,
         (brachypodium_distachyon,(aegilops_tauschii,hordeum_vulgare))pooideae
       )bep,
       (

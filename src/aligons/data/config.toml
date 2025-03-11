@@ -42,8 +42,9 @@ organism = "PhytozomeV13"
 
 [db]
 root = "~/db"
-origin = ["naro", "phytozome-{version}", "ensembl-{version}", "solgenomics", "plantregmap"]
+origin = ["naro", "phytozome-{version}", "ensembl-{version}", "solgenomics", "plantregmap", "riceome"]
 kmer = false
+exclude = ["oryza_sativa_mh63", "oryza_sativa_zs97"]
 # tree = ""  # string in newick format or path to newick file
 
 [jellyfish.count]
