@@ -94,7 +94,9 @@ def to_bed(maf_s: pl.LazyFrame) -> pl.LazyFrame:
             .otherwise(pl.col("start"))
         )
         .with_columns(end=(pl.col("start") + pl.col("size")))
-        .with_columns(name=pl.col("species").map_elements(phylo.lengthen))
+        .with_columns(
+            name=pl.col("species").map_elements(phylo.lengthen, return_dtype=pl.String)
+        )
         .with_columns(score=pl.lit("."))
         .select(["chrom", "start", "end", "name", "score", "strand"])
     )
