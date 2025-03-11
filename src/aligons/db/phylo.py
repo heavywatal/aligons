@@ -129,7 +129,7 @@ def lengthen(species: str) -> str:
         return next(_expand_short_names([species]))
     except StopIteration:
         _log.warning(f"cannot expand {species = }")
-        return ""
+        return species
 
 
 def _expand_short_names(short_names: list[str]) -> Iterator[str]:
