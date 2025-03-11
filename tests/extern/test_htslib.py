@@ -39,6 +39,16 @@ def test_fasta(tmp_path: Path):
         assert obs.read() == exp.read()
 
 
+def test_faidx_query(tmp_path: Path):
+    fa_gz = tmp_path / "short.fa.gz"
+    htslib.bgzip(b">1\nNATGCN\n", fa_gz)
+    region = "1:1-3"
+    p = htslib.popen_faidx_query(fa_gz, region, strand="+")
+    assert p.communicate()[0] == b">1:1-3\nNAT\n"
+    p = htslib.popen_faidx_query(fa_gz, region, strand="-")
+    assert p.communicate()[0] == b">1:1-3/rc\nATN\n"
+
+
 def test_gff(tmp_path: Path, caplog: pytest.LogCaptureFixture):
     caplog.set_level(logging.INFO)
     source_gff = data_dir / "genome.gff3"

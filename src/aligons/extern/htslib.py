@@ -76,12 +76,19 @@ def popen_faidx_query(
     bgz: Path | cli.Future[Path],
     region: str,
     *,
+    strand: str = "+",
     stdout: subp.FILE = subp.PIPE,
     if_: bool = True,
 ) -> subp.Popen[bytes]:
+    """Note: 1-based, inclusive coordinates.
+
+    E.g., the first 100 bases: 1-100.
+    """
     bgz = cli.result(bgz)
     fs.expect_suffix(bgz, ".gz")
     args: subp.Args = ["samtools", "faidx", bgz, region]
+    if strand == "-":
+        args.append("-i")
     return subp.popen(args, stdout=stdout, if_=if_)
 
 

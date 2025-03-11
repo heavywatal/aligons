@@ -7,6 +7,7 @@ from typing import Any
 import polars as pl
 
 from aligons.db import api, phylo
+from aligons.extern import htslib
 
 from . import cli, fs, subp
 
@@ -36,17 +37,10 @@ def subseqs_from_bed(infile: Path, flank: int = 0) -> Path:
 
 
 def subseq(chrom: str, start: int, end: int, name: str, strand: str, **_: Any) -> bytes:
-    """Note: 1-based, inclusive coordinates.
-
-    E.g., the first 100 bases: 1-100.
-    """
     bgz = api.genome_fa(name)
     region = f"{chrom}:{start}-{end}"
-    args: subp.Args = ["samtools", "faidx", bgz, region]
-    if strand == "-":
-        args.append("-i")
-    p = subp.run(args, stdout=subp.PIPE)
-    return p.stdout
+    p = htslib.popen_faidx_query(bgz, region, strand=strand)
+    return p.communicate()[0]
 
 
 def maf_block_ranges(infile: Path) -> Path:
