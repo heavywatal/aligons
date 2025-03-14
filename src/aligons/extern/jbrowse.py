@@ -149,6 +149,8 @@ class JBrowseConfig:
             add_plantdhs(self)
             add_cart(self)
             add_riceencode(self)
+        elif self.species.endswith("_mh63") or self.species.endswith("_zs97"):
+            add_riceencode(self, self.species)
         elif self.species == "solanum_lycopersicum":
             add_plantregmap(self, self.species)
 
@@ -272,6 +274,7 @@ class JBrowseConfig:
         filename = Path(path).name
         with (self.target / filename).open("w") as fout:
             fout.write(resources_alias.read_text())
+        fs.print_if_exists(self.target / filename)
         return {
             "adapter": {
                 "type": "RefNameAliasAdapter",
@@ -399,15 +402,16 @@ def session_display(track_id: str, track_type: str) -> dict[str, Any]:
     }
 
 
-def add_riceencode(jbc: JBrowseConfig) -> None:
+def add_riceencode(jbc: JBrowseConfig, species: str = "") -> None:
     for fmt in riceencode.db_prefix().iterdir():
         for strain in fs.sorted_naturally(fmt.iterdir()):
+            session = species.endswith(strain.name.lower())
             for histone in fs.sorted_naturally(strain.iterdir()):
                 for path in fs.sorted_naturally(histone.iterdir()):
                     if path.suffix not in (".gz", ".bw"):
                         continue
                     category = f"RiceENCODE,{strain.name},{histone.name},{fmt.name}"
-                    jbc.add_track(path, category, trackid=path.stem, session=False)
+                    jbc.add_track(path, category, trackid=path.stem, session=session)
 
 
 def add_cart(jbc: JBrowseConfig) -> None:
