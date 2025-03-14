@@ -39,7 +39,7 @@ class GFF:
 
     def write(self, io_bytes: typing.IO[bytes]) -> None:
         io_bytes.writelines(self.header)
-        io_bytes = typing.cast(io.BytesIO, io_bytes)
+        io_bytes = typing.cast("io.BytesIO", io_bytes)
         self.body.collect().write_csv(io_bytes, include_header=False, separator="\t")
 
     def to_string(self) -> str:
