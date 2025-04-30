@@ -4,10 +4,13 @@ languageSettings:
   - languageId: python
     ignoreRegExpList:
       - '"-+\w+"'
-      - '[ATCG]{5,}'
+      - '[\w.]+.edu'
   - languageId: toml
     ignoreRegExpList:
       - '".+\.(fa|fasta|gff|gz)"'
+  - languageId: '*'
+    ignoreRegExpList:
+      - '[ACGT]{4,}'
 words:
   - bgzipped
   - histo
@@ -20,6 +23,8 @@ words:
   - perc
   - PGSC
   - phal
+  - riceencode
+  - riceome
   - shumari
   - slyc
   - spuddb
