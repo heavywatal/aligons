@@ -1,4 +1,5 @@
 import logging
+import re
 from pathlib import Path
 
 import pytest
@@ -28,13 +29,15 @@ def test_sort(caplog: pytest.LogCaptureFixture):
     with sorted_gff.open("rt") as fin:
         assert obj.to_string() == fin.read()
     if False:
-        import re
+        _make_invalid_gff(sorted_gff, obj)
 
-        with sorted_gff.open("wb") as fout:
-            obj.write(fout)
-        with (data_dir / "invalid.gff3").open("wt") as fout:
-            fout.write("# comment to ignore\n")
-            fout.write(re.sub(r"#.+\n", "", obj.to_string()))
+
+def _make_invalid_gff(sorted_gff: Path, obj: gff.GFF):
+    with sorted_gff.open("wb") as fout:
+        obj.write(fout)
+    with (data_dir / "invalid.gff3").open("wt") as fout:
+        fout.write("# comment to ignore\n")
+        fout.write(re.sub(r"#.+\n", "", obj.to_string()))
 
 
 def test_invalid(caplog: pytest.LogCaptureFixture):

@@ -57,7 +57,7 @@ def test_extract_labels(
 ):
     tip_names = ["oryza_sativa", "hordeum_vulgare", "panicum_hallii_fil2"]
     inner_names = ["bep", "poaceae"]
-    names = tip_names[:2] + ["bep", tip_names[2], "poaceae"]
+    names = [*tip_names[:2], "bep", tip_names[2], "poaceae"]
     short_names = ["osat", "hvul", "bep", "phal", "poaceae"]
     short_tip_names = [short_names[i] for i in (0, 1, 3)]
     assert phylo.extract_names(newick_standard) == names
