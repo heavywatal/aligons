@@ -1,0 +1,32 @@
+site_name: aligons
+site_url: https://heavywatal.github.io/aligons/
+repo_url: https://github.com/heavywatal/aligons
+repo_name: heavywatal/aligons
+site_author: Watal M. Iwasaki
+copyright: Copyright &copy; 2022 Watal M. Iwasaki
+nav:
+  - Home: index.md
+theme:
+  name: material
+  palette:
+    primary: green
+  features:
+    - navigation.expand
+    - navigation.indexes
+    - navigation.path
+    - navigation.tabs
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: sphinx
+            docstring_section_style: list
+            merge_init_into_class: true
+            show_if_no_docstring: true
+            show_source: false
+            show_symbol_type_toc: true
+  - api-autonav:
+      modules: ["src/aligons"]

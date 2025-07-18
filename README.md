@@ -20,10 +20,12 @@ pip3 install -v -e ./aligons
   Do not install them via `brewsci/bio/kent-tools` because its "bottle" is broken and old.
 
 ```sh
-brew install lastz
-brew install samtools bedtools
 brew install zstd
-brew install heavywatal/last-bin --HEAD
-brew install heavywatal/multiz --HEAD
-brew install heavywatal/phast --HEAD
+brew install lastz
+brew install samtools
+brew install bedtools
+brew install minimap2
+brew install heavywatal/last-bin
+brew install heavywatal/multiz
+brew install heavywatal/phast
 ```

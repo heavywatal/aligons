@@ -24,6 +24,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "mkdocs-api-autonav",
+  "mkdocs-material",
+  "mkdocstrings[python]",
   "pytest",
   "pytest-cov",
   "ruff",
