@@ -22,6 +22,11 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def print_if_exists(path: Path) -> Path:
+    """Print the given path if it exists.
+
+    :param path: The file or directory path to check.
+    :returns: The same object passed as an argument.
+    """
     if path.exists():
         _log.info(path)
     return path
@@ -32,6 +37,13 @@ def relpath(path: Path, start: Path = Path()) -> Path:
 
 
 def symlink(path: Path, link: Path, *, relative: bool = False) -> Path:
+    """Create a symbolic link after some preparation.
+
+    :param path: The target file or directory to link to.
+    :param link: The symbolic link to create.
+    :param relative: If True, create a relative symlink.
+    :returns: Path to the created symbolic link.
+    """
     if is_outdated(link, path) and not cli.dry_run:
         if relative:
             path = relpath(path, link)
@@ -45,6 +57,12 @@ def symlink(path: Path, link: Path, *, relative: bool = False) -> Path:
 
 
 def is_outdated(product: Path, source: Sequence[Path] | Path | None = None) -> bool:
+    """Check if the product is outdated compared to the source.
+
+    :param product: The product file or directory to check.
+    :param source: The source files or directories to compare against.
+    :returns: True if the product is outdated, empty, or does not exist.
+    """
     if not product.exists():
         return True
     if product.stat().st_size == 0:
