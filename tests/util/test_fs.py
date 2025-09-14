@@ -58,9 +58,9 @@ def test_symlink(tmp_path: Path):
 
 def test_expect_suffix():
     fs.expect_suffix(Path("hello.txt"), ".txt")
-    with pytest.raises(ValueError, match="expected suffix is .gz"):
+    with pytest.raises(ValueError, match=r"expected suffix is \.gz"):
         fs.expect_suffix(Path("hello.txt"), ".gz")
-    with pytest.raises(ValueError, match="unexpected suffix .gz"):
+    with pytest.raises(ValueError, match=r"unexpected suffix \.gz"):
         fs.expect_suffix(Path("hello.txt.gz"), ".gz", negate=True)
 
 
