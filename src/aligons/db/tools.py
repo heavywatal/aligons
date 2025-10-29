@@ -1,5 +1,6 @@
 import logging
 import re
+import subprocess
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -52,6 +53,17 @@ def index_compress_concat(
 ) -> Path:
     infiles = [cli.result(f) for f in infiles]
     infiles = fs.sorted_naturally(infiles)
+    if len(infiles) == 1:
+        if not cli.dry_run:
+            outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
+            fs.symlink(infiles[0], outfile)
+        try:
+            htslib.try_index(outfile)
+        except subprocess.CalledProcessError as e:
+            _log.debug(f"indexing failed for {outfile}: {e}")
+            outfile.unlink()
+        else:
+            return outfile
     htslib.concat_bgzip(infiles, outfile)
     htslib.try_index(outfile)
     return outfile
@@ -96,7 +108,7 @@ def _split_genome_fa(genome: Path, subdir: str) -> list[cli.Future[Path]]:
     workdir.mkdir(0o755, exist_ok=True)
     fts: list[cli.Future[Path]] = []
     for seqid, size in fasize.items():
-        if re.search(r"scaffold|contig", seqid):
+        if re.search(r"scaffold|contig|Egra_v1_0", seqid):
             _log.info(f"ignoring {seqid} in {genome}")
             continue
         if size < min_size:

@@ -1,0 +1,8 @@
+[[dataset]]
+species = "eustoma_grandiflorum"
+version = "Egra_v1.0"
+label = "Egra"
+sequences = [
+    "/download/Eustoma_grandiflorum/t52518.G001/Egra_v1.genome.fasta.gz",
+]
+annotation = "/download/Eustoma_grandiflorum/t52518.G001/Egra_v1.0.gff3.gz"
