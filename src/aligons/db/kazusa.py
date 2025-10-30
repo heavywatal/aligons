@@ -7,7 +7,7 @@ import logging
 from collections.abc import Iterator
 from pathlib import Path
 
-from aligons.util import cli
+from aligons.util import cli, fs
 
 from . import _rsrc, api, tools
 
@@ -21,9 +21,10 @@ def db_prefix() -> Path:
 
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
-    parser.add_argument("-G", "--genome", action="store_true")
+    parser.add_argument("-D", "--download", action="store_true")
+    parser.add_argument("-M", "--mask", action="store_true")
     args = parser.parse_args(argv or None)
-    if args.genome:
+    if args.download or args.mask:
         fts_fa: list[cli.Future[Path]] = []
         fts_gff: list[cli.Future[Path]] = []
         for ft_fa, ft_gff in _iter_fetch_and_bgzip():
@@ -31,8 +32,11 @@ def main(argv: list[str] | None = None) -> None:
             fts_gff.append(ft_gff)
         fts: list[cli.Future[Path]] = []
         for ft in cli.as_completed(fts_fa):
-            masked = tools.softmask(ft.result())
-            fts.extend(tools.genome_to_twobits(masked))
+            if args.mask:
+                masked = tools.softmask(ft.result())
+                fts.extend(tools.genome_to_twobits(masked))
+            else:
+                fs.print_if_exists(ft.result())
         cli.wait_raise(fts)
         cli.wait_raise(fts_gff)
 
