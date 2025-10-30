@@ -101,13 +101,13 @@ def softmask(genome: Path, species: str = "") -> cli.Future[Path]:
 
 
 def _split_genome_fa(genome: Path, subdir: str) -> list[cli.Future[Path]]:
-    fasize = kent.read_fasize(genome)
-    _log.debug(f"{fasize = }")
+    fai = htslib.read_fai(genome)
+    _log.debug(f"{fai = }")
     min_size = 1000000
     workdir = genome.parent / subdir
     workdir.mkdir(0o755, exist_ok=True)
     fts: list[cli.Future[Path]] = []
-    for seqid, size in fasize.items():
+    for seqid, size in fai.items():
         if re.search(r"scaffold|contig|Egra_v1_0", seqid):
             _log.info(f"ignoring {seqid} in {genome}")
             continue
@@ -122,11 +122,11 @@ def _split_genome_fa(genome: Path, subdir: str) -> list[cli.Future[Path]]:
 
 def genome_to_twobits(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]:
     genome = cli.result(genome)
-    fasize = kent.read_fasize(genome)
-    _log.debug(f"{fasize = }")
+    fai = htslib.read_fai(genome)
+    _log.debug(f"{fai = }")
     min_size = 1000000
     fts: list[cli.Future[Path]] = []
-    for seqid, size in fasize.items():
+    for seqid, size in fai.items():
         if re.search(r"scaffold|contig", seqid):
             _log.info(f"ignoring {seqid} in {genome}")
             continue

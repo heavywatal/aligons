@@ -55,6 +55,16 @@ def try_index(bgz: Path | cli.Future[Path]) -> Path:
     return bgz
 
 
+def read_fai(genome: Path) -> dict[str, int]:
+    fai = faidx(genome)
+    res: dict[str, int] = {}
+    with fai.open("rt") as fin:
+        for line in fin:
+            (seqid, size, _rest) = line.split(maxsplit=2)
+            res[seqid] = int(size)
+    return res
+
+
 def faidx(bgz: Path | cli.Future[Path]) -> Path:
     """https://www.htslib.org/doc/samtools-faidx.html."""
     bgz = cli.result(bgz)
