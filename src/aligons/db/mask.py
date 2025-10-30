@@ -27,6 +27,14 @@ def submit(
     species: str | None = None,
     outfile: Path | None = None,
 ) -> cli.Future[Path]:
+    """Softmask a genome FASTA.
+
+    :param infile: A bgzipped genome FASTA file.
+    :param species: A taxonomic group name for RepeatMasker/Dfam.
+        If empty, "angiosperms" is used.
+    :param outfile: An optional output path.
+        If None, it is generated from `infile` by replacing ".dna." with ".dna_sm.".
+    """
     infile = cli.result(infile)
     if ".dna_sm." in infile.name:
         fs.expect_suffix(infile, ".gz")

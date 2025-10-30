@@ -88,6 +88,14 @@ def index_bgzip(infile: Path | dl.Response, outfile: Path) -> Path:
 
 
 def softmask(genome: Path, species: str = "") -> cli.Future[Path]:
+    """Softmask a genome FASTA.
+
+    :param genome: A bgzipped genome FASTA file.
+    :param species: A taxonomic group name for RepeatMasker/Dfam.
+        If empty, the parent directory name of the genome file is used.
+    :returns: A future of the softmasked genome FASTA with ".dna_sm."
+        in the file name.
+    """
     if ".dna_sm." in genome.name:
         fs.expect_suffix(genome, ".gz")
         return cli.thread_submit(cli.result, genome)
@@ -121,6 +129,11 @@ def _split_genome_fa(genome: Path, subdir: str) -> list[cli.Future[Path]]:
 
 
 def genome_to_twobits(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]:
+    """Split a genome FASTA into chromosomes in 2bit format.
+
+    :param genome: A bgzipped genome FASTA file.
+    :returns: A list of futures of 2bit files for each chromosome.
+    """
     genome = cli.result(genome)
     fai = htslib.read_fai(genome)
     _log.debug(f"{fai = }")
@@ -140,6 +153,13 @@ def genome_to_twobits(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]
 
 
 def faidx_twobit(fa_gz: Path, seqid: str, twobit: Path) -> Path:
+    """Make 2bit file of a specific sequence from a bgzipped FASTA.
+
+    :param fa_gz: A bgzipped FASTA file.
+    :param seqid: A sequence name contained in `fa_gz`.
+    :param twobit: The output 2bit file.
+    :returns: The same path as `twobit`.
+    """
     if_ = fs.is_outdated(twobit, fa_gz)
     with htslib.popen_faidx_query(fa_gz, seqid, if_=if_) as p:
         return kent.faToTwoBit(p.stdout, twobit, if_=if_)
