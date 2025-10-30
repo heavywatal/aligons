@@ -12,7 +12,7 @@ from pathlib import Path
 from aligons.extern import htslib
 from aligons.util import cli, fs, logging, subp
 
-from . import _rsrc, api
+from . import _rsrc, api, tools
 
 _log = logging.getLogger(__name__)
 _HOST = "ftp.ncbi.nlm.nih.gov"
@@ -22,16 +22,24 @@ def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-C", "--check", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
+    parser.add_argument("-M", "--mask", action="store_true")
     parser.add_argument("accession", nargs="*")
     args = parser.parse_args(argv or None)
     if args.download:
         for acc in args.accession:
             _download_genome(acc)
-    elif args.check:
+    if args.check:
         for file in _prefix_mirror().glob("*.zip"):
             _check_zip(file)
-    else:
-        fts = [_index_genome_fa(x) for x in _prefix_mirror().glob("*.zip")]
+    if args.mask:
+        fts_fa = [_index_genome_fa(x) for x in _prefix_mirror().glob("*.zip")]
+        fts: list[cli.Future[Path]] = []
+        for ft in cli.as_completed(fts_fa):
+            if args.mask:
+                masked = tools.softmask(ft.result(), "Gentianales")
+                fts.extend(tools.genome_to_twobits(masked))
+            else:
+                fs.print_if_exists(ft.result())
         cli.wait_raise(fts)
 
 

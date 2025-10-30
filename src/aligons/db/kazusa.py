@@ -33,7 +33,7 @@ def main(argv: list[str] | None = None) -> None:
         fts: list[cli.Future[Path]] = []
         for ft in cli.as_completed(fts_fa):
             if args.mask:
-                masked = tools.softmask(ft.result())
+                masked = tools.softmask(ft.result(), "Gentianales")
                 fts.extend(tools.genome_to_twobits(masked))
             else:
                 fs.print_if_exists(ft.result())

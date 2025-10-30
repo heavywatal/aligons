@@ -52,7 +52,6 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True) -> Path:
     if parallel > 1:
         args.extend(["-pa", f"{parallel}"])  # RMBlast uses 4 cores per "-pa"
     if species:
-        species = _sanitize_species(species)
         args.extend(["-species", species])
     args.append(infile)
     subp.run(args, if_=fs.is_outdated(outfile, infile))
@@ -107,7 +106,6 @@ def test_species(species: str) -> bool:
         if not fasta.exists():
             with fasta.open("wt") as fout:
                 fout.write(">name\nAAACCCGGGTTT\n")
-        species = _sanitize_species(species)
         args: subp.Args = ["RepeatMasker", "-species", species, fasta]
         args.extend(["-qq", "-nolow", "-norna", "-no_is", "-noisy", "-nopost"])
         p = subp.run(args, stdout=subp.PIPE, stderr=subp.PIPE, check=False)
@@ -147,12 +145,6 @@ def famdb_families(
     args.append(term)
     p = subp.run(args, stdout=subp.PIPE)
     return p.stdout.decode()
-
-
-def _sanitize_species(species: str) -> str:
-    mobj = re.match(r"^[^_]+_[^_]+", species)
-    assert mobj, f"Invalid species: {species}"
-    return mobj.group(0)
 
 
 if __name__ == "__main__":
