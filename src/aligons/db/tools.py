@@ -51,6 +51,12 @@ def _index_compress_concat(responses: Iterable[dl.Response], outfile: Path) -> P
 def index_compress_concat(
     infiles: list[Path] | list[cli.Future[Path]], outfile: Path
 ) -> Path:
+    """Concatenate FASTA or GFF files into a bgzipped file and index if applicable.
+
+    :param infiles: A list of FASTA, GFF files, or futures of them.
+    :param outfile: The output path of the concatenated bgzip.
+    :returns: The same path as `outfile`.
+    """
     infiles = [cli.result(f) for f in infiles]
     infiles = fs.sorted_naturally(infiles)
     if len(infiles) == 1:
@@ -70,6 +76,12 @@ def index_compress_concat(
 
 
 def index_bgzip(infile: Path | dl.Response, outfile: Path) -> Path:
+    """Bgzip FASTA or GFF file and index if applicable.
+
+    :param infile: A FASTA or GFF file, possibly a download response.
+    :param outfile: The output bgzipped file.
+    :returns: The same path as `outfile`.
+    """
     if isinstance(infile, dl.Response):
         infile = infile.path
     if fs.is_outdated(outfile, infile):
