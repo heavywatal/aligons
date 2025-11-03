@@ -1,3 +1,8 @@
+"""Joint Genome Institute (JGI) Genome Portal.
+
+<https://phytozome-next.jgi.doe.gov/>
+"""
+
 import logging
 import re
 import xml.etree.ElementTree as ET

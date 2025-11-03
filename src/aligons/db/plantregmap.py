@@ -1,4 +1,7 @@
-"""http://plantregmap.gao-lab.org/."""
+"""PlantRegMap: Plant Regulation Data and Analysis Platform.
+
+<http://plantregmap.gao-lab.org/>
+"""
 
 import logging
 import re

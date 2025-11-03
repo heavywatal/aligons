@@ -1,4 +1,7 @@
-"""http://plantdhs.org."""
+"""PlantDHS: a database for DNase I hypersensitive sites in plants.
+
+<http://plantdhs.org>.
+"""
 
 import logging
 import re

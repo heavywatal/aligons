@@ -1,4 +1,7 @@
-"""glab.hzau.edu.cn/RiceENCODE/."""
+"""Rice Encyclopedia of DNA Elements.
+
+<http://glab.hzau.edu.cn/RiceENCODE/>
+"""
 
 import logging
 import re

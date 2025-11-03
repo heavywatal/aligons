@@ -1,4 +1,7 @@
-"""http://www.ricesuperpir.com/."""
+"""Rice Super Pan-genome Information Resource Database.
+
+<http://www.ricesuperpir.com/>
+"""
 
 import logging
 from pathlib import Path

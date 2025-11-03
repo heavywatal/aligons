@@ -1,4 +1,6 @@
-"""https://plants.ensembl.org/.
+"""Ensembl Plants.
+
+<https://plants.ensembl.org/>
 
 - {db.root}/ftp.ensemblgenomes.org/pub/plants/release-{version}/
   - fasta/{species}/dna/{stem}.{version}.dna_sm.chromosome.{seqid}.fa.gz

@@ -1,6 +1,6 @@
 """Kazusa Genome Atlas.
 
-https://genome.kazusa.or.jp/
+<https://genome.kazusa.or.jp/>
 """
 
 import logging

@@ -1,4 +1,7 @@
-"""https://riceome.hzau.edu.cn/download.html."""
+"""Rice Gene Index.
+
+<https://riceome.hzau.edu.cn/download.html>
+"""
 
 import logging
 from collections.abc import Iterator

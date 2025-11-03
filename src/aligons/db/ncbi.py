@@ -1,6 +1,6 @@
 """Download genomes from NCBI.
 
-https://www.ncbi.nlm.nih.gov/datasets/docs/
+<https://www.ncbi.nlm.nih.gov/datasets/docs/>
 """
 
 import hashlib
