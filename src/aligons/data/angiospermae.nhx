@@ -13,7 +13,19 @@
               capsicum_annuum),nicotiana_attenuata
             )solanaceae,
             ipomoea_triloba
-          )solanales,coffea_canephora),
+          )solanales,
+          (coffea_canephora,
+           ((
+             eustoma_grandiflorum,
+             (centaurium_erythraea,centaurium_scilloides)centaurium
+            )chironieae,
+            (
+              ((gentiana_dahurica_var._dahurica,gentiana_macrophylla),gentiana_straminea)gentiana,
+              gentianella_amarella
+            )gentianeae
+           )gentianaceae
+          )gentianales
+          ),
           (olea_europaea_sylvestris,sesamum_indicum)lamiales
         )lamiids,
         (
