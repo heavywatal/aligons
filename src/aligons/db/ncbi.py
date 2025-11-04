@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def db_prefix() -> Path:
-    return api.prefix("ncbi.nlm.nih.gov")
+    return api.prefix("ncbi")
 
 
 def _prefix_mirror() -> Path:
