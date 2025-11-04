@@ -52,6 +52,11 @@ def fasize(species: str) -> Path:
     return get_file("fasize.chrom.sizes", species)
 
 
+def genome_fai(species: str) -> Path:
+    subdir = "kmer" if config["db"]["kmer"] else ""
+    return get_file("*.dna_sm.genome.fa.gz.fai", species, subdir)
+
+
 def genome_fa(species: str) -> Path:
     subdir = "kmer" if config["db"]["kmer"] else ""
     return get_file("*.dna_sm.genome.fa.gz", species, subdir)
@@ -162,7 +167,7 @@ def print_stats(clade: str) -> None:
 
 
 def chrom_sizes(species: str) -> dict[str, int]:
-    path = fasize(species)
+    path = genome_fai(species)
     with path.open() as fin:
         reader = csv.reader(fin, delimiter="\t")
         items = {x[0]: int(x[1]) for x in reader}
