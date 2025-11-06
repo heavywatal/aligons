@@ -1,6 +1,6 @@
 """TRF: Tandem Repeats Finder.
 
-https://tandem.bu.edu/trf/home
+<https://tandem.bu.edu/trf/home>
 
 src: {basename}.fa
 dat: {basename}.fa.2.5.7.80.10.40.500.dat.gz

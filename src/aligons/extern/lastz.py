@@ -1,9 +1,9 @@
 """Pairwise genome alignment.
 
+<https://lastz.github.io/lastz/>
+
 src: {db.api.prefix}/{species}/*.fa.gz
 dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
-
-https://lastz.github.io/lastz/
 """
 
 import logging

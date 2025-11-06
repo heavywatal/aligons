@@ -1,10 +1,10 @@
 """Multiple genome alignment.
 
+<https://github.com/multiz/multiz>
+
 src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 lnk: ./multiple/{target}/{clade}/{chromosome}/{target}.{query}.sing.maf
 dst: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
-
-https://github.com/multiz/multiz
 """
 
 import logging

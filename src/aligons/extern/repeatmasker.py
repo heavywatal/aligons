@@ -1,7 +1,7 @@
 """RepeatMasker finds interspersed repeats and low complexity sequences.
 
-https://www.repeatmasker.org/
-https://github.com/rmhubley/RepeatMasker
+<https://www.repeatmasker.org/>
+<https://github.com/rmhubley/RepeatMasker>
 
 src: {basename}.fa
 dst: {basename}.fa.out.gff

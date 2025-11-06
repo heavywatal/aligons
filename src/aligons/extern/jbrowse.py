@@ -1,4 +1,6 @@
-"""https://jbrowse.org.
+"""The next-generation genome browser.
+
+<https://jbrowse.org>
 
 src: {vNN}/pairwise/{species}/{query}/cram/genome.cram
 src: {vNN}/conservation/{species}/{clade}/phastcons.bw

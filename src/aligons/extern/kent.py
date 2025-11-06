@@ -1,9 +1,9 @@
-"""Integrate chromosome wigs into a genome-wide bigwig.
+"""UCSC Genome Browser source.
+
+<https://github.com/ucscGenomeBrowser/kent>
 
 src: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
 dst: ./multiple/{target}/{clade}/phastcons.bw
-
-https://github.com/ucscGenomeBrowser/kent
 """
 
 import functools
@@ -37,6 +37,7 @@ def _run(clade: Path) -> Path:
 
 
 def bigWigCat(out_bw: Path, in_bws: Sequence[Path]) -> Path:  # noqa: N802
+    """Integrate chromosome wigs into a genome-wide bigwig."""
     if len(in_bws) == 1:
         args = ["cp", *in_bws, out_bw]
     else:

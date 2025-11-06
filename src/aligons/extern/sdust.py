@@ -1,6 +1,6 @@
 """sdust: symmetric DUST algorithm for finding low-complexity sequences.
 
-https://github.com/lh3/sdust
+<https://github.com/lh3/sdust>
 
 src: {basename}.fa(.gz)
 dst: {basename}.fa.sdust.bed.gz

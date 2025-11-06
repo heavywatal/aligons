@@ -1,3 +1,8 @@
+"""HTSlib: C library for reading/writing high-throughput sequencing data.
+
+<https://www.htslib.org/>
+"""
+
 import logging
 from pathlib import Path
 from typing import IO

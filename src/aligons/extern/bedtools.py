@@ -1,6 +1,6 @@
 """bedtools: a powerful toolset for genome arithmetic.
 
-https://bedtools.readthedocs.io/
+<https://bedtools.readthedocs.io/>
 """
 
 import logging

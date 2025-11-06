@@ -1,9 +1,9 @@
 """Phylogenetic Analysis with Space/Time Models.
 
+<http://compgen.cshl.edu/phast/>
+
 src: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
 dst: ./conservation/{target}/{clade}/phastcons.bw
-
-http://compgen.cshl.edu/phast/
 """
 
 import logging

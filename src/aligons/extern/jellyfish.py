@@ -1,4 +1,6 @@
-"""Soft-mask fasta sequences based on kmer frequencies.
+"""A fast multi-threaded k-mer counter.
+
+<https://github.com/gmarcais/Jellyfish>
 
 src: *.fa.gz
 dst: kmer/*.fa.gz
