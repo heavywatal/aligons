@@ -25,7 +25,7 @@ brew install lastz
 brew install samtools
 brew install bedtools
 brew install minimap2
-brew install heavywatal/last-bin
-brew install heavywatal/multiz
-brew install heavywatal/phast
+brew install heavywatal/tap/last-bin
+brew install heavywatal/tap/multiz
+brew install heavywatal/tap/phast
 ```
