@@ -1,9 +1,6 @@
 """Phylogenetic Analysis with Space/Time Models.
 
 <http://compgen.cshl.edu/phast/>
-
-src: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
-dst: ./conservation/{target}/{clade}/phastcons.bw
 """
 
 import logging
@@ -22,13 +19,20 @@ _log = logging.getLogger(__name__)
 
 def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
-    parser.add_argument("clade", type=Path)  # multiple/{target}/{clade}
+    parser.add_argument("indir", type=Path, help="multiple/{target}/{clade}")
     args = parser.parse_args(argv or None)
-    run(args.clade)
+    run(args.indir)
 
 
-def run(path_clade: Path) -> tuple[Path, Path]:
-    outdir = prepare_conservation(path_clade)
+def run(input_dir: Path) -> tuple[Path, Path]:
+    """Perform phastCons for each chromosome and concatenate the results.
+
+    :param input_dir: Path to the directory with chromosome MAFs:
+        `./multiple/{target}/{clade}`
+    :returns: Paths to bigWig and BED files:
+        `./conservation/{target}/{clade}/{phastcons.bw,most-cons.bed.gz}`
+    """
+    outdir = prepare_conservation(input_dir)
     (_cons_mod, noncons_mod) = estimate_models(outdir)
     target = outdir.parent.name
     chrom_sizes = api.fasize(target)
@@ -53,6 +57,14 @@ def run(path_clade: Path) -> tuple[Path, Path]:
 def phastCons(  # noqa: N802
     msa: Path, chrom_sizes: Path, cons_mod: Path | None, noncons_mod: Path
 ) -> tuple[Path, Path]:
+    """Calculate conservation scores and predict conserved elements.
+
+    :param msa: Input MAF file.
+    :param chrom_sizes: Path to `fasize.chrom.sizes` of the target species.
+    :param cons_mod: Path to `phylofit.cons.mod` or None.
+    :param noncons_mod: Path to `4d-sites.mod`.
+    :returns: Paths to bigWig and BED files: (`post-probs.bw`, `most-cons.bed`).
+    """
     conf = config.get("phastCons", {})
     bed = msa.with_name("most-cons.bed")
     wig = msa.with_name("post-probs.wig")
@@ -81,30 +93,43 @@ def phastCons(  # noqa: N802
     return (bw, bed)
 
 
-def prepare_conservation(multiple_target_clade: Path) -> Path:
-    clade = multiple_target_clade.name
-    target = multiple_target_clade.parent.name
-    cons_dir = multiple_target_clade.parent.parent.with_name("conservation")
+def prepare_conservation(input_dir: Path) -> Path:
+    """Prepare output directory and input MAFs.
+
+    :param input_dir: Path to the directory with chromosome MAFs:
+        `./multiple/{target}/{clade}`
+    :returns: Path to the output directory:
+        `./conservation/{target}/{clade}`
+    """
+    clade = input_dir.name
+    target = input_dir.parent.name
+    cons_dir = input_dir.parent.parent.with_name("conservation")
     outdir = cons_dir / target / clade
     if not cli.dry_run:
         outdir.mkdir(parents=True, exist_ok=True)
-    for maf in multiple_target_clade.glob("chromosome*/multiz.maf"):
+    for maf in input_dir.glob("chromosome*/multiz.maf"):
         ln = outdir / maf.parent.name / maf.name
         fs.symlink(maf, ln, relative=True)
     return outdir
 
 
-def estimate_models(cons_target_clade: Path) -> tuple[Path, Path]:
-    target = cons_target_clade.parent.name
+def estimate_models(output_dir: Path) -> tuple[Path, Path]:
+    """Estimate models for conserved and non-conserved sites.
+
+    :param output_dir: Path to the output directory:
+        `./conservation/{target}/{clade}`
+    :returns: Paths to models: (`phylofit.cons.mod`, `phylofit.noncons.mod`)
+    """
+    target = output_dir.parent.name
     if not cli.dry_run:
         assert cds_gff3(target).exists()
-    cons_mod = cons_target_clade / "phylofit.cons.mod"
-    noncons_mod = cons_target_clade / "phylofit.noncons.mod"
-    tree = phylo.get_subtree(cons_target_clade.name.split("-"), phylo.shorten_names)
+    cons_mod = output_dir / "phylofit.cons.mod"
+    noncons_mod = output_dir / "phylofit.noncons.mod"
+    tree = phylo.get_subtree(output_dir.name.split("-"), phylo.shorten_names)
     c_futures: list[cli.Future[Path]] = []
     n_futures: list[cli.Future[Path]] = []
     pool = cli.ThreadPool()
-    for maf in cons_target_clade.glob("chromosome*/multiz.maf"):
+    for maf in output_dir.glob("chromosome*/multiz.maf"):
         seqid = maf.parent.name.removeprefix("chromosome.")
         c_futures.append(pool.submit(make_cons_mod, maf, target, seqid, tree))
         n_futures.append(pool.submit(make_noncons_mod, maf, target, seqid, tree))
@@ -114,23 +139,49 @@ def estimate_models(cons_target_clade: Path) -> tuple[Path, Path]:
 
 
 def make_cons_mod(maf: Path, species: str, seqid: str, tree: str) -> Path:
+    """Estimate phylogenetic models for conserved sites.
+
+    :param maf: Input MAF file.
+    :param species: Species name to get its genome GFF3.
+    :param seqid: Chromosome name.
+    :param tree: Newick tree string.
+    :returns: Path to the generated model file: `phylofit.cons.mod`.
+    """
     codons_ss = msa_view_features(maf, species, seqid, conserved=True)
     codons_mods = phyloFit(codons_ss, tree, conserved=True)
     return most_conserved_mod(codons_mods)
 
 
 def make_noncons_mod(maf: Path, species: str, seqid: str, tree: str) -> Path:
+    """Estimate phylogenetic models for non-conserved 4d sites.
+
+    See <http://compgen.cshl.edu/phast/phyloFit-tutorial.php>
+
+    :param maf: Input MAF file.
+    :param species: Species name to get its genome GFF3.
+    :param seqid: Chromosome name.
+    :param tree: Newick tree string.
+    :returns: Path to the generated model file: `4d-sites.mod`.
+    """
     _4d_codons_ss = msa_view_features(maf, species, seqid, conserved=False)
     _4d_sites_ss = msa_view_ss(_4d_codons_ss)
     return phyloFit(_4d_sites_ss, tree, conserved=False)[0]
 
 
 def msa_view_features(maf: Path, species: str, seqid: str, *, conserved: bool) -> Path:
-    """Calculate sufficient statistics with a custom GFF.
+    """Extract sufficient statistics (SS) for codon sites separately.
 
     - Seqid must be labeled with species names as in maf, e.g., osat.1, slyc.2.
     - `--4d` requires all features are on the same chromosome.
     - BED is not recognized as opposed to `--help` description.
+
+    See <http://compgen.cshl.edu/phast/help-pages/msa_view.txt>
+
+    :param maf: Input MAF file.
+    :param species: Species name to get its genome GFF3.
+    :param seqid: Chromosome name.
+    :param conserved: Whether to extract SS for conserved codon sites.
+    :returns: Path to the generated SS file: `codons.ss` or `4d-codons.ss`.
     """
     cmd = ["msa_view", maf, "--in-format", "MAF", "--features", "/dev/stdin"]
     if conserved:
@@ -154,6 +205,11 @@ def msa_view_features(maf: Path, species: str, seqid: str, *, conserved: bool) -
 
 
 def msa_view_ss(codons_ss: Path) -> Path:
+    """Extract 4d site in SS.
+
+    :param codons_ss: Input codon SS file from `msa_view`: `4d-codons.ss`.
+    :returns: Path to the generated SS file: `4d-sites.ss`.
+    """
     outfile = codons_ss.with_name("4d-sites.ss")
     s = f"msa_view {codons_ss!s} --in-format SS --out-format SS --tuple-size 1"
     is_to_run = fs.is_outdated(outfile, codons_ss)
@@ -163,6 +219,15 @@ def msa_view_ss(codons_ss: Path) -> Path:
 
 
 def phyloFit(ss: Path, tree: str, *, conserved: bool) -> list[Path]:  # noqa: N802
+    """Estimate phylogenetic models from SS.
+
+    See <http://compgen.cshl.edu/phast/phyloFit-tutorial.php>
+
+    :param ss: Input sufficient statistics file from `msa_view`.
+    :param tree: Newick tree string.
+    :param conserved: Whether to estimate models for conserved codon sites.
+    :returns: List of generated model files: `codons.{1,2,3}.mod` or `4d-sites.mod`.
+    """
     if conserved:
         out_root = str(ss.with_name("codons"))
         outfiles = [Path(f"{out_root}.{i}.mod") for i in range(1, 4)]
@@ -179,6 +244,13 @@ def phyloFit(ss: Path, tree: str, *, conserved: bool) -> list[Path]:  # noqa: N8
 
 
 def phyloBoot(mods: list[Path], outfile: Path) -> None:  # noqa: N802
+    """Calculate the average of all input models.
+
+    See <http://compgen.cshl.edu/phast/help-pages/phyloBoot.txt>
+
+    :param mods: List of model files to average.
+    :param outfile: Output model file.
+    """
     read_mods = ",".join(str(x) for x in mods)
     subp.run(
         f"phyloBoot --read-mods {read_mods} --output-average {outfile}",
@@ -189,6 +261,14 @@ def phyloBoot(mods: list[Path], outfile: Path) -> None:  # noqa: N802
 def consEntropy(  # noqa: N802
     target_coverage: float, expected_length: int, cons_mod: Path, noncons_mod: Path
 ) -> Path:
+    """Compute the relative entropy and some statistics of the phylogenetic models.
+
+    See <http://compgen.cshl.edu/phast/help-pages/consEntropy.txt>
+
+    :param target_coverage:
+    :param expected_length:
+    :param cons_mod: Path to `entropy.txt`.
+    """
     with cons_mod.open("rt") as fin:
         tree = extract_tree(fin.read())
     tree_size = len(phylo.extract_tip_names(tree))
@@ -206,6 +286,11 @@ def consEntropy(  # noqa: N802
 
 
 def most_conserved_mod(mods: list[Path]) -> Path:
+    """Select and copy the most conserved model among codon models.
+
+    :param mods: List of codon model files: `codons.{1,2,3}.mod`.
+    :returns: Path to the copy of the selected model: `phylofit.cons.mod`.
+    """
     outfile = mods[0].with_name("phylofit.cons.mod")
     if not fs.is_outdated(outfile, mods) or cli.dry_run:
         return outfile
@@ -227,12 +312,22 @@ def most_conserved_mod(mods: list[Path]) -> Path:
 
 
 def extract_tree(mod: str) -> str:
+    """Extract Newick tree string from model file content.
+
+    :param mod: Content of a model file.
+    :returns: Newick tree string.
+    """
     m = re.search(r"TREE: (.+;)", mod)
     assert m, mod
     return m.group(1)
 
 
 def cds_gff3(species: str) -> Path:
+    """Extract CDS features from genome GFF3.
+
+    :param species: Species name to get genome GFF3.
+    :returns: Path to the generated GFF3 file with only CDS features.
+    """
     genome_gff3 = api.genome_gff3(species)
     name = genome_gff3.name.removesuffix(".genome.gff3.gz") + ".cds.gff3.gz"
     cds = genome_gff3.with_name(name)
@@ -246,6 +341,12 @@ def cds_gff3(species: str) -> Path:
 
 
 def concat_clean_mostcons(beds: list[Path], outfile: Path) -> Path:
+    """Concatenate BED files and clean up the score column.
+
+    :param beds: List of BED files.
+    :param outfile: Concatenated output BED file.
+    :returns: The same path as `outfile`.
+    """
     if_ = fs.is_outdated(outfile, beds)
     with htslib.popen_bgzip(outfile, if_=if_) as bgzip:
         for infile in beds:
