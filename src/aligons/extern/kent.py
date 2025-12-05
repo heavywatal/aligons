@@ -1,9 +1,6 @@
 """UCSC Genome Browser source.
 
 <https://github.com/ucscGenomeBrowser/kent>
-
-src: ./multiple/{target}/{clade}/{chromosome}/phastcons.wig.gz
-dst: ./multiple/{target}/{clade}/phastcons.bw
 """
 
 import functools
@@ -37,7 +34,12 @@ def _run(clade: Path) -> Path:
 
 
 def bigWigCat(out_bw: Path, in_bws: Sequence[Path]) -> Path:  # noqa: N802
-    """Integrate chromosome wigs into a genome-wide bigwig."""
+    """Integrate chromosome wigs into a genome-wide bigwig.
+
+    :param out_bw: Output bigWig file.
+    :param in_bws: Input bigWig files.
+    :returns: The same path as `out_bw`.
+    """
     if len(in_bws) == 1:
         args = ["cp", *in_bws, out_bw]
     else:
@@ -47,11 +49,23 @@ def bigWigCat(out_bw: Path, in_bws: Sequence[Path]) -> Path:  # noqa: N802
 
 
 def bigWigInfo(path: Path) -> bytes:  # noqa: N802
+    """Get bigWig file information.
+
+    :param path: Input bigWig file.
+    :returns: The stdout bytes of `bigWigInfo` command.
+    """
     args = ["bigWigInfo", path]
     return subp.run(args, stdout=subp.PIPE, text=True).stdout
 
 
 def wigToBigWig(wig: Path, chrom_sizes: Path, *, keep: bool = False) -> Path:  # noqa: N802
+    """Convert wig to bigWig format.
+
+    :param wig: Input wig file.
+    :param chrom_sizes: `fasize.chrom.sizes`.
+    :param keep: Whether to keep the intermediate wig file.
+    :returns: Output bigWig file.
+    """
     bw = wig.with_suffix(".bw")
     args: subp.Args = ["wigToBigWig"]
     args.extend(["-fixedSummaries", "-keepAllChromosomes"])  # for bigWigCat
@@ -63,6 +77,12 @@ def wigToBigWig(wig: Path, chrom_sizes: Path, *, keep: bool = False) -> Path:  #
 
 
 def bedGraphToBigWig(infile: Path, chrom_sizes: Path) -> Path:  # noqa: N802
+    """Convert bedGraph to bigWig format.
+
+    :param infile: Input bedGraph file. Decompressed if compressed.
+    :param chrom_sizes: `fasize.chrom.sizes`.
+    :returns: Output bigWig file.
+    """
     name, cnt = re.subn(r"\.bedgraph(\.gz)?$", ".bw", infile.name, flags=re.IGNORECASE)
     assert cnt == 1, infile
     outfile = infile.with_name(name)
@@ -74,6 +94,12 @@ def bedGraphToBigWig(infile: Path, chrom_sizes: Path) -> Path:  # noqa: N802
 
 
 def bigWigToBed(infile: Path, min_width: int = 15) -> bytes:  # noqa: N802
+    """Extract ranges from bigWig file and output in BED format.
+
+    :param infile: Input bigWig file.
+    :param min_width: Minimum width of regions to output.
+    :returns: BED format data as bytes.
+    """
     patt = re.compile(rb"^fixedStep chrom=(\S+) start=(\d+)")
     chrom = b""
     start = 0
@@ -105,9 +131,15 @@ def faToTwoBit(  # noqa: N802
     *,
     if_: bool = True,
 ) -> Path:
+    """Convert FASTA to 2bit format.
+
+    :param fa: FASTA file or Popen stdout with FASTA data.
+    :param twobit: Output 2bit file. Optional if `fa` is a Path.
+    :returns: Output 2bit file.
+    """
     if isinstance(fa, Path | cli.Future):
         return _faToTwoBit_f(fa, twobit)
-    assert twobit is not None
+    assert twobit is not None, "`twobit` name must be specified if input is a pipe"
     return _faToTwoBit_s(fa, twobit, if_=if_)
 
 
@@ -127,6 +159,11 @@ def _faToTwoBit_f(fa: Path | cli.Future[Path], twobit: Path | None = None) -> Pa
 
 
 def read_fasize(genome: Path) -> dict[str, int]:
+    """Read `fasize.chrom.sizes` of the given genome.
+
+    :param genome: A bgzipped genome FASTA file.
+    :returns: A dictionary of chromosome sizes.
+    """
     fasize = faSize(genome)
     res: dict[str, int] = {}
     with fasize.open("rt") as fin:
@@ -137,6 +174,11 @@ def read_fasize(genome: Path) -> dict[str, int]:
 
 
 def faSize(genome_fa_gz: Path | cli.Future[Path]) -> Path:  # noqa: N802
+    """Summarize chromosome sizes from a genome FASTA.
+
+    :param genome_fa_gz: A bgzipped genome FASTA file.
+    :returns: Output file named `fasize.chrom.sizes`.
+    """
     genome_fa_gz = cli.result(genome_fa_gz)
     if not str(genome_fa_gz).endswith(("genome.fa.gz", os.devnull)):
         _log.warning(f"expecting *.genome.fa.gz: {genome_fa_gz}")
@@ -152,7 +194,13 @@ def faSize(genome_fa_gz: Path | cli.Future[Path]) -> Path:  # noqa: N802
 
 
 def axtChain(axt: Path, t2bit: Path, q2bit: Path) -> Path:  # noqa: N802
-    """Chain together axt alignments."""
+    """Chain together axt alignments.
+
+    :param axt: Gzipped AXT file.
+    :param t2bit: Target 2bit file.
+    :param q2bit: Query 2bit file.
+    :returns: Gzipped chain file: `{axt.stem}.chain.gz`
+    """
     chain = axt.with_suffix("").with_suffix(".chain.gz")
     opts = subp.optargs(config["axtChain"], "-")
     args = ["axtChain", *opts, axt, t2bit, q2bit, "stdout"]
@@ -162,7 +210,11 @@ def axtChain(axt: Path, t2bit: Path, q2bit: Path) -> Path:  # noqa: N802
 
 
 def chainMergeSort(chains: list[Path]) -> Path:  # noqa: N802
-    """Combine sorted files into larger sorted file."""
+    """Combine sorted files into larger sorted file.
+
+    :param chains: Gzipped chain files to merge.
+    :returns: Merged chain file named `target.chain.gz`
+    """
     parent = {x.parent for x in chains}
     subdir = parent.pop()
     assert not parent, "chains are in the same directory"
@@ -174,9 +226,17 @@ def chainMergeSort(chains: list[Path]) -> Path:  # noqa: N802
 
 
 def chain_net(chain: Path, target_sizes: Path, query_sizes: Path) -> tuple[Path, Path]:
-    """Make alignment nets out of chains.
+    """Make alignment nets with synteny information from a chain.
 
-    chainPreNet - Remove chains that don't have a chance of being netted.
+    - `chainPreNet`: Remove chains that don't have a chance of being netted.
+    - `chainNet`: Make alignment nets out of chains.
+    - `netSyntenic`: Add synteny info to net.
+
+    :param chain: Gzipped chain file.
+    :param target_sizes: Target `fasize.chrom.sizes`.
+    :param query_sizes: Query `fasize.chrom.sizes`.
+    :returns: Gzipped syntenic net files:
+        (`target.net.gz`, `query.net.gz`)
     """
     t_net = chain.with_name("target.net")
     q_net = chain.with_name("query.net")
@@ -197,7 +257,12 @@ def chain_net(chain: Path, target_sizes: Path, query_sizes: Path) -> tuple[Path,
 
 
 def netSyntenic(net: Path, syn_net: Path, *, if_: bool) -> Path:  # noqa: N802
-    """Add synteny info to net."""
+    """Add synteny info to net.
+
+    :param net: Input net file.
+    :param syn_net: Output syntenic net file.
+    :returns: Same path as `syn_net`.
+    """
     args = ["netSyntenic", net, "stdout"]
     with subp.popen(args, stdout=subp.PIPE, if_=if_) as p:
         subp.gzip(p.stdout, syn_net, if_=if_)
@@ -207,6 +272,15 @@ def netSyntenic(net: Path, syn_net: Path, *, if_: bool) -> Path:  # noqa: N802
 
 
 def net_to_maf(net: Path, chain: Path, sing_maf: Path, target: str, query: str) -> Path:
+    """Convert net and chain to MAF format with `netToAxt | axtSort | axtToMaf`.
+
+    :param net: Input net file.
+    :param chain: Input chain file.
+    :param sing_maf: Output MAF file.
+    :param target: Target species name.
+    :param query: Query species name.
+    :returns: Same path as `sing_maf`.
+    """
     if_ = fs.is_outdated(sing_maf, [net, chain])
     if net.name.startswith("query"):
         target, query = query, target
@@ -225,6 +299,14 @@ def net_to_maf(net: Path, chain: Path, sing_maf: Path, target: str, query: str) 
 def netToAxt(  # noqa: N802
     net: Path, chain: Path, target: str, query: str, *, if_: bool = True
 ) -> subp.Popen[bytes]:
+    """Convert net and chain to AXT format.
+
+    :param net: Input net file.
+    :param chain: Input chain file.
+    :param target: Target species name.
+    :param query: Query species name.
+    :returns: Popen object with stdout of AXT data.
+    """
     target_2bit = faToTwoBit(api.genome_fa(target))
     query_2bit = faToTwoBit(api.genome_fa(query))
     opts = subp.optargs(config["netToAxt"], "-")
@@ -237,12 +319,30 @@ def netToAxt(  # noqa: N802
 def axtToMaf(  # noqa: N802
     stdin: subp.FILE, target: str, query: str, sing_maf: Path, *, if_: bool = True
 ) -> subp.Popen[bytes]:
+    """Convert AXT to MAF format.
+
+    :param stdin: Popen stdout with AXT data.
+    :param target: Target species name.
+    :param query: Query species name.
+    :param sing_maf: Output MAF file.
+    :returns: Popen object without stdout.
+    """
     opts = [f"-tPrefix={api.shorten(target)}.", f"-qPrefix={api.shorten(query)}."]
     args = ["axtToMaf", *opts, "stdin", api.fasize(target), api.fasize(query), sing_maf]
     return subp.popen(args, stdin=stdin, if_=if_)
 
 
 def net_chain_subset(net: Path, chain: Path) -> Path:
+    """Filter and join chains that appear in the net.
+
+    - `netChainSubset`: Create chain file with subset of chains that appear in the net.
+    - `chainStitchId`: Join chain fragments with the same chain ID into a single chain.
+
+    :param net: Input net file.
+    :param chain: Input chain file.
+    :returns: Gzipped chain file:
+        `{net.stem}.over.chain.gz`
+    """
     outfile = net.with_suffix("").with_suffix(".over.chain.gz")
     ncs = ["netChainSubset", net, chain, "stdout"]
     csi = ["chainStitchId", "stdin", "stdout"]
@@ -263,17 +363,12 @@ netFilter = functools.partial(_popen, ["netFilter", "stdin"])  # noqa: N816
 chainFilter = functools.partial(_popen, ["chainFilter", "stdin"])  # noqa: N816
 
 
-def chain_net_filter(file: Path, **kwargs: str) -> subp.Popen[bytes]:
-    options = [f"-{k}={v}".removesuffix("=True") for k, v in kwargs.items()]
-    if file.name.removesuffix(".gz").endswith(".net"):
-        program = "netFilter"
-    else:
-        program = "chainFilter"
-    cmd = [program, *options, file]
-    return subp.popen(cmd, stdout=subp.PIPE)
-
-
 def _gunzip(infile: Path, *, if_: bool = True) -> Path:
+    """Decompress a gzipped file while keeping the original.
+
+    :param infile: Input gzipped file.
+    :returns: Decompressed file.
+    """
     fs.expect_suffix(infile, ".gz")
     outfile = infile.with_suffix("")
     if_ = if_ and fs.is_outdated(outfile, infile)

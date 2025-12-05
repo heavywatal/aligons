@@ -1,9 +1,6 @@
 """Pairwise genome alignment.
 
 <https://lastz.github.io/lastz/>
-
-src: {db.api.prefix}/{species}/*.fa.gz
-dst: ./pairwise/{target}/{query}/{chromosome}/sing.maf
 """
 
 import logging
@@ -27,6 +24,13 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def run(target: str, queries: list[str]) -> Path:
+    """Perform pairwise genome alignment between target and queries.
+
+    :param target: Target species name.
+    :param queries: Query species names.
+    :returns: Output directory for the pairwise alignment:
+        `./pairwise/{target}/`
+    """
     queries = api.sanitize_queries(target, queries)
     futures: list[cli.Future[Path]] = []
     for query in queries:
@@ -83,6 +87,12 @@ class PairwiseChromosomeAlignment:
 
 
 class PairwiseGenomeAlignment:
+    """Class to perform pairwise genome alignment between species.
+
+    :param target: Target species name.
+    :param query: Query species name.
+    """
+
     def __init__(self, target: str, query: str) -> None:
         self._target = target
         self._query = query
@@ -92,6 +102,11 @@ class PairwiseGenomeAlignment:
         self._lastz_opts = _lastz_options(target, query)
 
     def run(self) -> list[cli.Future[Path]]:
+        """Perform pairwise genome alignment between species.
+
+        :returns: Futures of `sing.maf` paths:
+            `./pairwise/{target}/{query}/chromosome.{seqid}/sing.maf`
+        """
         pool = cli.ThreadPool()
         target_chromosomes = list(api.iter_chromosome_2bit(self._target))
         query_chromosomes = list(api.iter_chromosome_2bit(self._query))
@@ -102,13 +117,32 @@ class PairwiseGenomeAlignment:
         return [pool.submit(self.wait_integrate, futures) for futures in ll]
 
     def align_chr(self, target_2bit: Path, query_2bit: Path) -> Path:
+        """Perform pairwise alignment for a single chromosome pair.
+
+        :param target_2bit: Target chromosome 2bit file.
+        :param query_2bit: Query chromosome 2bit file.
+        :returns: Gzipped chain file:
+            `./pairwise/{target}/{query}/{target_2bit.stem}/{query_2bit.stem}.chain.gz`
+        """
         axt_gz = lastz(target_2bit, query_2bit, self._outdir, **self._lastz_opts)
         return kent.axtChain(axt_gz, target_2bit, query_2bit)
 
     def wait_integrate(self, futures: list[cli.Future[Path]]) -> Path:
+        """Collect chains and pass them to `integrate()`.
+
+        :param futures: Futures of gzipped chain files.
+        :returns: Output `sing.maf` file:
+            `./pairwise/{target}/{query}/sing.maf`
+        """
         return self.integrate([f.result() for f in futures])
 
     def integrate(self, chains: list[Path]) -> Path:
+        """Integrate chains into a single MAF file.
+
+        :param chains: Gzipped chain files of chromosomes.
+        :returns: Integrated `sing.maf` file:
+            `./pairwise/{target}/{query}/sing.maf`
+        """
         chain = kent.chainMergeSort(chains)
         net, _q_net = kent.chain_net(chain, self._target_sizes, self._query_sizes)
         if self._target.rsplit("/")[-1] == self._query.rsplit("/")[-1]:
@@ -119,6 +153,15 @@ class PairwiseGenomeAlignment:
 
 
 def lastz(t2bit: Path, q2bit: Path, outdir: Path, **kwargs: Any) -> Path:
+    """Run LASTZ between target and query 2bit files.
+
+    :param t2bit: Target chromosome 2bit file.
+    :param q2bit: Query chromosome 2bit file.
+    :param outdir: Output directory for AXT file.
+    :param kwargs: Additional LASTZ options.
+    :returns: Gzipped AXT file:
+        `./{outdir}/{t2bit.stem}/{q2bit.stem}.axt.gz`
+    """
     target_label = t2bit.stem.rsplit("dna_sm.", 1)[1]
     query_label = q2bit.stem.rsplit("dna_sm.", 1)[1]
     subdir = outdir / target_label
