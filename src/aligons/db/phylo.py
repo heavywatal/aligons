@@ -46,6 +46,11 @@ def extract_inner_names(newick: str) -> list[str]:
 
 
 def extract_names(newick: str) -> list[str]:
+    """Extract node names including inner nodes.
+
+    :param newick: Species tree in Newick format.
+    :returns: A list of names.
+    """
     names = (x.split(":")[0] for x in re.findall(r"[^\s(),;]+", newick))
     return list(filter(None, names))
 
@@ -55,6 +60,11 @@ def extract_lengths(newick: str) -> list[float]:
 
 
 def shorten_names(newick: str) -> str:
+    """Shorten node names in the Newick tree.
+
+    :param newick: Species tree in Newick format.
+    :returns: Newick tree with shortened names.
+    """
     return re.sub(r"[^\s(),:;]+_[^\s(),:;]+", lambda m: shorten(m.group(0)), newick)
 
 
@@ -75,6 +85,12 @@ def remove_whitespace(x: str) -> str:
 
 
 def select(newick: str, queries: Sequence[str]) -> str:
+    """Extract subtree containing specified tips or a clade.
+
+    :param newick: Original species tree in Newick format.
+    :param queries: Clade name or tip names to extract.
+    :returns: Subtree in Newick format.
+    """
     if len(queries) == 1:
         newick = select_clade(newick, queries[0])
     elif len(queries) > 1:
@@ -101,12 +117,22 @@ def select_tips(newick: str, tips: Sequence[str]) -> str:
 
 
 def get_subtree(queries: Sequence[str], fun: Callable[[str], str] = lambda x: x) -> str:
+    """Extract subtree containing specified tips or a clade.
+
+    :param queries: Tip names or clade name to extract.
+    :param fun: A function to modify the tree before extraction.
+    :returns: Subtree in Newick format.
+    """
     tree = fun(get_tree())
     return remove_inner(select(tree, queries))
 
 
 @functools.cache
 def get_tree() -> str:
+    """Get species tree from `config.db.tree` or built-in file.
+
+    :returns: Species tree in Newick format.
+    """
     tree = config["db"].get("tree", "") or read_builtin_newick()
     if "," not in tree:
         with Path(tree).expanduser().open("rt") as fin:
@@ -148,7 +174,13 @@ def _filter_by_shortname(
 
 
 def shorten(name: str) -> str:
-    """Oryza_sativa -> osat."""
+    """Extract four letters from a species name.
+
+    e.g., Oryza_sativa -> osat.
+
+    :param name: Species name.
+    :returns: Shortened name with four letters.
+    """
     if name.lower() == "olea_europaea_sylvestris":
         return "oesy"
     if name.lower() == "oryza_sativa_mh63":
@@ -249,6 +281,12 @@ def _column_generator(top: str, bottom: str) -> StrGen:
 
 
 def parse_newick(newick: str, inner: str = "") -> Node:
+    """Parse Newick string into a tree of Nodes.
+
+    :param newick: Species tree in Newick format.
+    :param inner: Name of an ancestral node of the clade to extract.
+    :returns: The root Node of the tree.
+    """
     if inner not in newick:
         msg = f"{inner} not in {newick}"
         raise ValueError(msg)

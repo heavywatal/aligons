@@ -1,10 +1,6 @@
 """Multiple genome alignment.
 
 <https://github.com/multiz/multiz>
-
-src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
-lnk: ./multiple/{target}/{clade}/{chromosome}/{target}.{query}.sing.maf
-dst: ./multiple/{target}/{clade}/{chromosome}/multiz.maf
 """
 
 import logging
@@ -27,6 +23,18 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def run(indir: Path, query: Sequence[str]) -> Path:
+    """Prepare inputs and perform multiple alignment with multiz.
+
+    - src: `./pairwise/{target}/{query}/chromosome.{seqid}/sing.maf`
+    - lnk: `./multiple/{target}/{clade}/chromosome.{seqid}/{target}.{query}.sing.maf`
+    - dst: `./multiple/{target}/{clade}/chromosome.{seqid}/multiz.maf`
+
+    :param indir: Pairwise alignment directory with target species name:
+        `./pairwise/{target}/`
+    :param query: Query species names or a clade name.
+    :returns: Output directory for the multiple alignment:
+        `./multiple/{target}/{clade}/`
+    """
     target = indir.name
     tree = phylo.get_subtree(query)
     if len(query) > 1:
@@ -46,6 +54,14 @@ def run(indir: Path, query: Sequence[str]) -> Path:
 
 
 def multiz(path: Path, tree: str) -> Path:
+    """Perform multiple alignment with multiz.
+
+    :param path: Directory for multiz input (pairwise `*.sing.maf`) and output:
+        `./multiple/{target}/{clade}/chromosome.{seqid}/`
+    :param tree: Species tree in Newick format.
+    :returns: Output MAF file:
+        `./multiple/{target}/{clade}/chromosome.{seqid}/multiz.maf`
+    """
     sing_mafs = list(path.glob("*.sing.maf"))
     tmpdir = path / "_tmp"
     outfile = path / "multiz.maf"
@@ -87,8 +103,14 @@ def roast(
     """Generate shell script to execute multiz.
 
     Never use bash because it cannot pass {tree} to roast.
-    > roast.v3: tree specification contains too many '('
+    > roast.v3: tree specification contains too many '('<br>
     > roast.v3: improper character in tree specification: "
+
+    :param sing_mafs: Pairwise `*.sing.maf` files.
+    :param tmpdir: Temporary directory.
+    :param outfile: Output MAF file: `multiz.maf`.
+    :param tree: Species tree in Newick format.
+    :returns: `CompletedProcess` with stdout containing shell script.
     """
     options = config["multiz"]
     radius = options.get("R", 30)
@@ -103,6 +125,13 @@ def roast(
 
 
 def prepare(indir: Path, outdir: Path, queries: Sequence[str]) -> Path:
+    """Create output directory with symlinks to pairwise alignment files.
+
+    :param indir: Pairwise alignment directory with target species name.
+    :param outdir: Directory for multiz inputs and outputs.
+    :param queries: Query species names.
+    :returns: The same path as `outdir`.
+    """
     target = indir.name
     if target not in queries:
         msg = f"{target=} not in {queries=}"
