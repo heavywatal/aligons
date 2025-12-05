@@ -24,6 +24,7 @@ plugins:
           options:
             docstring_style: sphinx
             docstring_section_style: list
+            members_order: source
             merge_init_into_class: true
             show_if_no_docstring: true
             show_source: false
