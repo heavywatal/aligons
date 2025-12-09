@@ -22,7 +22,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-C", "--check", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("-M", "--mask", action="store_true")
+    parser.add_argument("-M", "--mask", type=str, help="taxon for RepeatMasker")
     parser.add_argument("accession", nargs="*")
     args = parser.parse_args(argv or None)
     if args.download:
@@ -36,7 +36,7 @@ def main(argv: list[str] | None = None) -> None:
         fts: list[cli.Future[Path]] = []
         for ft in cli.as_completed(fts_fa):
             if args.mask:
-                masked = tools.softmask(ft.result(), "Gentianales")
+                masked = tools.softmask(ft.result(), args.mask)
                 fts.extend(tools.genome_to_twobits(masked))
             else:
                 fs.print_if_exists(ft.result())
