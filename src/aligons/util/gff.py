@@ -25,7 +25,7 @@ class GFF:
         self.body: pl.LazyFrame = _read_body(source)
         self._workaround(source)
 
-    def sanitize(self) -> "GFF":
+    def sanitize(self) -> GFF:
         self.body = (
             self.body.sort([pl.col("seqid").str.pad_start(4, "0"), "start"])
             # remove chromosome for visualization
@@ -33,7 +33,7 @@ class GFF:
         )
         return self
 
-    def seqid_replace(self, pattern: str, repl: str) -> "GFF":
+    def seqid_replace(self, pattern: str, repl: str) -> GFF:
         self.body = self.body.with_columns(pl.col("seqid").str.replace(pattern, repl))
         return self
 

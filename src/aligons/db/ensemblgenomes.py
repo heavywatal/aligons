@@ -12,8 +12,11 @@ import logging
 import os
 import re
 from collections import defaultdict
-from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 from aligons.extern import kent
 from aligons.util import cli, config, dl, fs, subp

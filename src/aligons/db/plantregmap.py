@@ -5,8 +5,11 @@
 
 import logging
 import re
-from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 from aligons.extern import htslib, kent, mafs2cram
 from aligons.util import cli, dl, fs, subp, tomli_w, tomllib

@@ -135,7 +135,7 @@ def checkline(line: str, directory: Path) -> None:
 
 
 @contextlib.contextmanager
-def chdir(path: Path | str) -> Generator[None, Any, None]:
+def chdir(path: Path | str) -> Generator[None, Any]:
     """Change working directory temporarily with 'with' statement."""
     previous_wd = Path.cwd()
     os.chdir(path)

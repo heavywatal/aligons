@@ -1,8 +1,10 @@
 import os
-from collections.abc import Iterator
-from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from importlib.resources.abc import Traversable
 
 from aligons.util import config, resources_data, tomllib
 

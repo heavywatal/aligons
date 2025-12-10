@@ -1,9 +1,11 @@
 import logging
-from collections.abc import Mapping
 from ftplib import FTP
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 import requests
 import tomli_w
@@ -29,13 +31,13 @@ class LazySession:
         _log.info(f"GET {url}")
         return self._req_session.get(url, **kwargs)
 
-    def fetch(self, url: str, outfile: Path | None = None) -> "Response":
+    def fetch(self, url: str, outfile: Path | None = None) -> Response:
         if outfile is None:
             urlp = urlparse(url)
             outfile = Path(Path(urlp.path).name)
         return Response(self, url, outfile)
 
-    def mirror(self, url: str, outdir: Path = Path()) -> "Response":
+    def mirror(self, url: str, outdir: Path = Path()) -> Response:
         urlp = urlparse(url)
         return self.fetch(url, outdir / (urlp.netloc + urlp.path))
 

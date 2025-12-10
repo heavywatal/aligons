@@ -1,11 +1,13 @@
 import logging
 import tomllib
-from collections.abc import Mapping
 from importlib import resources
-from importlib.resources.abc import Traversable
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from importlib.resources.abc import Traversable
 
 import tomli_w
 

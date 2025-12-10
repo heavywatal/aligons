@@ -1,7 +1,10 @@
 import itertools
 import logging
-from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 from .db import api, phylo
 from .extern import bedtools, htslib, kent, lastz, mafs2cram, multiz, phast

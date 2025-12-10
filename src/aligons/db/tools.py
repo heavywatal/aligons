@@ -1,8 +1,11 @@
 import logging
 import re
 import subprocess
-from collections.abc import Iterable
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
 
 from aligons.extern import htslib, kent
 from aligons.util import cli, dl, fs, gff, subp

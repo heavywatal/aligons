@@ -4,10 +4,12 @@ import logging
 import os
 import sys
 import threading
-from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
-from pathlib import Path
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Sequence
+    from pathlib import Path
 
 dry_run = False
 

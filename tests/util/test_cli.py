@@ -1,7 +1,9 @@
 import logging
 import time
+from typing import TYPE_CHECKING
 
-import pytest
+if TYPE_CHECKING:
+    import pytest
 
 from aligons.util import cli
 

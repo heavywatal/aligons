@@ -1,7 +1,9 @@
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import pytest
+if TYPE_CHECKING:
+    import pytest
 
 from aligons.extern import htslib
 

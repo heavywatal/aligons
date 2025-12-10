@@ -7,9 +7,12 @@ import csv
 import functools
 import logging
 import re
-from collections.abc import Iterable, Iterator
 from contextlib import suppress
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
+    from pathlib import Path
 
 from aligons.util import cli, config, fs
 

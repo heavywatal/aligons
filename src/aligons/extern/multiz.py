@@ -4,8 +4,11 @@
 """
 
 import logging
-from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 from aligons.db import phylo
 from aligons.util import cli, config, fs, subp
