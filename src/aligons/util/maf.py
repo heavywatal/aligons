@@ -1,3 +1,5 @@
+"""Utilities for MAF files."""
+
 import io
 import logging
 import re
@@ -25,6 +27,12 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def subseqs_from_bed(infile: Path, flank: int = 0) -> Path:
+    """Extract subsequences from genome FASTA based on BED file.
+
+    :param infile: Input BED file.
+    :param flank: Number of flanking bases to include on each side.
+    :returns: Generated FASTA file.
+    """
     outfile = infile.with_suffix(".fa")
     with subp.open_(outfile, "wb", if_=fs.is_outdated(outfile, infile)) as fout:
         bed = read_bed(infile)
@@ -37,6 +45,15 @@ def subseqs_from_bed(infile: Path, flank: int = 0) -> Path:
 
 
 def subseq(chrom: str, start: int, end: int, name: str, strand: str, **_: Any) -> bytes:
+    """Extract a subsequence from the genome FASTA.
+
+    :param chrom: Chromosome name.
+    :param start: Start position (1-based).
+    :param end: End position (inclusive).
+    :param name: Species name.
+    :param strand: Strand, "+" or "-".
+    :returns: Extracted sequence in bytes.
+    """
     bgz = api.genome_fa(name)
     region = f"{chrom}:{start}-{end}"
     p = htslib.popen_faidx_query(bgz, region, strand=strand)
@@ -44,6 +61,11 @@ def subseq(chrom: str, start: int, end: int, name: str, strand: str, **_: Any) -
 
 
 def maf_block_ranges(infile: Path) -> Path:
+    """Extract alignment block ranges from a MAF file and save as BED.
+
+    :param infile: Input MAF file.
+    :returns: Generated BED file.
+    """
     outfile = infile.with_suffix(".bed")
     if fs.is_outdated(outfile, infile):
         maf_s = read_s(infile)
@@ -54,6 +76,11 @@ def maf_block_ranges(infile: Path) -> Path:
 
 
 def to_one_based_inclusive(bed: pl.LazyFrame) -> pl.LazyFrame:
+    """Convert BED to one-based inclusive coordinates.
+
+    :param bed: LazyFrame from `read_bed()`, zero-based, half-closed-half-open.
+    :returns: LazyFrame in one-based inclusive coordinates.
+    """
     return bed.with_columns(
         start=pl.when(pl.col("strand") == "-")
         .then(pl.col("start"))
@@ -65,9 +92,13 @@ def to_one_based_inclusive(bed: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def read_bed(file: Path) -> pl.LazyFrame:
-    """Note: zero-based, half-closed-half-open.
+    """Read a BED file.
 
+    Note: zero-based, half-closed-half-open.
     E.g., the first 100 bases: start=0, end=100.
+
+    :param file: Input BED file.
+    :returns: LazyFrame with columns: chrom, start, end, name, score, strand.
     """
     return pl.read_csv(
         file,
@@ -78,6 +109,12 @@ def read_bed(file: Path) -> pl.LazyFrame:
 
 
 def to_bed(maf_s: pl.LazyFrame) -> pl.LazyFrame:
+    """Convert LazyFrame of MAF "s" lines to BED format.
+
+    :param maf_s: LazyFrame from `read_s()`.
+    :returns: LazyFrame in BED format with columns:
+        chrom, start, end, name, score, strand.
+    """
     return (
         maf_s.with_columns(pl.col("seqid").str.split_exact(".", 1))
         .unnest("seqid")
@@ -97,9 +134,14 @@ def to_bed(maf_s: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def read_s(file: Path) -> pl.LazyFrame:
-    """Note: "This is a zero-based number".
+    """Read lines starting with "s " from a MAF file.
+
+    Note: "This is a zero-based number".
 
     <https://genome.ucsc.edu/FAQ/FAQformat.html#format5>
+
+    :param file: Input MAF file.
+    :returns: LazyFrame with columns: seqid, start, size, strand, fasize.
     """
     source = io.BytesIO()
     with file.open("rb") as fin:

@@ -1,3 +1,5 @@
+"""File system utilities."""
+
 import contextlib
 import itertools
 import logging
@@ -33,6 +35,12 @@ def print_if_exists(path: Path) -> Path:
 
 
 def relpath(path: Path, start: Path = Path()) -> Path:
+    """Get the relative path from `start` to `path`.
+
+    :param path: Target file or directory.
+    :param start: Starting directory.
+    :returns: Relative path from `start` to `path`.
+    """
     return Path(os.path.relpath(path, start).removeprefix("../"))
 
 
@@ -76,22 +84,32 @@ def is_outdated(product: Path, source: Sequence[Path] | Path | None = None) -> b
 
 
 def newest(files: Sequence[Path]) -> Path:
+    """Find the most recently modified file.
+
+    :param files: Files to check.
+    :returns: The file with the maximum `st_mtime`.
+    """
     return max(files, key=lambda p: p.stat().st_mtime)
 
 
 def sorted_naturally[T: str | Path](iterable: Iterable[T]) -> list[T]:
-    return sorted(iterable, key=natural_key)
+    """Sort strings or Paths in numerical order.
+
+    :param iterable: Strings or Paths.
+    :returns: A list of sorted strings or Paths.
+    """
+    return sorted(iterable, key=_natural_key)
 
 
-def natural_key(x: str | Path) -> list[str]:
-    return [try_pad_zero(s) for s in re.split(r"[\W_]", name_if_path(x))]
+def _natural_key(x: str | Path) -> list[str]:
+    return [_try_pad_zero(s) for s in re.split(r"[\W_]", _name_if_path(x))]
 
 
-def name_if_path(x: str | Path) -> str:
+def _name_if_path(x: str | Path) -> str:
     return x if isinstance(x, str) else x.name
 
 
-def try_pad_zero(s: str) -> str:
+def _try_pad_zero(s: str) -> str:
     try:
         return f"{int(s):03}"
     except (ValueError, TypeError):
@@ -99,6 +117,13 @@ def try_pad_zero(s: str) -> str:
 
 
 def expect_suffix(file: Path, suffix: str, *, negate: bool = False) -> None:
+    """Check if the file ends with the expected suffix.
+
+    :param file: File to check.
+    :param suffix: Expected suffix.
+    :param negate: If True, expect the file to NOT have the suffix.
+    :raises ValueError: If `file` does not end with `suffix`.
+    """
     if negate:
         if file.suffix == suffix:
             msg = f"{file}: unexpected suffix {suffix}"
@@ -109,6 +134,10 @@ def expect_suffix(file: Path, suffix: str, *, negate: bool = False) -> None:
 
 
 def checksums(file: Path) -> None:
+    """Verify files using checksum file.
+
+    :param file: Checksum file.
+    """
     if cli.dry_run:  # pragma: no cover
         return
     with cli.ThreadPoolExecutor() as pool:
@@ -118,6 +147,12 @@ def checksums(file: Path) -> None:
 
 
 def checkline(line: str, directory: Path) -> None:
+    """Evaluate a single line of checksum file.
+
+    :param line: A line from the checksum file.
+    :param directory: Directory where the target files are located.
+    :raises ValueError: If checksum does not match.
+    """
     (e_sum, e_blocks, name) = line.split()
     if not (path := directory / name).exists():
         return

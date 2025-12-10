@@ -20,6 +20,12 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
+    """Concatenate files into a bgzipped file.
+
+    :param infiles: A list of files to concatenate, can be gzipped.
+    :param outfile: A bgzipped output file.
+    :returns: The same path as `outfile`.
+    """
     if fs.is_outdated(outfile, infiles) and not cli.dry_run:
         outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
         with popen_bgzip(outfile) as bgz:
@@ -29,7 +35,13 @@ def concat_bgzip(infiles: list[Path], outfile: Path) -> Path:
 
 
 def bgzip(data: bytes | IO[bytes] | None, outfile: Path, *, if_: bool = True) -> Path:
-    """https://www.htslib.org/doc/bgzip.html."""
+    """Compress data in BGZF format.
+
+    <https://www.htslib.org/doc/bgzip.html>
+
+    :param data: Bytes or a binary stream to compress.
+    :param outfile: Compressed BGZF file.
+    """
     fs.expect_suffix(outfile, ".gz")
     if outfile.exists():
         _log.info(f"overwriting {outfile}")
@@ -44,6 +56,12 @@ def bgzip(data: bytes | IO[bytes] | None, outfile: Path, *, if_: bool = True) ->
 def popen_bgzip(
     outfile: Path, *, stdin: subp.FILE = subp.PIPE, if_: bool = True
 ) -> subp.Popen[bytes]:
+    """Open a BGZF compression process for writing.
+
+    :param outfile: Compressed BGZF file.
+    :param stdin: Passed to `subprocess.Popen`.
+    :returns: A `subprocess.Popen` object.
+    """
     fs.expect_suffix(outfile, ".gz")
     if outfile.exists():
         _log.info(f"overwriting {outfile}")
@@ -52,6 +70,11 @@ def popen_bgzip(
 
 
 def try_index(bgz: Path | cli.Future[Path]) -> Path:
+    """Call `faidx` or `tabix` on the given BGZF file.
+
+    :param bgz: BGZF-compressed file or a future of it.
+    :returns: The index file if created, else the original file.
+    """
     bgz = cli.result(bgz)
     if to_be_tabixed(bgz.name):
         return tabix(bgz)
@@ -61,6 +84,11 @@ def try_index(bgz: Path | cli.Future[Path]) -> Path:
 
 
 def read_fai(genome: Path) -> dict[str, int]:
+    """Read a FASTA index (`.fai`) file.
+
+    :param genome: A bgzipped genome FASTA. Use `api.genome_fa(species)`.
+    :returns: A mapping of sequence IDs to their lengths.
+    """
     fai = faidx(genome)
     res: dict[str, int] = {}
     with fai.open("rt") as fin:
@@ -71,7 +99,13 @@ def read_fai(genome: Path) -> dict[str, int]:
 
 
 def faidx(bgz: Path | cli.Future[Path]) -> Path:
-    """https://www.htslib.org/doc/samtools-faidx.html."""
+    """Index a bgzipped FASTA file.
+
+    <https://www.htslib.org/doc/samtools-faidx.html>
+
+    :param bgz: A bgzipped FASTA file or a future of it.
+    :returns: The FASTA index file (`.fai`).
+    """
     bgz = cli.result(bgz)
     fs.expect_suffix(bgz, ".gz")
     outfile = bgz.with_suffix(bgz.suffix + ".fai")
@@ -80,6 +114,12 @@ def faidx(bgz: Path | cli.Future[Path]) -> Path:
 
 
 def faidx_query(bgz: Path | cli.Future[Path], region: str, outfile: Path) -> Path:
+    """Query a region from an indexed bgzipped FASTA file.
+
+    :param bgz: A bgzipped FASTA file or a future of it.
+    :param region: The region to query like `seqid:start-end`.
+    :param outfile: The output FASTA for the queried region.
+    """
     bgz = cli.result(bgz)
     fs.expect_suffix(bgz, ".gz")
     args = ["samtools", "faidx", bgz, region, "-o", outfile]
@@ -95,9 +135,15 @@ def popen_faidx_query(
     stdout: subp.FILE = subp.PIPE,
     if_: bool = True,
 ) -> subp.Popen[bytes]:
-    """Note: 1-based, inclusive coordinates.
+    """Query a region from an indexed bgzipped FASTA file.
 
-    E.g., the first 100 bases: 1-100.
+    Note: 1-based, inclusive coordinates, e.g., the first 100 bases: 1-100.
+
+    :param bgz: A bgzipped FASTA file or a future of it.
+    :param region: The region to query like `seqid:start-end`.
+    :param strand: "+" or "-".
+    :param stdout: Passed to `subprocess.Popen`.
+    :returns: A `subprocess.Popen` object.
     """
     bgz = cli.result(bgz)
     fs.expect_suffix(bgz, ".gz")
@@ -108,9 +154,13 @@ def popen_faidx_query(
 
 
 def tabix(bgz: Path | cli.Future[Path]) -> Path:
-    """https://www.htslib.org/doc/tabix.html.
+    """Index a bgzipped TAB-delimited file.
 
-    Use .csi instead of .tbi for chromosomes >512 Mbp.
+    Use `.csi` instead of `.tbi` for chromosomes >512 Mbp.
+    <https://www.htslib.org/doc/tabix.html>
+
+    :param bgz: A bgzipped TAB-delimited file or a future of it.
+    :returns: The index file (`.csi`).
     """
     bgz = cli.result(bgz)
     outfile = bgz.with_suffix(bgz.suffix + ".csi")
@@ -119,7 +169,13 @@ def tabix(bgz: Path | cli.Future[Path]) -> Path:
 
 
 def index(cram: Path | cli.Future[Path]) -> Path:
-    """https://www.htslib.org/doc/samtools-index.html."""
+    """Index a CRAM file.
+
+    <https://www.htslib.org/doc/samtools-index.html>
+
+    :param cram: A CRAM file or a future of it.
+    :returns: The CRAM index file (`.crai`).
+    """
     cram = cli.result(cram)
     outfile = cram.with_suffix(cram.suffix + ".crai")
     subp.run(["samtools", "index", cram], if_=fs.is_outdated(outfile, cram))

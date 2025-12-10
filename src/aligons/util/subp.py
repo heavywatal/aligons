@@ -237,7 +237,7 @@ def popen_sd(
     stdout: FILE = PIPE,
     if_: bool = True,
 ) -> Popen[bytes]:
-    """Run [`sd`](https://github.com/chmln/sd) command.
+    """Open [`sd`](https://github.com/chmln/sd) process.
 
     :param pattern: Pattern to search.
     :param repl: Replacement string.
