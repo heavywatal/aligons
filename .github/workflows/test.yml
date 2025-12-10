@@ -8,18 +8,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
       with:
         python-version-file: pyproject.toml
         cache: 'pip'
-    - name: Install Python dependencies
-      run: python -m pip install -U pip
     - name: Install this
-      run: python -m pip install -U .[dev]
-    - name: lint
+      run: python -m pip install -U . --group dev
+    - name: Lint
       run: python -m ruff check .
-    - name: format
+    - name: Format
       run: python -m ruff format --diff .
     - name: Set up Homebrew
       run: |
