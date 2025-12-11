@@ -110,13 +110,15 @@ class ThreadPool:
         """Create a new ThreadPoolExecutor or return the existing one.
 
         :param max_workers: Passed to `ThreadPoolExecutor` constructor.
+            The instance is replaced if it already exists and this value is not None.
         :returns: The singleton ThreadPoolExecutor instance.
         """
         if cls._instance is None:
             cls._instance = ThreadPoolExecutor(max_workers)
         elif max_workers is not None:
             max_w = cls._instance._max_workers  # noqa: SLF001
-            _log.warning(f"max_workers = {max_w}; ignored {max_workers}")
+            _log.warning(f"Replaced ThreadPool with {max_workers=} (was {max_w})")
+            cls._instance = ThreadPoolExecutor(max_workers)
         return cls._instance
 
 

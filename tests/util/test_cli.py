@@ -45,4 +45,4 @@ def test_threadpool(caplog: pytest.LogCaptureFixture):
     elapsed = time.time() - start
     assert elapsed < seconds * acceptance
     cli.ThreadPool(42)
-    assert "ignored" in caplog.text
+    assert "Replaced ThreadPool" in caplog.text
