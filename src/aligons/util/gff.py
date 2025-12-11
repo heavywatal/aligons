@@ -1,3 +1,5 @@
+"""GFF3 parser for cleaning."""
+
 import io
 import logging
 import re
@@ -20,12 +22,20 @@ def main(argv: list[str] | None = None) -> None:
 
 
 class GFF:
-    def __init__(self, source: Path) -> None:
+    """GFF3 parser for cleaning."""
+
+    def __init__(self, source: Path | typing.IO[bytes]) -> None:
+        """Read GFF3 file as a Polars LazyFrame.
+
+        :param source: Input GFF3 file.
+        """
         self.header: list[bytes] = _read_header(source)
         self.body: pl.LazyFrame = _read_body(source)
-        self._workaround(source)
+        if isinstance(source, Path):
+            self._workaround(source)
 
     def sanitize(self) -> GFF:
+        """Remove chromosome entries and sort by seqid and start position."""
         self.body = (
             self.body.sort([pl.col("seqid").str.pad_start(4, "0"), "start"])
             # remove chromosome for visualization
@@ -33,16 +43,17 @@ class GFF:
         )
         return self
 
-    def seqid_replace(self, pattern: str, repl: str) -> GFF:
+    def _seqid_replace(self, pattern: str, repl: str) -> GFF:
         self.body = self.body.with_columns(pl.col("seqid").str.replace(pattern, repl))
         return self
 
     def write(self, io_bytes: typing.IO[bytes]) -> None:
+        """Write data to a byte stream."""
         io_bytes.writelines(self.header)
-        io_bytes = typing.cast("io.BytesIO", io_bytes)
         self.body.collect().write_csv(io_bytes, include_header=False, separator="\t")
 
     def to_string(self) -> str:
+        """Get GFF3 content as a string."""
         buffer = io.BytesIO()
         self.write(buffer)
         return buffer.getvalue().decode()
@@ -52,32 +63,40 @@ class GFF:
             source.name.startswith("PGSC_DM_V403")
             and source.resolve().parent.parent.name == "spuddb.uga.edu"
         ):
-            self.seqid_replace("^ST4.03ch", "chr")
+            self._seqid_replace("^ST4.03ch", "chr")
         if source.name.startswith("ITAG2.3"):
             # SL2.40ch01: begin 338105 > end 338074
             self.body = self.body.filter(pl.col("start") < pl.col("end"))
 
 
-def _read_header(source: Path) -> list[bytes]:
-    lines: list[bytes] = []
-    with subp.popen_zcat(source) as zcat:
-        assert zcat.stdout, source
-        for line in zcat.stdout:
-            if not line.startswith(b"#"):
-                break
-            lines.append(line)
-    if source.name.startswith("ITAG4.1"):
-        # solgenomics SL4.0 has dirty headers without space
-        _log.info(f"{source}:\n{b''.join(lines)}")
-        rex = re.compile(rb"^(##sequence-region)(\S)")
-        lines = [rex.sub(rb"\1 \2", x) for x in lines]
+def _read_header(source: Path | typing.IO[bytes]) -> list[bytes]:
+    if isinstance(source, Path):
+        with subp.popen_zcat(source) as zcat:
+            assert zcat.stdout, source
+            lines = _read_hash_lines(zcat.stdout)
+        if source.name.startswith("ITAG4.1"):
+            # solgenomics SL4.0 has dirty headers without space
+            _log.info(f"{source}:\n{b''.join(lines)}")
+            rex = re.compile(rb"^(##sequence-region)(\S)")
+            lines = [rex.sub(rb"\1 \2", x) for x in lines]
+    else:
+        lines = _read_hash_lines(source)
     if not lines or not lines[0].startswith(b"##gff-version"):
         _log.warning(f"{source}:invalid GFF without ##gff-version")
         lines = [b"##gff-version 3\n", *lines]
     return lines
 
 
-def _read_body(source: Path | bytes | io.BytesIO) -> pl.LazyFrame:
+def _read_hash_lines(source: typing.IO[bytes]) -> list[bytes]:
+    lines: list[bytes] = []
+    for line in source:
+        if not line.startswith(b"#"):
+            break
+        lines.append(line)
+    return lines
+
+
+def _read_body(source: Path | bytes | typing.IO[bytes]) -> pl.LazyFrame:
     if isinstance(source, bytes):
         source = re.sub(rb"\n\n+", rb"\n", source)
     # scan_csv does not read compressed files

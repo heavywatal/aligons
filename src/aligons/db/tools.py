@@ -1,11 +1,13 @@
+"""Preprocessing tools for genome databases."""
+
 import logging
 import re
 import subprocess
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from pathlib import Path
 
 from aligons.extern import htslib, kent
 from aligons.util import cli, dl, fs, gff, subp
@@ -83,7 +85,7 @@ def index_bgzip(infile: Path | dl.Response, outfile: Path) -> Path:
 
     :param infile: A FASTA or GFF file, possibly a download response.
     :param outfile: The output bgzipped file.
-    :returns: The same path as `outfile`.
+    :returns: The same path as `outfile`, not index file.
     """
     if isinstance(infile, dl.Response):
         infile = infile.path
@@ -97,6 +99,31 @@ def index_bgzip(infile: Path | dl.Response, outfile: Path) -> Path:
                 gff3.sanitize().write(bgzip.stdin)
         else:
             with subp.popen_zcat(infile) as zcat:
+                htslib.bgzip(zcat.stdout, outfile)
+    htslib.try_index(outfile)
+    return outfile
+
+
+def unzip_index_bgzip(infile_zip: Path, name: str, outfile: Path) -> Path:
+    """Make bgzip and index of a specific file inside a zip archive.
+
+    :param infile_zip: Input zip file like NCBI genome package.
+    :param name: File inside the zip to be extracted.
+    :param outfile: Output bgzipped file.
+    :returns: The same path as `outfile`, not index file.
+    """
+    if fs.is_outdated(outfile, infile_zip):
+        if not cli.dry_run:
+            outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
+        if any(s in (".gff", ".gff3") for s in outfile.suffixes):
+            with subp.popen_zcat([infile_zip, Path(name)]) as zcat:
+                assert zcat.stdout
+                gff3 = gff.GFF(zcat.stdout)
+            with htslib.popen_bgzip(outfile) as bgzip:
+                assert bgzip.stdin
+                gff3.sanitize().write(bgzip.stdin)
+        else:
+            with subp.popen_zcat([infile_zip, Path(name)]) as zcat:
                 htslib.bgzip(zcat.stdout, outfile)
     htslib.try_index(outfile)
     return outfile

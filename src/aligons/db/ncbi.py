@@ -7,9 +7,11 @@ import hashlib
 import json
 import re
 import zipfile
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from aligons.extern import htslib
+if TYPE_CHECKING:
+    from pathlib import Path
+
 from aligons.util import cli, fs, logging, subp
 
 from . import _rsrc, api, tools
@@ -32,18 +34,22 @@ def main(argv: list[str] | None = None) -> None:
         for file in _prefix_mirror().glob("*.zip"):
             _check_zip(file)
     if args.mask:
-        fts_fa = [_index_genome_fa(x) for x in _prefix_mirror().glob("*.zip")]
+        fts_idx: list[cli.Future[Path]] = []
+        for acc in args.accession:
+            genome_zip = _download_genome(acc)
+            fts_idx.extend(_index_genome(genome_zip))
         fts: list[cli.Future[Path]] = []
-        for ft in cli.as_completed(fts_fa):
-            if args.mask:
-                masked = tools.softmask(ft.result(), args.mask)
+        for ft in cli.as_completed(fts_idx):
+            bgzipped = ft.result()
+            fs.print_if_exists(bgzipped)
+            if bgzipped.name.endswith(".fa.gz"):
+                masked = tools.softmask(bgzipped, args.mask)
                 fts.extend(tools.genome_to_twobits(masked))
-            else:
-                fs.print_if_exists(ft.result())
         cli.wait_raise(fts)
 
 
 def db_prefix() -> Path:
+    """Directory of preprocessed NCBI genomes."""
     return api.prefix("ncbi")
 
 
@@ -51,12 +57,12 @@ def _prefix_mirror() -> Path:
     return _rsrc.db_root(_HOST) / "genomes" / "all"
 
 
-def _download_genome(accession: str, *, if_: bool = True) -> None:
+def _download_genome(accession: str) -> Path:
     """Download a genome data package via `datasets` CLI.
 
     `--include`: genome, rna, protein, cds, gff3, gtf, gbff, seq-report, none
 
-    https://www.ncbi.nlm.nih.gov/datasets/docs/v2/reference-docs/command-line/datasets/download/genome/
+    <https://www.ncbi.nlm.nih.gov/datasets/docs/v2/reference-docs/command-line/datasets/download/genome/>
     """
     outdir = _prefix_mirror()
     if not cli.dry_run:
@@ -66,12 +72,17 @@ def _download_genome(accession: str, *, if_: bool = True) -> None:
     args.extend(["accession", accession])
     args.extend(["--filename", outfile])
     args.extend(["--include", "genome,gff3"])
-    subp.run(args, if_=if_ and fs.is_outdated(outfile))
+    subp.run(args, if_=fs.is_outdated(outfile))
+    return outfile
 
 
-def _index_genome_fa(infile: Path) -> cli.Future[Path]:
-    """Make indexed genome FASTA from a genome data package zip."""
-    info = _get_info(infile)
+def _index_genome(genome_zip: Path) -> list[cli.Future[Path]]:
+    """Make indexed genome FASTA and GFF from a genome data package zip.
+
+    :param genome_zip: NCBI genome package file: `{accession}.zip`.
+    :returns: Future of the bgzipped files.
+    """
+    info = _get_info(genome_zip)
     _log.debug(info)
     species: str = info["species"]  # pyright: ignore[reportAssignmentType]
     species = species.replace(" ", "_").lower()
@@ -79,25 +90,19 @@ def _index_genome_fa(infile: Path) -> cli.Future[Path]:
     stem = f"{species}_{version}"
     name = info["sequences"][0]
     out_fa = db_prefix() / species / f"{stem}.dna.genome.fa.gz"
-    return cli.thread_submit(_index_bgzip, infile, name, out_fa)
+    fts = [cli.thread_submit(tools.unzip_index_bgzip, genome_zip, name, out_fa)]
+    if isinstance(gff := info.get("annotation"), str) and gff:
+        _log.debug(f"{gff = }")
+        out_gff = db_prefix() / species / f"{stem}.genome.gff3.gz"
+        fts.append(cli.thread_submit(tools.unzip_index_bgzip, genome_zip, gff, out_gff))
+    return fts
 
 
-def _index_bgzip(infile: Path, name: str, outfile: Path) -> Path:
-    """Make bgzip and index of a specific file inside a zip archive."""
-    if fs.is_outdated(outfile, infile):
-        if not cli.dry_run:
-            outfile.parent.mkdir(0o755, parents=True, exist_ok=True)
-        with subp.popen_zcat([infile, Path(name)]) as zcat:
-            htslib.bgzip(zcat.stdout, outfile)
-    htslib.try_index(outfile)
-    return outfile
-
-
-def _get_info(file: Path) -> dict[str, str | list[str]]:
+def _get_info(genome_zip: Path) -> dict[str, str | list[str]]:
     """Extract metadata from a genome package zip."""
     res: dict[str, str | list[str]] = {}
     try:
-        with zipfile.ZipFile(file) as zf:
+        with zipfile.ZipFile(genome_zip) as zf:
             for name in zf.namelist():
                 _log.debug(name)
             sequences = [x for x in zf.namelist() if "_genomic.f" in x]
@@ -113,7 +118,7 @@ def _get_info(file: Path) -> dict[str, str | list[str]]:
             if annotation:
                 res["annotation"] = annotation[0]
     except zipfile.BadZipFile:
-        _log.error(f"Bad zip file: {file}")
+        _log.error(f"Bad zip file: {genome_zip}")
     return res
 
 
