@@ -31,7 +31,7 @@ class ArgumentParser(argparse.ArgumentParser):
         group.add_argument("-v", "--verbose", action="count", default=1)
         group.add_argument("-q", "--quiet", action=DecreaseVerbosity, nargs=0)
         self.add_argument("-n", "--dry-run", action="store_true")
-        self.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
+        self.add_argument("-j", "--jobs", type=int, default=1)
 
     @override
     def parse_args(  # type: ignore[reportIncompatibleMethodOverride]
