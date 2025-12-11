@@ -1,3 +1,16 @@
+"""Configuration management utilities.
+
+Configuration files are searched and loaded in the following order:
+
+1. `{aligons}/data/config.toml` (default settings)
+2. `~/.aligons.toml` (for user-specific settings)
+3. `./.aligons.toml` (for working directory)
+
+To customize settings, create `.aligons.toml` in your home or working directory
+with the subset of items you want to override.
+See `python -m aligons.util` for the current and default (with `-d` option) values.
+"""
+
 import logging
 import tomllib
 from importlib import resources
@@ -15,15 +28,30 @@ _log = logging.getLogger(__name__)
 
 
 def resources_data(child: str = "") -> Traversable:
+    """Get a resource file or directory in the `aligons.data` package.
+
+    :param child: Relative path to the resource inside the `aligons.data` directory.
+    :returns: Traversable object representing the resource.
+    """
     return resources.files("aligons.data").joinpath(child)
 
 
 def update_config_if_exists(path: Path) -> None:
+    """Read a TOML config file if it exists, and update the global config.
+
+    :param path: TOML config file.
+    """
     if path.exists():
         update_nested(_config_src, _read_config(path))
 
 
 def update_nested(x: dict[str, Any], other: Mapping[str, Any]) -> dict[str, Any]:
+    """Recursively update a nested dictionary.
+
+    :param x: Original dictionary to be updated.
+    :param other: Dictionary with new values to update.
+    :returns: The updated original dictionary.
+    """
     for key, value in other.items():
         if isinstance(x_val := x.get(key), dict):
             update_nested(x_val, value)  # type: ignore[reportUnknownArgumentType]
@@ -46,6 +74,11 @@ config = MappingProxyType[str, Any](_config_src)
 
 
 def log_config(path: Path = Path(".log.aligons.toml")) -> None:
+    """Record the current configuration to a TOML file.
+
+    Raise an error if the file from a previous run exists and differs.
+    Remove it if you really know what you are doing.
+    """
     _log.info(config)
     if path.exists():
         reference = _read_config(path)

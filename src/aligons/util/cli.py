@@ -1,7 +1,8 @@
+"""Command-line interface utilities."""
+
 import argparse
 import datetime
 import logging
-import os
 import sys
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
@@ -25,7 +26,10 @@ _verbosity_to_level = {
 
 
 class ArgumentParser(argparse.ArgumentParser):
+    """Wrapper of `argparse.ArgumentParser` with common arguments."""
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Add common arguments for verbosity, dry-run, and concurrency."""
         super().__init__(*args, **kwargs)
         group = self.add_mutually_exclusive_group()
         group.add_argument("-v", "--verbose", action="count", default=1)
@@ -55,6 +59,8 @@ class ArgumentParser(argparse.ArgumentParser):
 
 
 class DecreaseVerbosity(argparse.Action):
+    """Custom action to decrease verbosity level."""
+
     @override
     def __call__(
         self,
@@ -96,9 +102,16 @@ def _now() -> datetime.datetime:
 
 
 class ThreadPool:
+    """Singleton factory for ThreadPoolExecutor."""
+
     _instance = None
 
     def __new__(cls, max_workers: int | None = None) -> ThreadPoolExecutor:
+        """Create a new ThreadPoolExecutor or return the existing one.
+
+        :param max_workers: Passed to `ThreadPoolExecutor` constructor.
+        :returns: The singleton ThreadPoolExecutor instance.
+        """
         if cls._instance is None:
             cls._instance = ThreadPoolExecutor(max_workers)
         elif max_workers is not None:
@@ -108,23 +121,33 @@ class ThreadPool:
 
 
 def thread_submit(fn: Callable[..., Any], /, *args: Any, **kwargs: Any) -> Future[Any]:
+    """Submit a callable to the singleton ThreadPoolExecutor.
+
+    :param fn: Function to execute in a separate thread.
+    :param args: Positional arguments to pass to the function.
+    :param kwargs: Keyword arguments to pass to the function.
+    :returns: Future representing the given call.
+    """
     if threading.current_thread() != threading.main_thread():
         _log.warning("submit() from non-main thread may cause deadlock.")
     return ThreadPool().submit(fn, *args, **kwargs)
 
 
 def wait_raise(futures: Iterable[Future[Any]]) -> None:
+    """Wait for futures to complete and raise any exceptions."""
     for f in as_completed(futures):
         f.result()
 
 
 def result(x: Path | Future[Path]) -> Path:
+    """Syntactic sugar for getting result from a Future."""
     if isinstance(x, Future):
         return x.result()
     return x
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Test this module."""
     parser = ArgumentParser()
     args = parser.parse_args(argv)
     level = _log.getEffectiveLevel()

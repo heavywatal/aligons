@@ -18,13 +18,14 @@ _log = logging.getLogger(__name__)
 
 
 class LazySession:
-    """Wrapper of `requests.Session` that supports lazy initialization.
-
-    :param url: URL to `POST` to initialize the session.
-    :param data: Data to `POST` to initialize the session.
-    """
+    """Wrapper of `requests.Session` that supports lazy initialization."""
 
     def __init__(self, url: str = "", data: Mapping[str, str] = {}) -> None:
+        """Set properties without actually opening the session.
+
+        :param url: URL to `POST` to initialize the session.
+        :param data: Data to `POST` to initialize the session.
+        """
         self._url = url
         self._data = data
         self._req_session = None
@@ -74,13 +75,15 @@ class Response:
 
     HTTP session is opened when the file path is requested and not existing.
     The content is read from the file upon request.
-
-    :param session: LazySession to use for downloading.
-    :param url: URL of the resource.
-    :param path: Local path to save the file.
     """
 
     def __init__(self, session: LazySession, url: str, path: Path) -> None:
+        """Set properties without actually opening the session.
+
+        :param session: LazySession to use for downloading.
+        :param url: URL of the resource.
+        :param path: Local path to save the file.
+        """
         self._session = session
         self._url = url
         self._path = path
@@ -88,6 +91,7 @@ class Response:
 
     @property
     def url(self) -> str:
+        """URL of the resource."""
         return self._url
 
     @property
@@ -164,16 +168,16 @@ def mirror(url: str, outdir: Path = Path()) -> Response:
 
 
 class LazyFTP(FTP):
-    """Wrapper of `ftplib.FTP` that supports lazy initialization and caching.
-
-    :param host: URL of the FTP server.
-    :param slug: Directory path on the FTP server.
-    :param prefix: Local directory path to store downloaded files.
-    :param timeout: Timeout for FTP connection in seconds.
-    """
+    """Wrapper of `ftplib.FTP` that supports lazy initialization and caching."""
 
     def __init__(self, host: str, slug: str, prefix: Path, timeout: float = 0) -> None:
-        """Set properties without connecting."""
+        """Set properties without connecting.
+
+        :param host: URL of the FTP server.
+        :param slug: Directory path on the FTP server.
+        :param prefix: Local directory path to store downloaded files.
+        :param timeout: Timeout for FTP connection in seconds.
+        """
         _log.info("LazyFTP()")
         self.host = host
         self.slug = slug
