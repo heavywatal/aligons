@@ -1,10 +1,6 @@
 """TRF: Tandem Repeats Finder.
 
 <https://tandem.bu.edu/trf/home>
-
-src: {basename}.fa
-dat: {basename}.fa.2.5.7.80.10.40.500.dat.gz
-out: {basename}.fa.trf.bed.gz
 """
 
 import logging
@@ -25,6 +21,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("infile", type=Path, nargs="+")
     args = parser.parse_args(argv or None)
@@ -33,6 +30,13 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def run(infile: Path) -> Path:
+    """Run TRF and make BED from the output DAT.
+
+    DAT: `{basename}.fa.2.5.7.80.10.40.500.dat.gz`.
+
+    :param infile: Input FASTA file: `{basename}.fa`.
+    :returns: Output BED file: `{basename}.fa.trf.bed.gz`.
+    """
     dat = trf(infile)
     outfile = infile.with_suffix(infile.suffix + ".trf.bed.gz")
     if fs.is_outdated(outfile, [infile, dat]) and not cli.dry_run:
@@ -41,18 +45,21 @@ def run(infile: Path) -> Path:
 
 
 def trf(infile: Path) -> Path:
-    """Be careful of messy and dirty output from trf.
+    """Be careful of messy and dirty output from `trf`.
 
     - without `-ngs`
       - returns non-zero even when it is "Done" successfully.
-      - writes ./{infile}.{params}.dat including verbose header.
+      - writes `./{infile}.{params}.dat` including verbose header.
     - with `-ngs`
       - returns 0 if successful.
       - writes to stdout in a different format.
-        - no header; concise sequence info with leading @.
+        - no header; concise sequence info with leading `@`.
         - has two extra columns with DNAs, which bloats the file ~50%.
 
-    https://github.com/Benson-Genomics-Lab/TRF/tree/master/src
+    <https://github.com/Benson-Genomics-Lab/TRF/tree/master/src>
+
+    :param infile: Input FASTA file.
+    :returns: Output DAT file: `{infile}.{params}.dat.gz`.
     """
     fs.expect_suffix(infile, ".gz", negate=True)
     param_defaults = {
@@ -81,6 +88,7 @@ def trf(infile: Path) -> Path:
 
 
 def dat_to_bed(dat: Path, bed: Path) -> Path:
+    """Convert TRF DAT to BED format."""
     content = b"".join(_dat_to_bed_iter(dat))
     return htslib.bgzip(content, bed)
 

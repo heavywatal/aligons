@@ -1,3 +1,5 @@
+"""Main entry point for aligons pipeline."""
+
 import itertools
 import logging
 from pathlib import Path
@@ -14,6 +16,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Run aligons pipeline from command line."""
     tree = phylo.get_tree()
     parser = cli.ArgumentParser()
     parser.add_argument("-N", "--check-args", action="store_true")
@@ -34,6 +37,11 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def one_block(bed: Path, clade: str) -> None:
+    """Perform multiple alignment and conservation scoring for one genomic block.
+
+    :param bed: BED file specifying the genomic block in the target species.
+    :param clade: Clade name.
+    """
     lst_species = phylo.list_species(clade)
     aln = lastz.PairwiseChromosomeAlignment(bed, lst_species)
     not_in_aln = set(lst_species) - {aln.target, *aln.queries}
@@ -48,8 +56,18 @@ def one_block(bed: Path, clade: str) -> None:
 def genome_wide(
     target: str, clade: str, tips: int, max_bp: float, *, compara: bool
 ) -> None:
+    """Perform genome-wide multiple alignment and conservation scoring.
+
+    :param target: Target species name.
+    :param clade: Clade name.
+    :param tips: Number of species to include in each multiple alignment.
+        If 0 (default), use all species in the clade.
+        Otherwise, iterate over all combinations of species of the given size.
+    :param max_bp: Maximum genome size (in base pairs) for including a species.
+    :param compara: Whether to use precomputed pairwise alignments from Ensembl Compara.
+    """
     lst_species = phylo.list_species(clade)
-    lst_species = list(filter(lambda x: test_fasize(x, max_bp), lst_species))
+    lst_species = list(filter(lambda x: _test_fasize(x, max_bp), lst_species))
     if compara:  # noqa: SIM108
         pairwise = Path("compara") / target
     else:
@@ -65,6 +83,13 @@ def genome_wide(
 
 
 def multiz_phast(pairwise: Path, lst_species: Sequence[str], clade: str) -> Path:
+    """Perform multiple alignment and conservation scoring.
+
+    :param pairwise: Output directory of pairwise alignments.
+    :param lst_species: Species to use.
+    :param clade: Clade name.
+    :return: BED file from `phastConst --most-conserved`.
+    """
     target = pairwise.name
     multiple = multiz.run(pairwise, lst_species)
     is_clade = set(lst_species) == set(phylo.list_species(clade))
@@ -96,7 +121,7 @@ def _subtract_cds(bed: Path, cds: Path, outfile: Path) -> Path:
     return outfile
 
 
-def test_fasize(species: str, max_bp: float) -> bool:
+def _test_fasize(species: str, max_bp: float) -> bool:
     bp = sum(x for x in api.chrom_sizes(species).values())
     ret = bp < max_bp
     _log.info(f"{species:30}{round(bp / 1e6):>5} Mbp {ret}")

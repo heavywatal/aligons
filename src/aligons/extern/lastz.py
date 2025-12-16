@@ -16,6 +16,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("target", choices=api.species_names())
     parser.add_argument("query", nargs="*")
@@ -41,7 +42,14 @@ def run(target: str, queries: list[str]) -> Path:
 
 
 class PairwiseChromosomeAlignment:
+    """Class to perform pairwise chromosome alignment within a given range."""
+
     def __init__(self, bed: Path, queries: list[str]) -> None:
+        """Initialize with BED file and query species names.
+
+        :param bed: BED file specifying the genomic block in the target species.
+        :param queries: Query species names.
+        """
         bed_df = maf.read_bed(bed)
         rows = bed_df.collect().iter_rows(named=True)
         row0 = next(rows)
@@ -58,12 +66,20 @@ class PairwiseChromosomeAlignment:
             self._queries[query] = q2bit
 
     def submit(self) -> list[cli.Future[Path]]:
+        """Concurrently perform pairwise alignment for all query species."""
         return [
             cli.thread_submit(self.chr_sing_maf, query, q2bit)
             for query, q2bit in self._queries.items()
         ]
 
     def chr_sing_maf(self, query: str, q2bit: Path) -> Path:
+        """Perform pairwise alignment for the specified query species.
+
+        :param query: Query species name.
+        :param q2bit: Query chromosome 2bit file.
+        :returns: Output `sing.maf` file:
+            `./pairwise/{target}/{query}/chromosome.{seqid}/sing.maf`
+        """
         outdir = self._target_dir / query
         query_sizes = api.fasize(query)
         axt = lastz(self._t2bit, q2bit, outdir)
@@ -87,13 +103,14 @@ class PairwiseChromosomeAlignment:
 
 
 class PairwiseGenomeAlignment:
-    """Class to perform pairwise genome alignment between species.
-
-    :param target: Target species name.
-    :param query: Query species name.
-    """
+    """Class to perform pairwise genome alignment between species."""
 
     def __init__(self, target: str, query: str) -> None:
+        """Initialize with target and query species names.
+
+        :param target: Target species name.
+        :param query: Query species name.
+        """
         self._target = target
         self._query = query
         self._target_sizes = api.fasize(target)

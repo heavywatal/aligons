@@ -1,10 +1,7 @@
 """RepeatMasker finds interspersed repeats and low complexity sequences.
 
-<https://www.repeatmasker.org/>
-<https://github.com/rmhubley/RepeatMasker>
-
-src: {basename}.fa
-dst: {basename}.fa.out.gff
+- <https://www.repeatmasker.org/>
+- <https://github.com/Dfam-consortium/TETools>
 """
 
 import io
@@ -21,6 +18,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("--test", action="store_true")
     parser.add_argument("-S", "--species")
@@ -41,7 +39,12 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True) -> Path:
 
     - Returns 0 even if aborted, e.g., "cannot read file".
     - Prints verbose log to stdout, not stderr.
-    - .out.gff lacks some information stored in .out.
+    - `*.out.gff` lacks some information stored in `*.out`.
+
+    :param infile: Input FASTA file: `{basename}.fa`
+    :param species: Species or higher taxonomic term for repeat library.
+    :param soft: If `True`, mask low-complexity regions in lowercase.
+    :returns: Output GFF file: `{basename}.fa.out.gff`
     """
     fs.expect_suffix(infile, ".gz", negate=True)
     outfile = infile.with_suffix(infile.suffix + ".out.gff")
@@ -65,6 +68,7 @@ def repeatmasker(infile: Path, species: str = "", *, soft: bool = True) -> Path:
 
 
 def read_out(infile: Path) -> pl.LazyFrame:
+    """Read RepeatMasker `.out` file into a LazyFrame."""
     fs.expect_suffix(infile, ".out")
     with infile.open("rb") as fin:
         content = re.sub(rb" *\n *", rb"\n", fin.read())

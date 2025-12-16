@@ -1,9 +1,6 @@
 """sdust: symmetric DUST algorithm for finding low-complexity sequences.
 
 <https://github.com/lh3/sdust>
-
-src: {basename}.fa(.gz)
-dst: {basename}.fa.sdust.bed.gz
 """
 
 import logging
@@ -17,6 +14,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("infile", type=Path, nargs="+")
     args = parser.parse_args(argv or None)
@@ -25,6 +23,12 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def run(in_fa: Path, outdir: Path | None = None) -> Path:
+    """Run `sdust`.
+
+    :param in_fa: Input FASTA: `{basename}.fa(.gz)`.
+    :param outdir: Output directory. The same directory as `in_fa` if `None`.
+    :returns: Output BED: `{basename}.fa.sdust.bed.gz`.
+    """
     if outdir is None:
         outdir = in_fa.parent
     out_bed = outdir / (in_fa.name.removeprefix(".gz") + ".sdust.bed.gz")

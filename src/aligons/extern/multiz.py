@@ -17,6 +17,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     nodes_all = phylo.extract_names(phylo.get_tree())
     parser = cli.ArgumentParser()
     parser.add_argument("indir", type=Path)  # pairwise/oryza_sativa

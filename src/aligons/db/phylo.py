@@ -88,7 +88,7 @@ def select(newick: str, queries: Sequence[str]) -> str:
     """Extract subtree containing specified tips or a clade.
 
     :param newick: Original species tree in Newick format.
-    :param queries: Clade name or tip names to extract.
+    :param queries: Clade name or tip names to extract. No filtering if empty.
     :returns: Subtree in Newick format.
     """
     if len(queries) == 1:
@@ -147,6 +147,10 @@ def read_builtin_newick() -> str:
 
 
 def list_species(clade: str = "") -> list[str]:
+    """List species names in the given clade.
+
+    :param clade: Clade name. No filtering if empty.
+    """
     tree = get_subtree([clade] if clade else [])
     names = extract_names(tree)
     exclude = config["db"]["exclude"]

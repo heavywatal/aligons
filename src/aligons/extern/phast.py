@@ -18,6 +18,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("indir", type=Path, help="multiple/{target}/{clade}")
     args = parser.parse_args(argv or None)

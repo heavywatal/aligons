@@ -91,6 +91,13 @@ def get_file(pattern: str, species: str, subdir: str = "") -> Path:
 
 
 def sanitize_queries(target: str, queries: list[str]) -> list[str]:
+    """Make sure all query species exist in the database.
+
+    :param target: Target species name.
+    :param queries: Query species names. Target species may be included.
+    :returns: Validated query species names without duplicates and target species.
+    :raises ValueError: If any query species is not found in the database.
+    """
     not_in_db: list[str] = []
     for query in queries:
         it = _species_dirs(query)

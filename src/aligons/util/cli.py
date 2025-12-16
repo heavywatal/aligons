@@ -149,7 +149,7 @@ def result(x: Path | Future[Path]) -> Path:
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Test this module."""
+    """CLI for manual execution and testing."""
     parser = ArgumentParser()
     args = parser.parse_args(argv)
     level = _log.getEffectiveLevel()

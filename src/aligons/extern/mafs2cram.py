@@ -1,7 +1,10 @@
 """Convert MAF to SAM/BAM/CRAM for visualization.
 
-src: ./pairwise/{target}/{query}/{chromosome}/sing.maf
-dst: ./pairwise/{target}/{query}/cram/genome.cram
+`maf-convert` from <https://gitlab.com/mcfrith/last>
+can be installed easily with Homebrew:
+```sh
+brew install heavywatal/tap/last-bin
+```
 """
 
 import logging
@@ -15,6 +18,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("-t", "--test", action="store_true")
     parser.add_argument("query", nargs="*", type=Path)  # pairwise/{target}/{query}
@@ -30,19 +34,32 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def run(target: Path, species: list[str]) -> list[cli.Future[Path]]:
+    """Convert MAFs to CRAMs for multiple query species.
+
+    :param target: Directory with target species name containing pairwise alignment
+        `sing.maf` for each chromosome: `./pairwise/{target}/`.
+    :param species: Query species names passed to `api.sanitize_queries()`.
+    :returns: Futures of output CRAMs: `{indir}/{query}/cram/genome.cram`.
+    """
     query_names = api.sanitize_queries(target.name, species)
     return [mafs2cram(target / q) for q in query_names]
 
 
-def mafs2cram(path: Path) -> cli.Future[Path]:
-    target_species = path.parent.name
+def mafs2cram(indir: Path) -> cli.Future[Path]:
+    """Convert MAFs to CRAMs and merge them.
+
+    :param indir: Directory with pairwise alignment `sing.maf` for each chromosome:
+        `./pairwise/{target}/{query}/`.
+    :returns: Future of output CRAM: `{indir}/cram/genome.cram`.
+    """
+    target_species = indir.parent.name
     reference = api.genome_fa(target_species)
-    outdir = path / "cram"
+    outdir = indir / "cram"
     if not cli.dry_run:
         outdir.mkdir(0o755, exist_ok=True)
     pool = cli.ThreadPool()
     futures: list[cli.Future[Path]] = []
-    for chr_dir in fs.sorted_naturally(path.glob("chromosome.*")):
+    for chr_dir in fs.sorted_naturally(indir.glob("chromosome.*")):
         maf = chr_dir / "sing.maf"
         if not maf.exists():
             _log.warning(f"not found {maf}")
@@ -53,6 +70,12 @@ def mafs2cram(path: Path) -> cli.Future[Path]:
 
 
 def merge_crams(futures: list[cli.Future[Path]], outdir: Path) -> Path:
+    """Merge chrosome CRAMs into a genome CRAM.
+
+    :param futures: Futures of chromosome CRAMs.
+    :param outdir: Output directory for the genome CRAM.
+    :returns: Output genome CRAM: `{outdir}/genome.cram`.
+    """
     crams: list[Path] = [f.result() for f in futures]
     outfile = outdir / "genome.cram"
     is_to_run = bool(crams) and fs.is_outdated(outfile, crams)
@@ -66,7 +89,13 @@ def merge_crams(futures: list[cli.Future[Path]], outdir: Path) -> Path:
 def maf2cram(
     infile: cli.Future[Path] | Path, reference: Path, outfile: Path | None = None
 ) -> Path:
-    """Supports sing.maf only: each alignment must have 2 sequences."""
+    """Run `maf-convert` and `samtools` to convert MAF to CRAM.
+
+    :param infile: Input MAF file with 2 sequences or a future of it: `sing.maf`.
+    :param reference: Reference genome FASTA to be used with `samtools view -T`.
+    :param outfile: Output CRAM file. `{infile.stem}.cram` if `None`.
+    :returns: The same path as `outfile`.
+    """
     infile = cli.result(infile)
     if outfile is None:
         outfile = infile.with_suffix(".cram")
@@ -81,6 +110,12 @@ def maf2cram(
 
 
 def sanitize_sam(sam: bytes) -> bytes:
+    """Clean up SAM output from `maf-convert`.
+
+    :param sam: SAM data from `maf-convert`.
+    :returns: Sanitized SAM data.
+    """
+
     def repl(mobj: re.Match[bytes]) -> bytes:
         qstart = 0
         if int(mobj["flag"]) & 16:  # reverse strand
