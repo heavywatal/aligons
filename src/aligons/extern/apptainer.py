@@ -1,3 +1,5 @@
+"""Experimental support for Apptainer containers to run external tools."""
+
 import logging
 import re
 from pathlib import Path
@@ -14,6 +16,7 @@ _galaxy_apps = config["apptainer"]["galaxy_apps"]
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading Apptainer images from the Galaxy."""
     parser = cli.ArgumentParser()
     parser.add_argument("-a", "--all", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
@@ -27,6 +30,7 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def pull_galaxy(prefix: Path) -> None:
+    """Download selected Apptainer images from the Galaxy."""
     tsv = galaxy_index()
     table = pl.read_csv(tsv, separator="\t").lazy()
     img_dir = prefix / "biocontainers"
@@ -50,6 +54,13 @@ def pull_galaxy(prefix: Path) -> None:
 
 
 def make_sh(sif: Path, command: str = "", outdir: Path = Path()) -> Path:
+    """Generate a shell script to run an Apptainer container.
+
+    :param sif: Apptainer image file.
+    :param command: Command name. The image name is used if empty.
+    :param outdir: Output directory for the shell script.
+    :returns: The generated shell script.
+    """
     if not command:
         command = sif.name.split(":", 1)[0]
     name = Path(command).name
@@ -70,6 +81,11 @@ def make_sh(sif: Path, command: str = "", outdir: Path = Path()) -> Path:
 
 
 def latest_apps(table: pl.LazyFrame) -> list[str]:
+    """Filter lines with the latest versions of the selected apps.
+
+    :param table: LazyFrame from `_parse_galaxy_index_html()`.
+    :returns: A list of `{app}:{tag}` strings.
+    """
     return (
         table.filter(pl.col("app").is_in(_galaxy_apps.keys()))
         .select(name=pl.concat_str(["app", "tag"], separator=":"))
@@ -80,6 +96,10 @@ def latest_apps(table: pl.LazyFrame) -> list[str]:
 
 
 def galaxy_index() -> Path:
+    """Fetch and cache the Galaxy Apptainer image index.
+
+    :returns: Cached TSV file: `{_cache_dir()}/singularity.tsv`.
+    """
     cache_html = _cache_dir() / "singularity.html"
     cache_tsv = cache_html.with_suffix(".tsv")
     if fs.is_outdated(cache_tsv, cache_html):

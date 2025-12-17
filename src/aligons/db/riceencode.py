@@ -20,6 +20,7 @@ _HOST = "glab.hzau.edu.cn"
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing RiceENCODE datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("pattern", nargs="?", default="*")
@@ -32,6 +33,11 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def retrieve_deploy(query: str) -> cli.Future[Path]:
+    """Download and preprocess a RiceENCODE file.
+
+    :param query: Relative path to download.
+    :returns: Future of the preprocessed file path.
+    """
     slug = f"RiceENCODE/download/{query}"
     url = f"http://{_HOST}/{slug}"
     rawfile = _rsrc.db_root(_HOST) / slug
@@ -45,6 +51,7 @@ def retrieve_deploy(query: str) -> cli.Future[Path]:
 
 
 def iter_download_queries() -> Iterable[str]:
+    """Iterate over RiceENCODE `download.html` for download links."""
     content = download_page()
     content = re.sub(r"<!--.+?-->", "", content)
     content = re.sub(r"(/MH63/OpenChromatin/\w+).bw", r"\1.bigWig", content)
@@ -53,6 +60,7 @@ def iter_download_queries() -> Iterable[str]:
 
 
 def download_page() -> str:
+    """Fetch and cache RiceENCODE `download.html`."""
     slug = "RiceENCODE/pages/download.html"
     url = f"http://{_HOST}/{slug}"
     cache = _rsrc.db_root(_HOST) / slug
@@ -60,6 +68,7 @@ def download_page() -> str:
 
 
 def db_prefix() -> Path:
+    """Directory of preprocessed RiceENCODE datasets."""
     return api.prefix("riceencode")
 
 

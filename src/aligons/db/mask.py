@@ -1,8 +1,4 @@
-"""Softmask DNA sequences.
-
-src: {stem}.dna.chromosome.{seqid}.fa
-dst: {stem}.dna_sm.chromosome.{seqid}.fa.gz
-"""
+"""Softmask DNA sequences."""
 
 import logging
 import re
@@ -15,6 +11,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for softmasking genome FASTA files."""
     parser = cli.ArgumentParser()
     parser.add_argument("-S", "--species")
     parser.add_argument("infile", type=Path, nargs="+")
@@ -29,7 +26,7 @@ def submit(
 ) -> cli.Future[Path]:
     """Softmask a genome FASTA.
 
-    :param infile: A bgzipped genome FASTA file.
+    :param infile: A bgzipped genome FASTA file: `{stem}.dna.chromosome.{seqid}.fa`
     :param species: A taxonomic group name for RepeatMasker/Dfam.
         If empty, "angiosperms" is used.
     :param outfile: An optional output path.

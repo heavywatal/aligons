@@ -125,6 +125,7 @@ def test_species(species: str) -> bool:
 
 
 def test_famdb_angiosperms() -> bool:
+    """Test. TODO."""
     assert not famdb_families("angiosperms", descendants=True)
     fa = famdb_families("oryza_sativa", ancestors=True)
     for mobj in re.finditer(r">.+?\n", fa):
@@ -141,6 +142,15 @@ def famdb_families(
     descendants: bool = False,
     fmt: str = "fasta_name",
 ) -> str:
+    """Run `famdb.py families` to get repeat families for a taxonomic term.
+
+    :param term: Taxonomic term like species name.
+    :param ancestors: If `True`, include families from ancestor taxa.
+    :param descendants: If `True`, include families from descendant taxa.
+    :param fmt: Output format:
+        summary, hmm, hmm_species, fasta_name, fasta_acc, embl, embl_meta, embl_seq
+    :returns: Families in specified format.
+    """
     args: subp.Args = ["famdb.py", "families", "-f", fmt]
     if ancestors:
         args.append("-a")

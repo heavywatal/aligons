@@ -22,6 +22,7 @@ _FTP_HOST = "ftp.cbi.pku.edu.cn"
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing PlantRegMap datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-F", "--ftp", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
@@ -53,11 +54,17 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def iter_fetch_and_bgzip() -> Iterator[tuple[cli.Future[Path], cli.Future[Path]]]:
+    """Fetch and preprocess PlantRegMap datasets with `tools.fetch_and_bgzip()`."""
     for entry in _rsrc.iter_builtin_dataset("plantregmap.toml"):
         yield tools.fetch_and_bgzip(entry, db_prefix())
 
 
 def retrieve_deploy(query: str) -> cli.Future[Path]:
+    """Fetch and preprocess a PlantRegMap file with `dl.fetch()`.
+
+    :param query: Query string for `download_ftp.php`.
+    :returns: Future of the preprocessed file path.
+    """
     url = f"http://{_HOST}/download_ftp.php?{query}"
     relpath = query.split("=", 1)[1]
     rawfile = _prefix_mirror() / relpath
@@ -71,6 +78,7 @@ def retrieve_deploy(query: str) -> cli.Future[Path]:
 
 
 def iter_download_queries() -> Iterator[str]:
+    """Iterate over PlantRegMap for download queries of target species."""
     targets = [
         "Oryza_sativa_Japonica_Group",
         "Arabidopsis_thaliana",
@@ -83,41 +91,56 @@ def iter_download_queries() -> Iterator[str]:
 
 
 def iter_download_queries_all() -> Iterator[str]:
+    """Iterate over PlantRegMap `download_ftp.php` for download queries."""
     content = download_php()
     for mobj in re.finditer(r"download_ftp\.php\?([^\"']+)", content):
         yield mobj[1]
 
 
 def download_php() -> str:
+    """Fetch and cache PlantRegMap `download_ftp.php`."""
     url = f"http://{_HOST}/download.php"
     cache = _prefix_mirror() / "download.php.html"
     return dl.fetch(url, cache).text_force
 
 
 def db_prefix() -> Path:
+    """Directory of preprocessed PlantRegMap datasets."""
     return api.prefix("plantregmap")
 
 
 def _prefix_mirror() -> Path:
+    """Directory of raw PlantRegMap downloads."""
     return _rsrc.db_root(_FTP_HOST) / "plantregmap"
 
 
 def rglob(pattern: str, species: str = ".") -> Iterator[Path]:
+    """Iterate over PlantRegMap datasets matching pattern and species."""
     for species_dir in db_prefix().iterdir():
         if re.search(species, species_dir.name, re.IGNORECASE):
             yield from species_dir.rglob(pattern)
 
 
 def net_to_maf(net_gz: Path) -> Path:
+    """Convert pairwise `.net.gz` to `.maf` using `kent.net_to_maf()`.
+
+    :param net_gz: Input gzipped net file: `{short_target}_{short_query}.net.gz`.
+    :returns: Output MAF file path: `{target}_{query}.maf`.
+    """
     stem = net_gz.with_suffix("").stem
-    target, query = extract_species(stem)
+    target, query = _extract_species(stem)
     sing_maf = net_gz.parent / (stem + ".maf")
     chain_gz = sing_maf.with_suffix(".chain.gz")
     return kent.net_to_maf(net_gz, chain_gz, sing_maf, target, query)
 
 
 def to_cram(maf: Path) -> Path:
-    target, _query = extract_species(maf.stem)
+    """Convert pairwise MAF to CRAM using `mafs2cram.maf2cram()`.
+
+    :param maf: Input MAF file: `{target}_{query}.maf`.
+    :returns: Output CRAM file path: `{target}_{query}.cram`.
+    """
+    target, _query = _extract_species(maf.stem)
     reference = api.genome_fa(target)
     outfile = mafs2cram.maf2cram(maf, reference)
     htslib.index(outfile)
@@ -125,6 +148,7 @@ def to_cram(maf: Path) -> Path:
 
 
 def download_via_ftp() -> list[cli.Future[Path]]:
+    """Fetch PlantRegMap datasets via FTP."""
     targets = [
         "Oryza_sativa_Japonica_Group",
         "Solanum_lycopersicum",
@@ -136,24 +160,30 @@ def download_via_ftp() -> list[cli.Future[Path]]:
     return fts
 
 
-def extract_species(stem: str) -> tuple[str, str]:
+def _extract_species(stem: str) -> tuple[str, str]:
+    """Extract target and query species from a string.
+
+    :param stem: Stem of `.net.gz` files: `{short_target}_{short_query}`.
+    :returns: A tuple of full species names: `(target, query)`.
+    """
     short_target, short_query = stem.split("_")
-    target = lengthen(short_target)
-    query = lengthen(short_query)
+    target = _lengthen(short_target)
+    query = _lengthen(short_query)
     return (target, query)
 
 
-def lengthen(species: str) -> str:
+def _lengthen(species: str) -> str:
     try:
-        return lengthen.abbr[species]  # pyright: ignore[reportFunctionMemberAccess]
+        return _lengthen.abbr[species]  # pyright: ignore[reportFunctionMemberAccess]
     except AttributeError:
         rev_abbr = {v: k for k, v in species_abbr().items()}
         rev_abbr["Osj"] = "Oryza_sativa_Japonica_Group"
-        lengthen.abbr = rev_abbr  # pyright: ignore[reportFunctionMemberAccess]
-        return lengthen(species)
+        _lengthen.abbr = rev_abbr  # pyright: ignore[reportFunctionMemberAccess]
+        return _lengthen(species)
 
 
 def shorten(species: str) -> str:
+    """Convert full species name to abbreviation used in PlantRegMap."""
     try:
         return shorten.abbr[species]  # pyright: ignore[reportFunctionMemberAccess]
     except AttributeError:
@@ -162,6 +192,7 @@ def shorten(species: str) -> str:
 
 
 def species_abbr() -> dict[str, str]:
+    """Get species abbreviation mapping from PlantRegMap."""
     toml = db_prefix() / "Species_abbr.toml"
     _log.info(toml)
     if toml.exists():
@@ -180,7 +211,10 @@ def species_abbr() -> dict[str, str]:
 
 
 class FTPplantregmap(dl.LazyFTP):
+    """Specialized FTP client for PlantRegMap FTP server."""
+
     def __init__(self) -> None:
+        """Initialize with PlantRegMap FTP server settings."""
         super().__init__(
             _FTP_HOST,
             "/pub/database/PlantRegMap",
@@ -189,6 +223,7 @@ class FTPplantregmap(dl.LazyFTP):
         )
 
     def ls_cache(self, species: str = "") -> None:
+        """Call `nlst_cache()` for a given species."""
         self.nlst_cache("")
         self.nlst_cache("08-download")
         self.nlst_cache("08-download/FTP")
@@ -197,9 +232,11 @@ class FTPplantregmap(dl.LazyFTP):
             self.nlst_cache(f"08-download/{species}")
 
     def species_abbr_list(self) -> Path:
+        """Fetch and cache `Species_abbr.list`."""
         return self.retrieve("Species_abbr.list")
 
     def download(self, species: str) -> list[cli.Future[Path]]:
+        """Download PlantRegMap datasets for the given species."""
         fts: list[cli.Future[Path]] = []
         self.ls_cache(species)
         for bedgraph in self.download_conservation(species):
@@ -212,38 +249,55 @@ class FTPplantregmap(dl.LazyFTP):
         return fts
 
     def download_pairwise_alignments(self, species: str) -> Iterator[Path]:
+        """Download pairwise alignments for the given species."""
         sp = shorten(species)
         relpath = f"08-download/FTP/pairwise_alignments/{sp}"
         nlst = self.nlst_cache(relpath)
         yield from (self.retrieve_symlink(x, species) for x in nlst)
 
     def download_multiple_alignments(self, species: str) -> Iterator[Path]:
+        """Download multiple alignments for the given species."""
         relpath = f"08-download/{species}/multiple_alignments"
         nlst = self.nlst_cache(relpath)
         yield from (self.retrieve_symlink(x, species) for x in nlst)
 
     def download_conservation(self, species: str) -> Iterator[Path]:
+        """Download sequence conservation files for the given species."""
         relpath = f"08-download/{species}/sequence_conservation"
         nlst = self.nlst_cache(relpath)
         yield from (self.retrieve_symlink(x, species) for x in nlst)
 
     def retrieve_symlink(self, relpath: str, species: str) -> Path:
+        """Retrieve and preprocess a file to be compatible with Ensembl compara.
+
+        :param relpath: Relative path under FTP root.
+        :param species: Species name.
+        :returns: Preprocessed file: `{db_prefix()}/{species}/compara/{filename}`.
+        """
         orig = self.retrieve(relpath, checksize=True)
         outdir = db_prefix() / species / "compara"
+        outfile = outdir / orig.name
         if re.match(r"Osj_Hvu\.(chain|net)\.gz", orig.name):
-            return filter_chr_chainnet(orig, outdir / orig.name, "_unordered")
+            return filter_chr_chainnet(orig, outfile, remove="_unordered")
         if re.match(r"Osj_(Obr|Obl)\.(chain|net)\.gz", orig.name):
-            return filter_chr_chainnet(orig, outdir / orig.name)
-        return fs.symlink(orig, outdir / orig.name, relative=True)
+            return filter_chr_chainnet(orig, outfile)
+        return fs.symlink(orig, outfile, relative=True)
 
 
-def filter_chr_chainnet(infile: Path, outfile: Path, remove: str = "") -> Path:
+def filter_chr_chainnet(infile: Path, outfile: Path, *, remove: str = "") -> Path:
+    """Filter chain/net files to keep only sequences in genome FASTA.
+
+    :param infile: Input chain/net file.
+    :param outfile: Output filtered file.
+    :param remove: Optional string pattern to remove from the file.
+    :returns: Filtered file path.
+    """
     if not fs.is_outdated(outfile, infile):
         return outfile
     filename = infile.name.removesuffix(".gz")
     stem = Path(filename).stem
     _target, query = stem.split("_")
-    q_species = lengthen(query)
+    q_species = _lengthen(query)
     q_seqs = api.chrom_sizes(q_species).keys()
     popen_filter = kent.netFilter if filename.endswith(".net") else kent.chainFilter
     with (

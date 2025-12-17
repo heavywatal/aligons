@@ -21,6 +21,7 @@ _HOST = "ftp.ncbi.nlm.nih.gov"
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and processing NCBI genomes."""
     parser = cli.ArgumentParser()
     parser.add_argument("-C", "--check", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")

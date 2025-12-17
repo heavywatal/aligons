@@ -1,3 +1,5 @@
+"""Pipeline for genome alignment and conservation scoring."""
+
 import importlib.metadata
 
 assert __package__

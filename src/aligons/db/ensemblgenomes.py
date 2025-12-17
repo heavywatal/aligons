@@ -2,10 +2,10 @@
 
 <https://plants.ensembl.org/>
 
-- {db.root}/ftp.ensemblgenomes.org/pub/plants/release-{version}/
-  - fasta/{species}/dna/{stem}.{version}.dna_sm.chromosome.{seqid}.fa.gz
-  - gff3/{species}/{stem}.{version}.chr.gff3.gz
-  - maf/ensembl-compara/pairwise_alignments/
+- `{db.root}/ftp.ensemblgenomes.org/pub/plants/release-{version}/`
+  - `fasta/{species}/dna/{stem}.{version}.dna_sm.chromosome.{seqid}.fa.gz`
+  - `gff3/{species}/{stem}.{version}.chr.gff3.gz`
+  - `maf/ensembl-compara/pairwise_alignments/`
 """
 
 import logging
@@ -28,6 +28,7 @@ _HOST = "ftp.ensemblgenomes.org"
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing Ensembl Plants datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-V", "--versions", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
@@ -55,6 +56,7 @@ def _list_versions() -> Iterable[Path]:
 
 
 def download_compara(species: str) -> None:
+    """Fetch and preprocess Ensembl Compara MAFs for a species."""
     assert species in phylo.list_species(), species
     with FTPensemblgenomes() as ftp:
         dirs = ftp.download_maf(species)
@@ -112,7 +114,7 @@ def _list_mafs_by_seq(indir: Path) -> dict[str, list[Path]]:
 
 
 def _readlines_compara_maf(file: Path) -> Iterable[bytes]:
-    """MAF files of ensembl compara have broken "a" lines.
+    """Read and correct MAF files of ensembl compara with broken "a" lines.
 
     a# id: 0000000
      score=9999
@@ -130,6 +132,7 @@ def _readlines_compara_maf(file: Path) -> Iterable[bytes]:
 
 
 def download_via_ftp(species: list[str]) -> None:
+    """Fetch and preprocess genome FASTA and GFF3 from Ensembl Plants via FTP."""
     with FTPensemblgenomes() as ftp:
         species = ftp.remove_unavailable(species)
         fmt_chr_2bit = "{species}.{asm}.{dna}.chromosome.{seqid}.2bit"
@@ -158,7 +161,10 @@ def download_via_ftp(species: list[str]) -> None:
 
 
 class FTPensemblgenomes(dl.LazyFTP):
+    """Specialized FTP client for Ensembl Plants."""
+
     def __init__(self) -> None:
+        """Iniialize with Ensembl Plants FTP settings."""
         super().__init__(
             _HOST,
             f"/{_relpath_release()}",
@@ -166,6 +172,7 @@ class FTPensemblgenomes(dl.LazyFTP):
         )
 
     def remove_unavailable(self, species: list[str]) -> list[str]:
+        """Filter species list to those available in Ensembl Plants."""
         available = self.available_species()
         filtered: list[str] = []
         for sp in species:
@@ -176,9 +183,11 @@ class FTPensemblgenomes(dl.LazyFTP):
         return filtered
 
     def available_species(self) -> list[str]:
+        """List available species in Ensembl Plants release."""
         return [Path(x).name for x in self.nlst_cache("fasta")]
 
     def download_chr_sm_fasta(self, species: str) -> list[Path]:
+        """Fetch and checksum softmasked chromosome FASTA files."""
         relpath = f"fasta/{species}/dna"
         outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
@@ -187,6 +196,7 @@ class FTPensemblgenomes(dl.LazyFTP):
         return [f for f in files if f.suffix == ".gz"]
 
     def download_gff3(self, species: str) -> Path:
+        """Fetch and checksum GFF3 annotation file."""
         relpath = f"gff3/{species}"
         outdir = self.prefix / relpath
         nlst = self.nlst_cache(relpath)
@@ -202,6 +212,7 @@ class FTPensemblgenomes(dl.LazyFTP):
         return res
 
     def download_maf(self, species: str) -> list[Path]:
+        """Fetch and untar Ensembl Compara MAFs."""
         relpath = "maf/ensembl-compara/pairwise_alignments"
         outdir = prefix() / relpath
         nlst = self.nlst_cache(relpath)
@@ -218,6 +229,14 @@ class FTPensemblgenomes(dl.LazyFTP):
         return dirs
 
     def remove_duplicates(self, nlst: list[str]) -> list[str]:
+        """Remove chromosome files with similar sequences.
+
+        - Preference: `chromosome` > `primary_assembly` > `toplevel`
+        - Softmasked: `.dna_sm.`, not `.dna.`
+
+        :param nlst: Result of `nlst` in FASTA directory.
+        :returns: Filtered list.
+        """
         matched = [x for x in nlst if "chromosome" in x]
         if not matched:
             matched = [x for x in nlst if "primary_assembly" in x]
@@ -231,6 +250,7 @@ class FTPensemblgenomes(dl.LazyFTP):
 
 
 def prefix() -> Path:
+    """Versiond directory for pre-processed Ensembl Plants data."""
     return api.prefix(f"ensembl-{version()}")
 
 
@@ -243,6 +263,7 @@ def _relpath_release() -> Path:
 
 
 def version() -> int:
+    """Read Ensembl Plants release version from config or environment variable."""
     return int(os.getenv("ENSEMBLGENOMES_VERSION", config["ensemblgenomes"]["version"]))
 
 

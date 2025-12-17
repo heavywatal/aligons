@@ -18,6 +18,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("url")
     args = parser.parse_args(argv or None)
@@ -27,6 +28,13 @@ def main(argv: list[str] | None = None) -> None:
 def fetch_and_bgzip(
     entry: _rsrc.DataSet, prefix: Path
 ) -> tuple[cli.Future[Path], cli.Future[Path]]:
+    """Fetch genome and annotation files, bgzip and index them.
+
+    :param entry: Dataset entry from `_rsrc`.
+    :param prefix: Output directory prefix.
+    :returns: A tuple of futures:
+        (`{stem}.{dna_sm}.genome.fa.gz`, `{stem}.genome.gff3.gz`).
+    """
     url_prefix = entry["url_prefix"]
     species = entry["species"]
     annotation = entry["annotation"]
@@ -44,6 +52,11 @@ def fetch_and_bgzip(
 
 
 def dl_mirror_db(url: str) -> dl.Response:
+    """Call `dl.mirror` or `jgi.session.mirror` based on URL.
+
+    :param url: URL to download.
+    :returns: Download response.
+    """
     if "jgi.doe.gov" in url:
         return jgi.session.mirror(url, _rsrc.db_root())
     return dl.mirror(url, _rsrc.db_root())

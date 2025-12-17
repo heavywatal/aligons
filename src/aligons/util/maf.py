@@ -53,7 +53,7 @@ def subseq(chrom: str, start: int, end: int, name: str, strand: str, **_: Any) -
     :param end: End position (inclusive).
     :param name: Species name.
     :param strand: Strand, "+" or "-".
-    :returns: Extracted sequence in bytes.
+    :returns: Extracted sequence.
     """
     bgz = api.genome_fa(name)
     region = f"{chrom}:{start}-{end}"

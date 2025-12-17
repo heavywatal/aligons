@@ -1,3 +1,5 @@
+"""Experimental CLI for downloading and preprocessing various datasets."""
+
 import logging
 from typing import TYPE_CHECKING
 
@@ -12,6 +14,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing Ensembl Genomes datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("--compara", choices=phylo.list_species())
     parser.add_argument("-N", "--naro", action="store_true")
@@ -28,6 +31,7 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def shumari_v2() -> tuple[cli.Future[Path], cli.Future[Path]]:
+    """Preprocess Vigna angularis genome from NARO."""
     prefix = api.prefix("naro")
     src_root = _rsrc.db_root("naro.go.jp")
     src = src_root / "shumari_v2"

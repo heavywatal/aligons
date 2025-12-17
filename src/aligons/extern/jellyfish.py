@@ -1,9 +1,6 @@
 """A fast multi-threaded k-mer counter.
 
 <https://github.com/gmarcais/Jellyfish>
-
-src: *.fa.gz
-dst: kmer/*.fa.gz
 """
 
 import logging
@@ -30,6 +27,11 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def run(species: str) -> Path:
+    """Run Jellyfish and dCNS to mask genome based on k-mer frequencies.
+
+    :param species: Species name.
+    :returns: Masked genome FASTA file: `{genome.parent}/kmer/{genome.name}`.
+    """
     genome = api.genome_fa(species)
     jf = count(genome)
     dumpfile = dump(jf)
@@ -39,9 +41,14 @@ def run(species: str) -> Path:
     return mask_genome(genome, dumpfile, threshold)
 
 
-def count(infile: Path) -> Path:
+def count(fa_gz: Path) -> Path:
+    """Run `jellyfish count` to count k-mers.
+
+    :param fa_gz: Input FASTA file. Typically gzipped.
+    :returns: Jellyfish k-mer count file: `{fa_gz.parent}/kmer/mer_counts.jf`.
+    """
     opts = config["jellyfish"]["count"]
-    outfile = infile.with_name("kmer") / "mer_counts.jf"
+    outfile = fa_gz.with_name("kmer") / "mer_counts.jf"
     args: subp.Args = ["jellyfish", "count", "--canonical"]
     args.extend(["-m", str(opts["mer_len"])])
     args.extend(["-s", str(opts["size"])])
@@ -49,15 +56,20 @@ def count(infile: Path) -> Path:
     args.extend(["-L", str(opts["lower_count"])])
     args.extend(["-o", outfile])
     args.append("/dev/stdin")
-    is_to_run = fs.is_outdated(outfile, infile) and not cli.dry_run
+    is_to_run = fs.is_outdated(outfile, fa_gz) and not cli.dry_run
     if is_to_run:
         outfile.parent.mkdir(0o755, exist_ok=True)
-    with subp.popen_zcat(infile, if_=is_to_run) as zcat:
+    with subp.popen_zcat(fa_gz, if_=is_to_run) as zcat:
         subp.run(args, stdin=zcat.stdout, if_=is_to_run)
     return outfile
 
 
 def dump(jf_file: Path) -> Path:
+    """Run `jellyfish dump` to get k-mers in FASTA format.
+
+    :param jf_file: Jellyfish k-mer count file.
+    :returns: Jellyfish dump FASTA file: `{jf_file}.dump.fa`.
+    """
     opts = config["jellyfish"]["dump"]
     outfile = jf_file.with_suffix(".dump.fa")
     args: subp.Args = ["jellyfish", "dump"]
@@ -75,6 +87,11 @@ def dump(jf_file: Path) -> Path:
 
 
 def histo(jf_file: Path) -> Path:
+    """Run `jellyfish histo` to get k-mer frequency histogram.
+
+    :param jf_file: Jellyfish k-mer count file.
+    :returns: Jellyfish histogram file: `{jf_file}.histo`.
+    """
     opts = config["jellyfish"]["histo"]
     outfile = jf_file.with_suffix(".histo")
     args: subp.Args = ["jellyfish", "histo"]
@@ -86,6 +103,11 @@ def histo(jf_file: Path) -> Path:
 
 
 def calc_threshold(histo_file: Path) -> int:
+    """Calculate k-mer frequency threshold from Jellyfish histogram.
+
+    :param histo_file: Jellyfish histogram file.
+    :returns: Frequency threshold for dCNS.
+    """
     if cli.dry_run:
         return 65535
     cols = ["x", "y"]
@@ -99,6 +121,11 @@ def calc_threshold(histo_file: Path) -> int:
 
 
 def log_config(histo_file: Path, freq: int) -> None:
+    """Write Jellyfish and dCNS options to `config.toml`.
+
+    :param histo_file: Jellyfish histogram file.
+    :param freq: Frequency threshold for dCNS.
+    """
     config_log = histo_file.with_name("config.toml")
     opts: dict[str, Any] = {}
     opts["jellyfish"] = config["jellyfish"]
@@ -110,7 +137,15 @@ def log_config(histo_file: Path, freq: int) -> None:
 
 
 def mask_genome(infile: Path, kmer_fa: Path, freq: int = 50) -> Path:
-    """https://github.com/baoxingsong/dCNS."""
+    """Mask FASTA sequences based on k-mer frequencies using dCNS.
+
+    <https://github.com/baoxingsong/dCNS>
+
+    :param infile: Input FASTA file.
+    :param kmer_fa: Jellyfish dump FASTA file.
+    :param freq: Frequency threshold for masking.
+    :returns: Masked FASTA file: `{infile.parent}/kmer/{infile.name}`.
+    """
     dump_lower_count = config["jellyfish"]["dump"]["lower_count"]
     if freq < dump_lower_count:
         _log.warning(f"threshold frequency: {freq} < {dump_lower_count=}")

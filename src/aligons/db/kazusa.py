@@ -19,10 +19,12 @@ _HOST = "genome.kazusa.or.jp"
 
 
 def db_prefix() -> Path:
+    """Directory of preprocessed Kazusa Genome Atlas datasets."""
     return api.prefix("kazusa")
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing Kazusa Genome Atlas datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("-M", "--mask", action="store_true")

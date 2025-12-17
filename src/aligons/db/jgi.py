@@ -26,6 +26,7 @@ session = dl.LazySession(
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing JGI datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     args = parser.parse_args(argv or None)
@@ -36,10 +37,12 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def prefix() -> Path:
+    """Directory of preprocessed JGI datasets: `{api.prefix}/phytozome-NN`."""
     return api.prefix(config["jgi"]["organism"].replace("V", "-").lower())
 
 
 def download() -> None:
+    """Fetch and preprocess JGI genomes with `tools.fetch_and_bgzip()`."""
     queries: set[str] = {
         # "arabidopsis_lyrata",  # v2 but scaffold
         "sorghum_bicolor",
@@ -57,6 +60,7 @@ def download() -> None:
 
 
 def _iter_available() -> Iterator[_rsrc.DataSet]:
+    """Iterate over available JGI datasets."""
     nicknames = {shorten(long): long for long in phylo.list_species()}
     found: set[str] = set()
     for entry in _rsrc.iter_dataset(_dataset_toml()):
@@ -74,6 +78,7 @@ def _iter_available() -> Iterator[_rsrc.DataSet]:
 
 
 def _dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
+    """Write and return the dataset TOML extracted from JGI XML."""
     outfile = prefix() / (organism + ".toml")
     if not outfile.exists():
         xml = _fetch_xml(organism)
@@ -86,6 +91,12 @@ def _dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
 
 
 def _iter_dataset_xml(xml: Path, organism: str) -> Iterable[dict[str, str | list[str]]]:
+    """Iterate over dataset entries in the XML metadata.
+
+    :param xml: XML metadata file from `_fetch_xml()`.
+    :param organism: "PhytozomeV13".
+    :yields: Dataset entries.
+    """
     tree = ET.parse(xml)  # noqa: S314
     xpath = f"folder[@name='{organism}']/folder"
     for sp_folder in tree.iterfind(xpath):
@@ -97,6 +108,7 @@ def _iter_dataset_xml(xml: Path, organism: str) -> Iterable[dict[str, str | list
 
 
 def _as_dict(folder: ET.Element) -> dict[str, str | list[str]]:
+    """Convert a folder XML element to a dictionary."""
     try:
         elem_assembly = next(_finditer(r"softmasked\.fa\.gz$", folder, "filename"))
         elem_annot = next(_finditer(r"gene\.gff3?\.gz$", folder, "filename"))
@@ -133,6 +145,11 @@ def _finditer(pattern: str, folder: ET.Element, attrib: str) -> Iterator[ET.Elem
 
 
 def _fetch_xml(organism: str) -> Path:
+    """Fetch and cache XML metadata for a given organism.
+
+    :param organism: "PhytozomeV13".
+    :returns: Path to the cached XML file.
+    """
     outfile = _rsrc.db_root(_HOST) / (organism + ".xml")
     all_xml = _fetch_xml_impl("Phytozome")
     if fs.is_outdated(outfile, all_xml):
@@ -152,6 +169,7 @@ def _fetch_xml_impl(organism: str) -> Path:
 
 
 def shorten(species: str) -> str:
+    """Shorten a species name in JGI style."""
     (genus, specific_epithet) = species.split("_", maxsplit=1)
     return f"{genus[0].upper()}{specific_epithet}"
 

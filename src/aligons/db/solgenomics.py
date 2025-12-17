@@ -18,6 +18,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing Sol Genomics datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-M", "--mask", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
@@ -41,12 +42,14 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def iter_fetch_and_bgzip() -> Iterator[tuple[cli.Future[Path], cli.Future[Path]]]:
+    """Fetch and preprocess Sol Genomics datasets."""
     for entry in _rsrc.iter_builtin_dataset("solgenomics.toml"):
         entry["url_prefix"] = "https://solgenomics.net/ftp/genomes/"
         yield tools.fetch_and_bgzip(entry, db_prefix())
 
 
 def db_prefix() -> Path:
+    """Directory of preprocessed Sol Genomics datasets."""
     return api.prefix("solgenomics")
 
 

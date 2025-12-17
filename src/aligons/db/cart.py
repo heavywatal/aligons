@@ -29,6 +29,7 @@ _files = [
 
 
 def db_prefix(key: str = "") -> Path:
+    """Directory of preprocessed CART datasets."""
     res = api.prefix("cart")
     subdir = res / f"NIP_MH63_ZS97_{key}"
     if subdir.exists():
@@ -37,6 +38,7 @@ def db_prefix(key: str = "") -> Path:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing CART datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     args = parser.parse_args(argv or None)

@@ -90,15 +90,15 @@ class PairwiseChromosomeAlignment:
         return sing_maf
 
     @property
-    def target_dir(self) -> Path:
+    def target_dir(self) -> Path:  # noqa: D102
         return self._target_dir
 
     @property
-    def target(self) -> str:
+    def target(self) -> str:  # noqa: D102
         return self._target
 
     @property
-    def queries(self) -> list[str]:
+    def queries(self) -> list[str]:  # noqa: D102
         return list(self._queries.keys())
 
 

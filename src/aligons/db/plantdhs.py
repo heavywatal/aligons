@@ -20,6 +20,7 @@ _HOST = "plantdhs.org"
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing PlantDHS datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("pattern", nargs="?", default="*")
@@ -32,6 +33,11 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def retrieve_deploy(query: str) -> cli.Future[Path]:
+    """Download and preprocess a PlantDHS file.
+
+    :param query: Relative path to download.
+    :returns: Future of the preprocessed file path.
+    """
     url = f"https://bioinfor.yzu.edu.cn/download/plantdhs/{query}"
     rawfile = _rsrc.db_root(_HOST) / query
     outfile = db_prefix() / query
@@ -42,24 +48,28 @@ def retrieve_deploy(query: str) -> cli.Future[Path]:
 
 
 def iter_download_queries() -> Iterable[str]:
+    """Iterate over PlantDHS `Download.html` for download links with "Rice|TIGR7"."""
     for query in iter_download_queries_all():
         if re.search(r"Rice|TIGR7", query):
             yield query
 
 
 def iter_download_queries_all() -> Iterable[str]:
+    """Iterate over PlantDHS `Download.html` for download links."""
     content = download_page()
     for mobj in re.finditer(r"/download/plantdhs/([^\"']+)", content):
         yield mobj[1]
 
 
 def download_page() -> str:
+    """Fetch and cache PlantDHS `Download.html`."""
     url = f"http://{_HOST}/Download"
     cache = _rsrc.db_root(_HOST) / "Download.html"
     return dl.fetch(url, cache).text
 
 
 def db_prefix() -> Path:
+    """Directory of preprocessed PlantDHS datasets."""
     return api.prefix("plantdhs")
 
 

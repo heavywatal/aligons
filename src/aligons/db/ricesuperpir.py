@@ -16,6 +16,7 @@ species = "oryza_sativa"
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and processing NIP-T2T datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("-A", "--alignment", action="store_true")
@@ -31,14 +32,22 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def prefix() -> Path:
+    """Directory of preprocessed Rice Super PIR datasets."""
     return api.prefix("ricesuperpir")
 
 
 def species_label() -> str:
+    """Get species label for Rice Super PIR datasets."""
     return f"{prefix().name}/{species}"
 
 
 def alignment(*, old_query: bool = False) -> Path:
+    """Perform pairwise genome alignment between NIP-T2T and IRGSP-1.0.
+
+    :param old_query: Use IRGSP-1.0 as query and NIP-T2T as target if True.
+    :returns: Output directory for the pairwise alignment:
+        `./pairwise/{target}/{query}/`
+    """
     target = species
     query = species_label()
     if old_query:
@@ -46,7 +55,13 @@ def alignment(*, old_query: bool = False) -> Path:
     return lastz.run(target, [query]) / query
 
 
-def cat_chains(align_dir: Path, *, old_query: bool = False) -> None:
+def cat_chains(align_dir: Path, *, old_query: bool = False) -> Path:
+    """Concatenate chain files from pairwise genome alignment.
+
+    :param align_dir: Directory containing chain files.
+    :param old_query: Use IRGSP-1.0 as query and NIP-T2T as target if True.
+    :returns: Concatenated chain file path.
+    """
     chains = list(fs.sorted_naturally(align_dir.glob("chr*/target.over.chain.gz")))
     target = "IRGSP-1.0"
     query = "NIP-T2T"
@@ -57,9 +72,11 @@ def cat_chains(align_dir: Path, *, old_query: bool = False) -> None:
     if_ = fs.is_outdated(outfile, chains)
     with subp.open_(outfile, "wb", if_=if_) as fout:
         subp.run(["cat", *chains], stdout=fout, if_=if_)
+    return outfile
 
 
 def download() -> None:
+    """Download and preprocess NIP-T2T genome and annotation."""
     dataset: _rsrc.DataSet = {
         "url_prefix": "http://www.ricesuperpir.com/uploads/common",
         "species": "oryza_sativa",

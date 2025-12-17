@@ -19,6 +19,7 @@ _HOST = "riceome.hzau.edu.cn"
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for downloading and preprocessing Rice Gene Index datasets."""
     parser = cli.ArgumentParser()
     parser.add_argument("-M", "--mask", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
@@ -41,12 +42,14 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def iter_fetch_and_bgzip() -> Iterator[tuple[cli.Future[Path], cli.Future[Path]]]:
+    """Fetch and preprocess Rice Gene Index datasets."""
     for entry in _rsrc.iter_builtin_dataset("riceome.toml"):
         entry["url_prefix"] = f"https://{_HOST}/download/"
         yield tools.fetch_and_bgzip(entry, db_prefix())
 
 
 def db_prefix() -> Path:
+    """Directory of preprocessed Rice Gene Index datasets."""
     return api.prefix("riceome")
 
 

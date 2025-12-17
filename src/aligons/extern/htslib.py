@@ -184,15 +184,18 @@ def index(cram: Path | cli.Future[Path]) -> Path:
 
 
 def to_be_bgzipped(filename: str) -> bool:
+    """Test if a file should be bgzipped."""
     return to_be_faidxed(filename) or to_be_tabixed(filename)
 
 
 def to_be_faidxed(filename: str) -> bool:
+    """Test if a file should be faidxed."""
     ext = (".fa", ".fas", ".fasta", ".fna")
     return filename.removesuffix(".gz").removesuffix(".zip").endswith(ext)
 
 
 def to_be_tabixed(filename: str) -> bool:
+    """Test if a file should be tabixed."""
     ext = (".gff", ".gff3", ".gtf", ".bed")
     return filename.removesuffix(".gz").removesuffix(".zip").endswith(ext)
 

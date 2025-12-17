@@ -1,6 +1,8 @@
-"""Interface to working data.
+"""Interface to pre-processed data.
 
-{db.root}/aligons/{origin}/{species}/
+Raw data from various sources located at `{db.root}/*` are processed and stored at
+`{db.root}/aligons/{origin}/{species}/`. This module provides functions to access
+those processed data files.
 """
 
 import csv
@@ -22,24 +24,25 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("-S", "--species")
     parser.add_argument("-C", "--clade", default="angiospermae")
     args = parser.parse_args(argv or None)
     if args.species:
         print_existing(args.species)
-        for p in _glob("*", args.species):
-            fs.print_if_exists(p)
     else:
         print_stats(args.clade)
 
 
 def print_existing(species: str) -> None:
+    """Print existing files for the given species."""
     for p in _glob("*", species):
         fs.print_if_exists(p)
 
 
 def shorten(species: str) -> str:
+    """Get a short name for the given species."""
     try:
         return plantregmap.shorten(species)
     except KeyError:
@@ -48,38 +51,55 @@ def shorten(species: str) -> str:
 
 @functools.cache
 def species_names() -> list[str]:
+    """Collect available species names in the database."""
     return [x.name for x in _species_dirs()]
 
 
 def fasize(species: str) -> Path:
+    """Get `fasize.chrom.sizes` file for the given species."""
     return get_file("fasize.chrom.sizes", species)
 
 
 def genome_fai(species: str) -> Path:
+    """Get the genome FASTA index file for the given species."""
     subdir = "kmer" if config["db"]["kmer"] else ""
     return get_file("*.dna_sm.genome.fa.gz.fai", species, subdir)
 
 
 def genome_fa(species: str) -> Path:
+    """Get the genome FASTA file for the given species."""
     subdir = "kmer" if config["db"]["kmer"] else ""
     return get_file("*.dna_sm.genome.fa.gz", species, subdir)
 
 
 def genome_gff3(species: str) -> Path:
+    """Get the genome GFF3 annotation file for the given species."""
     subdir = "kmer" if config["db"]["kmer"] else ""
     return get_file("*.genome.gff3.gz", species, subdir)
 
 
 def chromosome_2bit(species: str, seqid: str) -> Path:
+    """Get the chromosome 2bit file for the given species."""
     subdir = "kmer" if config["db"]["kmer"] else ""
     return get_file(f"*.chromosome.{seqid}.2bit", species, subdir)
 
 
 def iter_chromosome_2bit(species: str) -> Iterable[Path]:
+    """Iterate over all chromosome 2bit files for the given species."""
     return _glob("*.chromosome.*.2bit", species)
 
 
 def get_file(pattern: str, species: str, subdir: str = "") -> Path:
+    """Get a unique file matching the pattern for the given species.
+
+    :param pattern: A glob pattern to match file names.
+    :param species: Species name.
+    :param subdir: A subdirectory under species directory.
+    :returns: The unique matching file path:
+        `{db.root}/aligons/{origin}/{species}/{subdir}/{pattern}`.
+    :raises FileNotFoundError: If no matching file is found.
+    :raises ValueError: If multiple matching files are found.
+    """
     found = list(_glob(pattern, species, subdir))
     if not found:
         msg = f"{pattern} not found in {species}/{subdir}"
@@ -114,7 +134,12 @@ def sanitize_queries(target: str, queries: list[str]) -> list[str]:
 
 
 def _species_dirs(species: str = "") -> Iterator[Path]:
-    if (path := prefix(species)).exists():  # {origin}/{species}
+    """Iterate over species directories.
+
+    :param species: Species name to filter if not empty.
+    :returns: An iterator over directories: `{db.root}/aligons/{origin}/{species}/`.
+    """
+    if (path := prefix(species)).exists():  # {db.root}/aligons/{species}
         yield path
     for prefix_origin in _iter_prefix():
         if not prefix_origin.exists():
@@ -127,6 +152,14 @@ def _species_dirs(species: str = "") -> Iterator[Path]:
 
 
 def _glob(pattern: str, species: str, subdir: str = "") -> Iterable[Path]:
+    """Find files matching the pattern under species directories.
+
+    :param pattern: A glob pattern to match file names.
+    :param species: Species name.
+    :param subdir: A subdirectory under species directory.
+    :returns: An iterator over matching file paths:
+        `{db.root}/aligons/{origin}/{species}/{subdir}/{pattern}`.
+    """
     is_enough = False  # to allow duplicated species from multiple origins
     for sp_dir in _species_dirs(species):
         d = sp_dir / subdir
@@ -138,14 +171,24 @@ def _glob(pattern: str, species: str, subdir: str = "") -> Iterable[Path]:
 
 
 def prefix(relpath: str | Path = "") -> Path:
+    """Get full path under the aligons database root.
+
+    :param relpath: Relative path under `{db.root}/aligons/`.
+    :returns: Full path `{db.root}/aligons/{relpath}`.
+    """
     return _rsrc.db_root("aligons") / relpath
 
 
 def _iter_prefix() -> Iterable[Path]:
+    """Iterate over database origin directories.
+
+    :returns: An iterator over `{db.root}/aligons/{origin}/` paths.
+    """
     return (prefix(origin) for origin in _iter_db_origin())
 
 
 def _iter_db_origin() -> Iterable[str]:
+    """Iterate over `config["db"]["origin"]` with version formatting."""
     for origin in config["db"]["origin"]:
         if origin.startswith("ensembl"):
             yield origin.format(version=config["ensemblgenomes"]["version"])
@@ -157,6 +200,7 @@ def _iter_db_origin() -> Iterable[str]:
 
 
 def print_stats(clade: str) -> None:
+    """Print a tree with genome statistics for a given clade."""
     newick = phylo.get_subtree([clade])
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangular(phylo.render_tips(root, [])):
@@ -177,6 +221,7 @@ def print_stats(clade: str) -> None:
 
 
 def chrom_sizes(species: str) -> dict[str, int]:
+    """Return a dictionary of chromosome sizes for the given species."""
     path = genome_fai(species)
     with path.open() as fin:
         reader = csv.reader(fin, delimiter="\t")

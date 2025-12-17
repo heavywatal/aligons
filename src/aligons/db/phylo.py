@@ -1,3 +1,5 @@
+"""Utilities for phylogenetic trees."""
+
 from __future__ import annotations
 
 import functools
@@ -13,6 +15,7 @@ _log = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("-N", "--name", action="store_true")
     parser.add_argument("-s", "--short", action="store_true")
@@ -34,14 +37,30 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def sorted_by_len_newicks(clades: list[str], *, reverse: bool = False) -> list[str]:
+    """Sort clade names by the length of their subtrees.
+
+    :param clades: Clade names.
+    :param reverse: Descending order if `True`.
+    :returns: Sorted clade names.
+    """
     return sorted(clades, key=lambda x: len(get_subtree([x])), reverse=reverse)
 
 
 def extract_tip_names(newick: str) -> list[str]:
+    """Extract tip (leaf) node names from a Newick tree.
+
+    :param newick: Species tree in Newick format.
+    :returns: Tip names.
+    """
     return extract_names(remove_inner(newick))
 
 
 def extract_inner_names(newick: str) -> list[str]:
+    """Extract inner (ancestral) node names from a Newick tree.
+
+    :param newick: Species tree in Newick format.
+    :returns: Inner node names.
+    """
     return re.findall(r"(?<=\))[^\s(),;:]+", newick)
 
 
@@ -49,13 +68,18 @@ def extract_names(newick: str) -> list[str]:
     """Extract node names including inner nodes.
 
     :param newick: Species tree in Newick format.
-    :returns: A list of names.
+    :returns: Node names including both tip and inner nodes.
     """
     names = (x.split(":")[0] for x in re.findall(r"[^\s(),;]+", newick))
     return list(filter(None, names))
 
 
 def extract_lengths(newick: str) -> list[float]:
+    """Extract branch lengths from a Newick tree.
+
+    :param newick: Species tree in Newick format.
+    :returns: Branch lengths.
+    """
     return [float(x.lstrip()) for x in re.findall(r"(?<=:)\s*[\d.]+", newick)]
 
 
@@ -69,18 +93,22 @@ def shorten_names(newick: str) -> str:
 
 
 def remove_lengths(newick: str) -> str:
+    """Remove branch lengths from a Newick tree."""
     return re.sub(r":\s*[\d.]+", "", newick)
 
 
 def remove_inner(newick: str) -> str:
+    """Remove inner node names and branch lengths from a Newick tree."""
     return re.sub(r"\)[^(),;]+", ")", newick)
 
 
 def remove_inner_names(newick: str) -> str:
+    """Remove inner node names from a Newick tree."""
     return re.sub(r"\)[^(),:;]+", ")", newick)
 
 
 def remove_whitespace(x: str) -> str:
+    """Remove all whitespace characters from a string."""
     return "".join(x.split())
 
 
@@ -99,10 +127,23 @@ def select(newick: str, queries: Sequence[str]) -> str:
 
 
 def select_clade(newick: str, clade: str) -> str:
+    """Extract subtree containing the specified clade.
+
+    :param newick: Original species tree in Newick format.
+    :param clade: Clade name to extract.
+    :returns: Subtree in Newick format.
+    """
     return to_newick(parse_newick(newick, clade))
 
 
 def select_tips(newick: str, tips: Sequence[str]) -> str:
+    """Extract subtree containing the specified tips.
+
+    :param newick: Original species tree in Newick format.
+    :param tips: Tip names to extract.
+    :returns: Subtree in Newick format.
+    """
+
     def repl(mobj: re.Match[str]) -> str:
         if (s := mobj.group(0)) in tips:
             return s
@@ -143,6 +184,7 @@ def get_tree() -> str:
 
 @functools.cache
 def read_builtin_newick() -> str:
+    """Read built-in Newick tree from resources."""
     return resources_data("angiospermae.nhx").read_text()
 
 
@@ -160,6 +202,7 @@ def list_species(clade: str = "") -> list[str]:
 
 
 def lengthen(species: str) -> str:
+    """Expand a shortened species name to the full name."""
     try:
         return next(_expand_short_names([species]))
     except StopIteration:
@@ -196,6 +239,15 @@ def shorten(name: str) -> str:
 
 
 def print_graph(newick: str, graph: int = 0) -> None:
+    """Print tree structure in a graphical format.
+
+    :param newick: Species tree in Newick format.
+    :param graph: Graph style level:
+        1. simple tree structure
+        2. with tip names
+        3. elongated branches
+        4. rectangular branches
+    """
     root = parse_newick(newick)
     if graph >= 4:  # noqa: PLR2004
         gen = rectangular(render_tips(root, []))
@@ -210,12 +262,16 @@ def print_graph(newick: str, graph: int = 0) -> None:
 
 
 class Node(NamedTuple):
+    """Recursive node to represent a tree."""
+
     name: str
     children: list[Node] | None = None
     distance: float | None = None
 
 
 class Bricks(NamedTuple):
+    """Characters for drawing tree branches."""
+
     first_branch: str = "├─"
     middle_branch: str = "├─"
     last_branch: str = "└─"
@@ -230,6 +286,11 @@ COMPACT_BRICKS = Bricks("┬─")
 
 
 def to_newick(node: Node) -> str:
+    """Convert a Node tree to a Newick format string.
+
+    :param node: Root node.
+    :returns: The tree in Newick format.
+    """
     return _to_newick(node) + ";"
 
 
@@ -247,6 +308,12 @@ def _to_newick(node: Node) -> str:
 
 
 def render_nodes(node: Node, columns: list[StrGen]) -> GraphGen:
+    """Generate lines for rendering tree including inner nodes.
+
+    :param node: Current node.
+    :param columns: List of column generators for branch drawing.
+    :returns: An iterator of (prefix, node label) tuples.
+    """
     for line in node.name.splitlines():
         prefix = "".join([next(gen) for gen in columns])
         yield (prefix, line)
@@ -254,6 +321,12 @@ def render_nodes(node: Node, columns: list[StrGen]) -> GraphGen:
 
 
 def render_tips(node: Node, columns: list[StrGen]) -> GraphGen:
+    """Generate lines for rendering tree without inner nodes.
+
+    :param node: Current node.
+    :param columns: List of column generators for branch drawing.
+    :returns: An iterator of (prefix, node label) tuples.
+    """
     yield from _iter_children(node, columns, render_tips, COMPACT_BRICKS)
     if not node.children:
         prefix = "".join([next(gen) for gen in columns])
@@ -335,7 +408,12 @@ def _parse_node_label(label: str) -> tuple[str, float | None]:
     return label.strip(), None
 
 
-def rectangular(renderer: GraphGen) -> Iterable[tuple[str, str]]:
+def rectangular(renderer: GraphGen) -> GraphGen:
+    """Generate lines with adjusted branch lengths for rectangular tree shape.
+
+    :param renderer: An iterator of (prefix, node label) tuples.
+    :returns: Modified iterator with adjusted prefixes.
+    """
     lines = list(renderer)
     widest = max(lines, key=lambda p: len(p[0]) + len(p[1]))
     max_width = len(widest[0]) + len(widest[1])
@@ -344,6 +422,11 @@ def rectangular(renderer: GraphGen) -> Iterable[tuple[str, str]]:
 
 
 def elongate(renderer: GraphGen) -> Iterable[tuple[str, str]]:
+    """Generate lines with elongated branches.
+
+    :param renderer: An iterator of (prefix, node label) tuples.
+    :returns: Modified iterator with elongated prefixes.
+    """
     lines = list(renderer)
     deepest = max(lines, key=lambda p: len(p[0]))
     max_depth = len(deepest[0])

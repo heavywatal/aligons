@@ -45,7 +45,6 @@ target-version = "py314"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-  "D1",   # missing docstring
   "D203", # incompatible
   "D213", # incompatible
   "ANN401", # Any
@@ -56,7 +55,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN2"]
+"tests/*" = ["ANN2", "D1"]
 
 [tool.pytest]
 pythonpath = ["src"]

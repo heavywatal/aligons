@@ -26,6 +26,14 @@ def main(argv: list[str] | None = None) -> None:
 def wait_maskfasta(
     fi: Path, fts: list[cli.Future[Path]], fo: Path, *, soft: bool = True
 ) -> Path:
+    """Mask FASTA sequences based on BED/GFF/VCF files.
+
+    :param fi: Input FASTA file. Can be gzipped.
+    :param fts: A list of futures for BED/GFF/VCF files to mask.
+    :param fo: Output masked FASTA file. Must have `.gz` suffix.
+    :param soft: Soft-masking (lowercase) if `True`, hard-masking (N) if `False`.
+    :returns: Masked FASTA file.
+    """
     fs.expect_suffix(fo, ".gz")
     beds = [f.result() for f in fts]
     if fs.is_outdated(fo, [fi, *beds]) or cli.dry_run:
@@ -37,7 +45,15 @@ def wait_maskfasta(
 
 
 def maskfasta(fi: bytes, bed: Path, *, soft: bool = True) -> bytes:
-    """https://bedtools.readthedocs.io/en/latest/content/tools/maskfasta.html."""
+    """Mask FASTA sequences based on BED/GFF/VCF file.
+
+    <https://bedtools.readthedocs.io/en/latest/content/tools/maskfasta.html>
+
+    :param fi: Input FASTA content.
+    :param bed: BED/GFF/VCF file for masking. Can be gzipped.
+    :param soft: Soft-masking (lowercase) if `True`, hard-masking (N) if `False`.
+    :returns: Masked FASTA content.
+    """
     args: subp.Args = ["bedtools", "maskfasta", "-fullHeader"]
     if soft:
         args.append("-soft")
@@ -49,11 +65,25 @@ def maskfasta(fi: bytes, bed: Path, *, soft: bool = True) -> bytes:
 
 
 def subtract(a: Path, b: Path) -> bytes:
+    """Remove intervals in `b` from `a`.
+
+    <https://bedtools.readthedocs.io/en/latest/content/tools/subtract.html>
+
+    :param a: BED/GFF/VCF file A to subtract from. Can be gzipped.
+    :param b: BED/GFF/VCF file B to subtract. Can be gzipped.
+    :returns: Subtracted intervals.
+    """
     sub: subp.Args = ["bedtools", "subtract", "-a", a, "-b", b]
     return subp.run(sub, stdout=subp.PIPE).stdout
 
 
 def remove_short(b: bytes, min_width: int = 0) -> bytes:
+    """Remove intervals shorter than `min_width` from BED/GFF/VCF content.
+
+    :param b: BED/GFF/VCF content.
+    :param min_width: Minimum width of intervals to keep.
+    :returns: Filtered BED/GFF/VCF content.
+    """
     awk = ["awk", f"($3-$2) >= {min_width}"]
     return subp.run(awk, input=b, stdout=subp.PIPE).stdout
 
