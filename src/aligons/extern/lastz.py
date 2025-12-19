@@ -54,7 +54,6 @@ class PairwiseChromosomeAlignment:
         rows = bed_df.collect().iter_rows(named=True)
         row0 = next(rows)
         self._target: str = row0["name"]
-        self._target_sizes = api.fasize(self._target)
         self._t2bit = api.chromosome_2bit(self._target, row0["chrom"])
         self._target_dir = Path("pairwise") / self._target
         self._queries: dict[str, Path] = {}
@@ -81,10 +80,9 @@ class PairwiseChromosomeAlignment:
             `./pairwise/{target}/{query}/chromosome.{seqid}/sing.maf`
         """
         outdir = self._target_dir / query
-        query_sizes = api.fasize(query)
         axt = lastz(self._t2bit, q2bit, outdir)
         chain = kent.axtChain(axt, self._t2bit, q2bit)
-        net, _q_net = kent.chain_net(chain, self._target_sizes, query_sizes)
+        net, _q_net = kent.chain_net(chain, self._target, query)
         sing_maf = net.with_name("sing.maf")
         kent.net_to_maf(net, chain, sing_maf, self._target, query)
         return sing_maf
@@ -113,8 +111,6 @@ class PairwiseGenomeAlignment:
         """
         self._target = target
         self._query = query
-        self._target_sizes = api.fasize(target)
-        self._query_sizes = api.fasize(query)
         self._outdir = Path("pairwise") / target / query
         self._lastz_opts = _lastz_options(target, query)
 
@@ -161,7 +157,7 @@ class PairwiseGenomeAlignment:
             `./pairwise/{target}/{query}/sing.maf`
         """
         chain = kent.chainMergeSort(chains)
-        net, _q_net = kent.chain_net(chain, self._target_sizes, self._query_sizes)
+        net, _q_net = kent.chain_net(chain, self._target, self._query)
         if self._target.rsplit("/")[-1] == self._query.rsplit("/")[-1]:
             fs.print_if_exists(kent.net_chain_subset(net, chain))
         sing_maf = net.with_name("sing.maf")

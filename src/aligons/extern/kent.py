@@ -229,7 +229,7 @@ def chainMergeSort(chains: list[Path]) -> Path:  # noqa: N802
         return subp.gzip(merge.stdout, outfile, if_=if_)
 
 
-def chain_net(chain: Path, target_sizes: Path, query_sizes: Path) -> tuple[Path, Path]:
+def chain_net(chain: Path, target: str, query: str) -> tuple[Path, Path]:
     """Make alignment nets with synteny information from a chain.
 
     - `chainPreNet`: Remove chains that don't have a chance of being netted.
@@ -246,6 +246,8 @@ def chain_net(chain: Path, target_sizes: Path, query_sizes: Path) -> tuple[Path,
     q_net = chain.with_name("query.net")
     t_syn = t_net.with_suffix(".net.gz")
     q_syn = q_net.with_suffix(".net.gz")
+    target_sizes = faSize(api.genome_fa(target))
+    query_sizes = faSize(api.genome_fa(query))
     if_ = fs.is_outdated(t_syn, chain) or fs.is_outdated(q_syn, chain)
     pre_args = ["chainPreNet", chain, target_sizes, query_sizes, "stdout"]
     opts = subp.optargs(config["chainNet"], "-")
