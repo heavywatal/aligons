@@ -43,10 +43,7 @@ def print_existing(species: str) -> None:
 
 def shorten(species: str) -> str:
     """Get a short name for the given species."""
-    try:
-        return plantregmap.shorten(species)
-    except KeyError:
-        return phylo.shorten(species)
+    return phylo.shorten(species)
 
 
 @functools.cache
