@@ -35,17 +35,10 @@ def main(argv: list[str] | None = None) -> None:
         for file in _prefix_mirror().glob("*.zip"):
             _check_zip(file)
     if args.mask:
-        fts_idx: list[cli.Future[Path]] = []
+        fts: list[cli.Future[Path]] = []
         for acc in args.accession:
             genome_zip = _download_genome(acc)
-            fts_idx.extend(_index_genome(genome_zip))
-        fts: list[cli.Future[Path]] = []
-        for ft in cli.as_completed(fts_idx):
-            bgzipped = ft.result()
-            fs.print_if_exists(bgzipped)
-            if bgzipped.name.endswith(".fa.gz"):
-                masked = tools.softmask(bgzipped, args.mask)
-                fts.extend(tools.genome_to_twobits(masked))
+            fts.extend(_index_genome(genome_zip))
         cli.wait_raise(fts)
 
 
@@ -80,6 +73,10 @@ def _download_genome(accession: str) -> Path:
 def _index_genome(genome_zip: Path) -> list[cli.Future[Path]]:
     """Make indexed genome FASTA and GFF from a genome data package zip.
 
+    > All genome sequences are softmasked using WindowMasker or RepeatMasker.
+
+    <https://www.ncbi.nlm.nih.gov/datasets/docs/v2/data-processing/policies-annotation/genomeftp/>
+
     :param genome_zip: NCBI genome package file: `{accession}.zip`.
     :returns: Future of the bgzipped files.
     """
@@ -90,7 +87,7 @@ def _index_genome(genome_zip: Path) -> list[cli.Future[Path]]:
     version = info["version"]
     stem = f"{species}_{version}"
     name = info["sequences"][0]
-    out_fa = db_prefix() / species / f"{stem}.dna.genome.fa.gz"
+    out_fa = db_prefix() / species / f"{stem}.dna_sm.genome.fa.gz"
     fts = [cli.thread_submit(tools.unzip_index_bgzip, genome_zip, name, out_fa)]
     if isinstance(gff := info.get("annotation"), str) and gff:
         _log.debug(f"{gff = }")
