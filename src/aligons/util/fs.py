@@ -6,9 +6,11 @@ import logging
 import os
 import re
 import subprocess
-from collections.abc import Generator, Iterable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable
 
 from . import cli
 
@@ -65,7 +67,7 @@ def symlink(path: Path, link: Path, *, relative: bool = False) -> Path:
     return link
 
 
-def is_outdated(product: Path, source: Sequence[Path] | Path | None = None) -> bool:
+def is_outdated(product: Path, source: Iterable[Path] | Path | None = None) -> bool:
     """Check if the product is outdated compared to the source.
 
     :param product: The product file or directory to check.
@@ -76,7 +78,7 @@ def is_outdated(product: Path, source: Sequence[Path] | Path | None = None) -> b
         return True
     if product.stat().st_size == 0:
         return True
-    if isinstance(source, Sequence):
+    if source is not None and not isinstance(source, Path):
         source = [x for x in source if x.exists()]
         source = newest(source) if source else None
     if source and source.exists():
@@ -84,7 +86,7 @@ def is_outdated(product: Path, source: Sequence[Path] | Path | None = None) -> b
     return False
 
 
-def newest(files: Sequence[Path]) -> Path:
+def newest(files: Iterable[Path]) -> Path:
     """Find the most recently modified file.
 
     :param files: Files to check.

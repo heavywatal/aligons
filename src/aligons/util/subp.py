@@ -12,9 +12,8 @@ from typing import IO, Any, Final
 
 from . import cli
 
-type StrPath = str | Path
-type Args = list[StrPath]
-type _CMD = Sequence[StrPath] | str
+type Args = list[str | Path]
+type _CMD = Sequence[str | Path] | str
 type FILE = IO[Any] | int | None
 
 CalledProcessError = subprocess.CalledProcessError
@@ -27,7 +26,7 @@ def popen(  # noqa: PLR0913
     args: _CMD,
     *,
     if_: bool = True,
-    executable: StrPath | None = None,
+    executable: str | Path | None = None,
     stdin: FILE = None,
     stdout: FILE = None,
     shell: bool = False,
@@ -63,7 +62,7 @@ def run(  # noqa: PLR0913
     args: _CMD,
     *,
     if_: bool = True,
-    executable: StrPath | None = None,
+    executable: str | Path | None = None,
     stdin: FILE = None,
     input: bytes | None = None,  # noqa: A002
     stdout: FILE = None,
