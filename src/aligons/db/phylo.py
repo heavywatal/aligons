@@ -280,7 +280,7 @@ class Bricks(NamedTuple):
 
 
 type StrGen = Iterator[str]
-type GraphGen = Iterable[tuple[str, str]]
+type GraphGen = Iterator[tuple[str, str]]
 NORMAL_BRICKS = Bricks()
 COMPACT_BRICKS = Bricks("┬─")
 
@@ -421,7 +421,7 @@ def rectangular(renderer: GraphGen) -> GraphGen:
         yield (prefix.ljust(max_width - len(label), "─"), label)
 
 
-def elongate(renderer: GraphGen) -> Iterable[tuple[str, str]]:
+def elongate(renderer: GraphGen) -> Iterator[tuple[str, str]]:
     """Generate lines with elongated branches.
 
     :param renderer: An iterator of (prefix, node label) tuples.

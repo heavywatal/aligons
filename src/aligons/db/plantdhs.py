@@ -8,7 +8,7 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterator
     from pathlib import Path
 
 from aligons.util import cli, dl, fs
@@ -47,14 +47,14 @@ def retrieve_deploy(query: str) -> cli.Future[Path]:
     return cli.thread_submit(tools.bgzip_or_symlink, response, outfile)
 
 
-def iter_download_queries() -> Iterable[str]:
+def iter_download_queries() -> Iterator[str]:
     """Iterate over PlantDHS `Download.html` for download links with "Rice|TIGR7"."""
     for query in iter_download_queries_all():
         if re.search(r"Rice|TIGR7", query):
             yield query
 
 
-def iter_download_queries_all() -> Iterable[str]:
+def iter_download_queries_all() -> Iterator[str]:
     """Iterate over PlantDHS `Download.html` for download links."""
     content = download_page()
     for mobj in re.finditer(r"/download/plantdhs/([^\"']+)", content):

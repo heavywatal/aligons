@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterator
 
 from aligons.util import cli, config, dl, fs, tomli_w
 
@@ -90,7 +90,7 @@ def _dataset_toml(organism: str = config["jgi"]["organism"]) -> Path:
     return fs.print_if_exists(outfile)
 
 
-def _iter_dataset_xml(xml: Path, organism: str) -> Iterable[dict[str, str | list[str]]]:
+def _iter_dataset_xml(xml: Path, organism: str) -> Iterator[dict[str, str | list[str]]]:
     """Iterate over dataset entries in the XML metadata.
 
     :param xml: XML metadata file from `_fetch_xml()`.

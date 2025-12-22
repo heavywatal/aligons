@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterator
 
 from aligons.extern import kent
 from aligons.util import cli, config, dl, fs, subp
@@ -50,7 +50,7 @@ def main(argv: list[str] | None = None) -> None:
         _log.warning(f"No local mirror of release-{version()}")
 
 
-def _list_versions() -> Iterable[Path]:
+def _list_versions() -> Iterator[Path]:
     _log.debug(f"{_prefix_mirror()=}")
     return _prefix_mirror().parent.glob("release-*")
 
@@ -113,7 +113,7 @@ def _list_mafs_by_seq(indir: Path) -> dict[str, list[Path]]:
     return infiles_by_seq
 
 
-def _readlines_compara_maf(file: Path) -> Iterable[bytes]:
+def _readlines_compara_maf(file: Path) -> Iterator[bytes]:
     """Read and correct MAF files of ensembl compara with broken "a" lines.
 
     a# id: 0000000

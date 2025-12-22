@@ -8,7 +8,7 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterator
     from pathlib import Path
 
 from aligons.util import cli, dl, fs
@@ -50,7 +50,7 @@ def retrieve_deploy(query: str) -> cli.Future[Path]:
     return cli.thread_submit(tools.bgzip_or_symlink, response, outfile)
 
 
-def iter_download_queries() -> Iterable[str]:
+def iter_download_queries() -> Iterator[str]:
     """Iterate over RiceENCODE `download.html` for download links."""
     content = download_page()
     content = re.sub(r"<!--.+?-->", "", content)

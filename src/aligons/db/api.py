@@ -13,12 +13,12 @@ from contextlib import suppress
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterator
     from pathlib import Path
 
 from aligons.util import cli, config, fs
 
-from . import _rsrc, phylo, plantregmap
+from . import _rsrc, phylo
 
 _log = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ def chromosome_2bit(species: str, seqid: str) -> Path:
     return get_file(f"*.chromosome.{seqid}.2bit", species, subdir)
 
 
-def iter_chromosome_2bit(species: str) -> Iterable[Path]:
+def iter_chromosome_2bit(species: str) -> Iterator[Path]:
     """Iterate over all chromosome 2bit files for the given species."""
     return _glob("*.chromosome.*.2bit", species)
 
@@ -148,7 +148,7 @@ def _species_dirs(species: str = "") -> Iterator[Path]:
                 yield path
 
 
-def _glob(pattern: str, species: str, subdir: str = "") -> Iterable[Path]:
+def _glob(pattern: str, species: str, subdir: str = "") -> Iterator[Path]:
     """Find files matching the pattern under species directories.
 
     :param pattern: A glob pattern to match file names.
@@ -176,7 +176,7 @@ def prefix(relpath: str | Path = "") -> Path:
     return _rsrc.db_root("aligons") / relpath
 
 
-def _iter_prefix() -> Iterable[Path]:
+def _iter_prefix() -> Iterator[Path]:
     """Iterate over database origin directories.
 
     :returns: An iterator over `{db.root}/aligons/{origin}/` paths.
@@ -184,7 +184,7 @@ def _iter_prefix() -> Iterable[Path]:
     return (prefix(origin) for origin in _iter_db_origin())
 
 
-def _iter_db_origin() -> Iterable[str]:
+def _iter_db_origin() -> Iterator[str]:
     """Iterate over `config["db"]["origin"]` with version formatting."""
     for origin in config["db"]["origin"]:
         if origin.startswith("ensembl"):
@@ -231,7 +231,7 @@ def _gff3_size(species: str) -> float:
     return path.stat().st_size / 1e6
 
 
-def _sources(species: str) -> Iterable[str]:
+def _sources(species: str) -> Iterator[str]:
     for path in _species_dirs(species):
         if path.glob("*.genome.*.gz"):
             yield _nickname(path.parent.name)
