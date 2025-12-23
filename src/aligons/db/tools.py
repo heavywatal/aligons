@@ -190,11 +190,11 @@ def genome_to_twobits(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]
     :returns: A list of futures of 2bit files for each chromosome.
     """
     genome = cli.result(genome)
-    fai = htslib.read_fai(genome)
-    _log.debug(f"{fai = }")
+    fasize = kent.read_fasize(genome)
+    _log.debug(f"{fasize = }")
     min_size = 1000000
     fts: list[cli.Future[Path]] = []
-    for seqid, size in fai.items():
+    for seqid, size in fasize.items():
         if re.search(r"scaffold|contig", seqid):
             _log.info(f"ignoring {seqid} in {genome}")
             continue

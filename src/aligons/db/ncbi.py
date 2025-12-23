@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("-C", "--check", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
-    parser.add_argument("-M", "--mask", type=str, help="taxon for RepeatMasker")
+    parser.add_argument("-M", "--deploy", action="store_true")
     parser.add_argument("accession", nargs="*")
     args = parser.parse_args(argv or None)
     if args.download:
@@ -39,7 +39,11 @@ def main(argv: list[str] | None = None) -> None:
         for acc in args.accession:
             genome_zip = _download_genome(acc)
             fts.extend(_index_genome(genome_zip))
-        cli.wait_raise(fts)
+        fts2b: list[cli.Future[Path]] = []
+        for ft in cli.as_completed(fts):
+            if (res := ft.result()).name.endswith(".fa.gz"):
+                fts2b.extend(tools.genome_to_twobits(res))
+        cli.wait_raise(fts2b)
 
 
 def db_prefix() -> Path:
