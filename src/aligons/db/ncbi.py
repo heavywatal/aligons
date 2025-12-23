@@ -34,7 +34,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.check:
         for file in _prefix_mirror().glob("*.zip"):
             _check_zip(file)
-    if args.mask:
+    if args.deploy:
         fts: list[cli.Future[Path]] = []
         for acc in args.accession:
             genome_zip = _download_genome(acc)
