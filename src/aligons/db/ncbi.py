@@ -66,7 +66,7 @@ def _download_genome(accession: str) -> Path:
     if not cli.dry_run:
         outdir.mkdir(0o755, parents=True, exist_ok=True)
     outfile = outdir / f"{accession}.zip"
-    args: subp.Args = ["datasets", "download", "genome"]
+    args: subp.Args = ["datasets", "download", "genome", "--no-progressbar"]
     args.extend(["accession", accession])
     args.extend(["--filename", outfile])
     args.extend(["--include", "genome,gff3"])
