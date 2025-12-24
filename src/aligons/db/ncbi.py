@@ -28,22 +28,26 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-M", "--deploy", action="store_true")
     parser.add_argument("accession", nargs="*")
     args = parser.parse_args(argv or None)
-    if args.download:
-        for acc in args.accession:
-            _download_genome(acc)
-    if args.check:
-        for file in _prefix_mirror().glob("*.zip"):
-            _check_zip(file)
-    if args.deploy:
-        fts: list[cli.Future[Path]] = []
-        for acc in args.accession:
-            genome_zip = _download_genome(acc)
-            fts.extend(_index_genome(genome_zip))
-        fts2b: list[cli.Future[Path]] = []
-        for ft in cli.as_completed(fts):
-            if (res := ft.result()).name.endswith(".fa.gz"):
-                fts2b.extend(tools.genome_to_twobits(res))
-        cli.wait_raise(fts2b)
+    if args.download or args.check or args.deploy:
+        fts = [cli.thread_submit(_download_genome, acc) for acc in args.accession]
+        if args.check:
+            # not so parallel due to GIL
+            fts_check = [
+                cli.thread_submit(_check_zip, ft) for ft in cli.as_completed(fts)
+            ]
+            fts = fts_check
+        if args.deploy:
+            fts_idx = [
+                cli.thread_submit(_index_genome, ft) for ft in cli.as_completed(fts)
+            ]
+            fts: list[cli.Future[Path]] = []
+            for ft in cli.as_completed(fts_idx):
+                if (res := ft.result()).name.endswith(".fa.gz"):
+                    fts.extend(tools.genome_to_twobits(res))
+        cli.wait_raise(fts)
+    else:
+        for genome_zip in _prefix_mirror().glob("*.zip"):
+            _log.info(_get_info(genome_zip))
 
 
 def db_prefix() -> Path:
@@ -74,7 +78,7 @@ def _download_genome(accession: str) -> Path:
     return outfile
 
 
-def _index_genome(genome_zip: Path) -> list[cli.Future[Path]]:
+def _index_genome(genome_zip: Path | cli.Future[Path]) -> list[cli.Future[Path]]:
     """Make indexed genome FASTA and GFF from a genome data package zip.
 
     > All genome sequences are softmasked using WindowMasker or RepeatMasker.
@@ -84,6 +88,8 @@ def _index_genome(genome_zip: Path) -> list[cli.Future[Path]]:
     :param genome_zip: NCBI genome package file: `{accession}.zip`.
     :returns: Future of the bgzipped files.
     """
+    if isinstance(genome_zip, cli.Future):
+        genome_zip = genome_zip.result()
     info = _get_info(genome_zip)
     _log.debug(info)
     species: str = info["species"]  # pyright: ignore[reportAssignmentType]
@@ -131,8 +137,10 @@ def _get_asm_version(name: str) -> tuple[str, str]:
     return accession, re.sub(r"_genomic\..+", "", x)
 
 
-def _check_zip(file: Path) -> None:
+def _check_zip(file: Path | cli.Future[Path]) -> Path:
     """Check integrity of a zip file and its MD5 checksums."""
+    if isinstance(file, cli.Future):
+        file = file.result()
     try:
         with zipfile.ZipFile(file) as zf:
             if zf.testzip() is not None:
@@ -140,6 +148,7 @@ def _check_zip(file: Path) -> None:
             _check_md5(zf)
     except zipfile.BadZipFile:
         _log.error(f"Bad zip file: {file}")
+    return file
 
 
 def _check_md5(zf: zipfile.ZipFile, sum_file: str = "md5sum.txt") -> None:
