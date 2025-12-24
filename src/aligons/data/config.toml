@@ -56,6 +56,9 @@ kmer = false
 exclude = ["oryza_sativa_mh63", "oryza_sativa_zs97"]
 # tree = ""  # string in newick format or path to newick file
 
+[db.ncbi]
+api-key = ""
+
 [jellyfish.count]
 mer_len = 20
 size = 500

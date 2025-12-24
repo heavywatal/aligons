@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-from aligons.util import cli, fs, logging, subp
+from aligons.util import cli, config, fs, logging, subp
 
 from . import _rsrc, api, tools
 
@@ -71,6 +71,8 @@ def _download_genome(accession: str) -> Path:
         outdir.mkdir(0o755, parents=True, exist_ok=True)
     outfile = outdir / f"{accession}.zip"
     args: subp.Args = ["datasets", "download", "genome", "--no-progressbar"]
+    if config["db"].get("ncbi", None).get("api-key", None):
+        args.extend(["--api-key", config["db"]["ncbi"]["api-key"]])
     args.extend(["accession", accession])
     args.extend(["--filename", outfile])
     args.extend(["--include", "genome,gff3"])
