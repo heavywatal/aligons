@@ -1,0 +1,79 @@
+[[dataset]]
+accession = "GCA_965637405.1"
+version = "daCenEryt1.hap1.1"
+species = "Centaurium erythraea"
+
+[[dataset]]
+accession = "GCA_965637515.1"
+version = "daCenEryt1.hap2.1"
+species = "Centaurium erythraea"
+
+[[dataset]]
+accession = "GCA_051253095.1"
+version = "ASM5125309v1"
+species = "Centaurium scilloides"
+
+[[dataset]]
+accession = "GCA_036186865.1"
+version = "ASM3618686v1"
+species = "Eustoma russellianum"
+
+[[dataset]]
+accession = "GCA_024500145.1"
+version = "ASM2450014v1"
+species = "Gentiana dahurica var. dahurica"
+
+[[dataset]]
+accession = "GCA_026214975.1"
+version = "ASM2621497v1"
+species = "Gentiana macrophylla"
+
+[[dataset]]
+accession = "GCA_036785695.1"
+version = "ASM3678569v1"
+species = "Gentiana straminea"
+
+[[dataset]]
+accession = "GCA_965645205.1"
+version = "daGenAmar1.hap2.1"
+species = "Gentianella amarella"
+
+[[dataset]]
+species = "Danio rerio"
+accession = "GCF_049306965.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Anoplopoma fimbria"
+accession = "GCF_027596085.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Gasterosteus aculeatus"
+accession = "GCF_964276395.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Pungitius pungitius"
+accession = "GCF_949316345.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Dissostichus eleginoides"
+accession = "GCA_031216635.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Pagothenia borchgrevinki"
+accession = "GCA_044885175.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Plectropomus leopardus"
+accession = "GCF_008729295.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Perca flavescens"
+accession = "GCF_004354835.1"
+clade = "teleostei"
