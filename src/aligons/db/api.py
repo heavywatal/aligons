@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> None:
     """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("-S", "--species")
-    parser.add_argument("-C", "--clade", default="angiospermae")
+    parser.add_argument("-C", "--clade", default="eukaryota")
     args = parser.parse_args(argv or None)
     if args.species:
         print_existing(args.species)

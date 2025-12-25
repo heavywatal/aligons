@@ -185,7 +185,14 @@ def get_tree() -> str:
 @functools.cache
 def read_builtin_newick() -> str:
     """Read built-in Newick tree from resources."""
-    return resources_data("angiospermae.nhx").read_text()
+    angiospermae = _read_resources("angiospermae.nhx").removesuffix(";")
+    actinopterygii = _read_resources("actinopterygii.nhx").removesuffix(";")
+    return f"({angiospermae},{actinopterygii})eukaryota;"
+
+
+def _read_resources(filename: str) -> str:
+    """Read resources file as text."""
+    return resources_data(filename).read_text().strip()
 
 
 def list_species(clade: str = "") -> list[str]:
