@@ -6,13 +6,14 @@
 import hashlib
 import json
 import re
+import tomllib
 import zipfile
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-from aligons.util import cli, config, fs, logging, subp
+from aligons.util import cli, config, fs, logging, resources_data, subp
 
 from . import _rsrc, api, tools
 
@@ -26,8 +27,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-C", "--check", action="store_true")
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("-M", "--deploy", action="store_true")
+    parser.add_argument("-l", "--list", action="store_true")
     parser.add_argument("accession", nargs="*")
     args = parser.parse_args(argv or None)
+    if args.list:
+        for ds in _builtin_datasets():
+            _log.info(f"{ds['accession']} {ds['species']}")
+        return
     if args.download or args.check or args.deploy:
         fts = [cli.thread_submit(_download_genome, acc) for acc in args.accession]
         if args.check:
@@ -164,6 +170,12 @@ def _check_md5(zf: zipfile.ZipFile, sum_file: str = "md5sum.txt") -> None:
                 md5_obs = hashlib.md5(fin.read())  # noqa: S324
                 if md5_obs.hexdigest() != hex_exp:
                     _log.error(f"MD5 mismatch: {path}")
+
+
+def _builtin_datasets() -> list[dict[str, Any]]:
+    """Return datasets defined in the bundled `ncbi.toml`."""
+    with resources_data("ncbi.toml").open("rb") as fin:
+        return tomllib.load(fin)["dataset"]
 
 
 if __name__ == "__main__":
