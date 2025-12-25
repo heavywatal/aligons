@@ -5,6 +5,7 @@
 
 import logging
 import re
+import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 from aligons.extern import htslib, kent, mafs2cram
-from aligons.util import cli, dl, fs, subp, tomli_w, tomllib
+from aligons.util import cli, dl, fs, subp, tomli_w
 
 from . import _rsrc, api, tools
 

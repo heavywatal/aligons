@@ -1,6 +1,7 @@
 """HTTP and FTP download utilities with lazy access support."""
 
 import logging
+import tomllib
 from ftplib import FTP
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 import requests
 import tomli_w
 
-from . import cli, tomllib
+from . import cli
 
 _log = logging.getLogger(__name__)
 

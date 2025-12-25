@@ -1,4 +1,5 @@
 import os
+import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
@@ -6,7 +7,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from importlib.resources.abc import Traversable
 
-from aligons.util import config, resources_data, tomllib
+from aligons.util import config, resources_data
 
 
 class DataSet(TypedDict):
