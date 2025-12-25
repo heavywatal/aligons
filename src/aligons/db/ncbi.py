@@ -37,9 +37,9 @@ def main(argv: list[str] | None = None) -> None:
             ]
             fts = fts_check
         if args.deploy:
-            fts_idx = [
-                cli.thread_submit(_index_genome, ft) for ft in cli.as_completed(fts)
-            ]
+            fts_idx: list[cli.Future[Path]] = []
+            for ft in cli.as_completed(fts):
+                fts_idx.extend(_index_genome(ft))
             fts: list[cli.Future[Path]] = []
             for ft in cli.as_completed(fts_idx):
                 if (res := ft.result()).name.endswith(".fa.gz"):
