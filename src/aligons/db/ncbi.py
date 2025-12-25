@@ -129,6 +129,8 @@ def _get_info(genome_zip: Path) -> dict[str, str | list[str]]:
                 res["annotation"] = annotation[0]
     except zipfile.BadZipFile:
         _log.error(f"Bad zip file: {genome_zip}")
+    if res.get("species", "") == "Eustoma russellianum":
+        res["species"] = "Eustoma grandiflorum"  # NCBI and Wikipedia/en are wrong
     return res
 
 

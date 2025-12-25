@@ -1,41 +1,30 @@
 [[dataset]]
 accession = "GCA_965637405.1"
-version = "daCenEryt1.hap1.1"
-species = "Centaurium erythraea"
-
-[[dataset]]
-accession = "GCA_965637515.1"
-version = "daCenEryt1.hap2.1"
 species = "Centaurium erythraea"
 
 [[dataset]]
 accession = "GCA_051253095.1"
-version = "ASM5125309v1"
 species = "Centaurium scilloides"
 
 [[dataset]]
 accession = "GCA_036186865.1"
-version = "ASM3618686v1"
-species = "Eustoma russellianum"
+species = "Eustoma grandiflorum"
+synonym = "Eustoma russellianum"
 
 [[dataset]]
 accession = "GCA_024500145.1"
-version = "ASM2450014v1"
 species = "Gentiana dahurica var. dahurica"
 
 [[dataset]]
 accession = "GCA_026214975.1"
-version = "ASM2621497v1"
 species = "Gentiana macrophylla"
 
 [[dataset]]
 accession = "GCA_036785695.1"
-version = "ASM3678569v1"
 species = "Gentiana straminea"
 
 [[dataset]]
 accession = "GCA_965645205.1"
-version = "daGenAmar1.hap2.1"
 species = "Gentianella amarella"
 
 [[dataset]]
