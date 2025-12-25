@@ -53,7 +53,10 @@ def main(argv: list[str] | None = None) -> None:
         cli.wait_raise(fts)
     else:
         for genome_zip in _prefix_mirror().glob("*.zip"):
-            _log.info(_get_info(genome_zip))
+            info = _get_info(genome_zip)
+            seq_report = info.pop("seq-report", [])
+            _log.info(info)
+            _log.info(_filter_sequences(seq_report))  # pyright: ignore[reportArgumentType]
 
 
 def db_prefix() -> Path:
@@ -81,7 +84,7 @@ def _download_genome(accession: str) -> Path:
         args.extend(["--api-key", config["db"]["ncbi"]["api-key"]])
     args.extend(["accession", accession])
     args.extend(["--filename", outfile])
-    args.extend(["--include", "genome,gff3"])
+    args.extend(["--include", "genome,gff3,seq-report"])
     subp.run(args, if_=fs.is_outdated(outfile))
     return outfile
 
@@ -105,6 +108,9 @@ def _index_genome(genome_zip: Path | cli.Future[Path]) -> list[cli.Future[Path]]
     version = info["version"]
     stem = f"{species}_{version}"
     name = info["sequences"][0]
+    seq_report = info.get("seq-report", [])
+    seq_names = _filter_sequences(seq_report)  # pyright: ignore[reportArgumentType]
+    _log.debug(f"{seq_names = }")  # TODO: filter and rename sequences
     out_fa = db_prefix() / species / f"{stem}.dna_sm.genome.fa.gz"
     fts = [cli.thread_submit(tools.unzip_index_bgzip, genome_zip, name, out_fa)]
     if isinstance(gff := info.get("annotation"), str) and gff:
@@ -114,15 +120,18 @@ def _index_genome(genome_zip: Path | cli.Future[Path]) -> list[cli.Future[Path]]
     return fts
 
 
-def _get_info(genome_zip: Path) -> dict[str, str | list[str]]:
+def _get_info(
+    genome_zip: Path,
+) -> dict[str, str | list[str] | list[dict[str, str | int]]]:
     """Extract metadata from a genome package zip."""
-    res: dict[str, str | list[str]] = {}
+    res: dict[str, str | list[str] | list[dict[str, str | int]]] = {}
     try:
         with zipfile.ZipFile(genome_zip) as zf:
             for name in zf.namelist():
                 _log.debug(name)
             sequences = [x for x in zf.namelist() if "_genomic.f" in x]
-            res["accession"], res["version"] = _get_asm_version(sequences[0])
+            acc, res["version"] = _get_asm_version(sequences[0])
+            res["accession"] = acc
             res["sequences"] = sequences
             with zf.open("ncbi_dataset/data/assembly_data_report.jsonl") as fin:
                 for line in fin:
@@ -130,6 +139,10 @@ def _get_info(genome_zip: Path) -> dict[str, str | list[str]]:
                     organism = data["organism"]
                     _log.debug(f"{organism}")
                     res["species"] = organism["organismName"]
+            seq_report = f"ncbi_dataset/data/{acc}/sequence_report.jsonl"
+            if seq_report in zf.namelist():
+                with zf.open(seq_report) as fin:
+                    res["seq-report"] = [_read_seq_report(line) for line in fin]
             annotation = [x for x in zf.namelist() if ".gff" in x]
             if annotation:
                 res["annotation"] = annotation[0]
@@ -138,6 +151,49 @@ def _get_info(genome_zip: Path) -> dict[str, str | list[str]]:
     if res.get("species", "") == "Eustoma russellianum":
         res["species"] = "Eustoma grandiflorum"  # NCBI and Wikipedia/en are wrong
     return res
+
+
+def _read_seq_report(line: bytes) -> dict[str, str | int]:
+    """Parse a line of `sequence_report.jsonl`."""
+    obj = json.loads(line)
+    keys = (
+        "chrName",
+        "length",
+        "refseqAccession",
+        "genbankAccession",
+        "role",
+        "sequenceName",
+    )
+    return {k: v for k, v in obj.items() if k in keys}
+
+
+def _filter_sequences(
+    seq_report: list[dict[str, str | int]], min_length: int = 1000000
+) -> dict[str, str]:
+    """Filter sequences by role and length.
+
+    :returns: A dictionary of {accession: name}.
+    """
+    seq_names: dict[str, str] = {}
+    for rec in seq_report:
+        if (
+            rec.get("role", "") == "assembled-molecule"
+            or int(rec["length"]) > min_length
+        ):
+            key, name = _get_sequence_name(rec)
+            seq_names[key] = name
+    return seq_names
+
+
+def _get_sequence_name(rec: dict[str, str | int]) -> tuple[str, str]:
+    key = rec.get("refseqAccession") or rec.get("genbankAccession")
+    if not key or not isinstance(key, str):
+        msg = f"Invalid sequence report: {rec}"
+        raise ValueError(msg)
+    name = str(rec.get("chrName")) or "Un"
+    if name == "Un":
+        name = ""
+    return (key, name)
 
 
 def _get_asm_version(name: str) -> tuple[str, str]:
