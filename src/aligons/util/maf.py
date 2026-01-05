@@ -158,5 +158,18 @@ def read_s(file: Path) -> pl.LazyFrame:
     ).lazy()
 
 
+def is_empty(file: Path) -> bool:
+    """Check if a MAF file has no alignment blocks.
+
+    :param file: Input MAF file.
+    :returns: True if the file has no alignment blocks.
+    """
+    with file.open("rb") as fin:
+        for line in fin:
+            if line.startswith(b"a "):
+                return False
+    return True
+
+
 if __name__ == "__main__":
     main()

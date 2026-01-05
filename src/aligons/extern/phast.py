@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from aligons.db import api, phylo
-from aligons.util import cli, config, fs, gff, subp
+from aligons.util import cli, config, fs, gff, maf, subp
 
 from . import htslib, kent
 
@@ -40,8 +40,8 @@ def run(input_dir: Path) -> tuple[Path, Path]:
     pattern = "chromosome.*/multiz.maf"
     mafs = [x for x in outdir.glob(pattern) if not x.parent.name.endswith(".Pt")]
     futures = [
-        cli.thread_submit(phastCons, maf, chrom_sizes, None, noncons_mod)
-        for maf in fs.sorted_naturally(mafs)
+        cli.thread_submit(phastCons, mul_maf, chrom_sizes, None, noncons_mod)
+        for mul_maf in fs.sorted_naturally(mafs)
     ]
     chrom_bws: list[Path] = []
     chrom_beds: list[Path] = []
@@ -108,9 +108,9 @@ def prepare_conservation(input_dir: Path) -> Path:
     outdir = cons_dir / target / clade
     if not cli.dry_run:
         outdir.mkdir(parents=True, exist_ok=True)
-    for maf in input_dir.glob("chromosome*/multiz.maf"):
-        ln = outdir / maf.parent.name / maf.name
-        fs.symlink(maf, ln, relative=True)
+    for mul_maf in input_dir.glob("chromosome*/multiz.maf"):
+        ln = outdir / mul_maf.parent.name / mul_maf.name
+        fs.symlink(mul_maf, ln, relative=True)
     return outdir
 
 
@@ -130,46 +130,51 @@ def estimate_models(output_dir: Path) -> tuple[Path, Path]:
     c_futures: list[cli.Future[Path]] = []
     n_futures: list[cli.Future[Path]] = []
     pool = cli.ThreadPool()
-    for maf in output_dir.glob("chromosome*/multiz.maf"):
-        seqid = maf.parent.name.removeprefix("chromosome.")
-        c_futures.append(pool.submit(make_cons_mod, maf, target, seqid, tree))
-        n_futures.append(pool.submit(make_noncons_mod, maf, target, seqid, tree))
+    for mul_maf in output_dir.glob("chromosome*/multiz.maf"):
+        if maf.is_empty(mul_maf):
+            _log.warning(f"Skipping empty MAF: {mul_maf}")
+            continue
+        seqid = mul_maf.parent.name.removeprefix("chromosome.")
+        c_futures.append(pool.submit(make_cons_mod, mul_maf, target, seqid, tree))
+        n_futures.append(pool.submit(make_noncons_mod, mul_maf, target, seqid, tree))
     phyloBoot([f.result() for f in c_futures], cons_mod)
     phyloBoot([f.result() for f in n_futures], noncons_mod)
     return (cons_mod, noncons_mod)
 
 
-def make_cons_mod(maf: Path, species: str, seqid: str, tree: str) -> Path:
+def make_cons_mod(mul_maf: Path, species: str, seqid: str, tree: str) -> Path:
     """Estimate phylogenetic models for conserved sites.
 
-    :param maf: Input MAF file.
+    :param mul_maf: Input MAF file.
     :param species: Species name to get its genome GFF3.
     :param seqid: Chromosome name.
     :param tree: Newick tree string.
     :returns: Path to the generated model file: `phylofit.cons.mod`.
     """
-    codons_ss = msa_view_features(maf, species, seqid, conserved=True)
+    codons_ss = msa_view_features(mul_maf, species, seqid, conserved=True)
     codons_mods = phyloFit(codons_ss, tree, conserved=True)
     return most_conserved_mod(codons_mods)
 
 
-def make_noncons_mod(maf: Path, species: str, seqid: str, tree: str) -> Path:
+def make_noncons_mod(mul_maf: Path, species: str, seqid: str, tree: str) -> Path:
     """Estimate phylogenetic models for non-conserved 4d sites.
 
     See <http://compgen.cshl.edu/phast/phyloFit-tutorial.php>
 
-    :param maf: Input MAF file.
+    :param mul_maf: Input MAF file.
     :param species: Species name to get its genome GFF3.
     :param seqid: Chromosome name.
     :param tree: Newick tree string.
     :returns: Path to the generated model file: `4d-sites.mod`.
     """
-    _4d_codons_ss = msa_view_features(maf, species, seqid, conserved=False)
+    _4d_codons_ss = msa_view_features(mul_maf, species, seqid, conserved=False)
     _4d_sites_ss = msa_view_ss(_4d_codons_ss)
     return phyloFit(_4d_sites_ss, tree, conserved=False)[0]
 
 
-def msa_view_features(maf: Path, species: str, seqid: str, *, conserved: bool) -> Path:
+def msa_view_features(
+    mul_maf: Path, species: str, seqid: str, *, conserved: bool
+) -> Path:
     """Extract sufficient statistics (SS) for codon sites separately.
 
     - Seqid must be labeled with species names as in maf, e.g., osat.1, slyc.2.
@@ -178,22 +183,22 @@ def msa_view_features(maf: Path, species: str, seqid: str, *, conserved: bool) -
 
     See <http://compgen.cshl.edu/phast/help-pages/msa_view.txt>
 
-    :param maf: Input MAF file.
+    :param mul_maf: Input MAF file.
     :param species: Species name to get its genome GFF3.
     :param seqid: Chromosome name.
     :param conserved: Whether to extract SS for conserved codon sites.
     :returns: Path to the generated SS file: `codons.ss` or `4d-codons.ss`.
     """
-    cmd = ["msa_view", maf, "--in-format", "MAF", "--features", "/dev/stdin"]
+    cmd = ["msa_view", mul_maf, "--in-format", "MAF", "--features", "/dev/stdin"]
     if conserved:
-        outfile = maf.with_name("codons.ss")
+        outfile = mul_maf.with_name("codons.ss")
         cmd.extend(["--catmap", "NCATS = 3; CDS 1-3"])
         cmd.extend(["--out-format", "SS", "--unordered-ss"])
         cmd.extend(["--reverse-groups", "transcript_id"])
     else:
-        outfile = maf.with_name("4d-codons.ss")
+        outfile = mul_maf.with_name("4d-codons.ss")
         cmd.append("--4d")
-    if_ = fs.is_outdated(outfile, maf)
+    if_ = fs.is_outdated(outfile, mul_maf)
     shortname = phylo.shorten(species)
     grep_cmd = ["zstdgrep", f"^{seqid}\t", cds_gff3(species)]
     with (
