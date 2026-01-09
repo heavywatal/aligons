@@ -237,15 +237,17 @@ def phyloFit(ss: Path, tree: str, *, conserved: bool) -> list[Path]:  # noqa: N8
     if conserved:
         out_root = str(ss.with_name("codons"))
         outfiles = [Path(f"{out_root}.{i}.mod") for i in range(1, 4)]
+        if_ = fs.is_outdated(outfiles[2], ss)
         option = "--do-cats 1,2,3"
     else:
         out_root = str(ss.with_name("4d-sites"))
         outfiles = [Path(f"{out_root}.mod")]
+        if_ = fs.is_outdated(outfiles[0], ss)
         option = ""
     cmd = (
         f"phyloFit --tree {tree} --msa-format SS {option} --out-root {out_root} {ss!s}"
     )
-    subp.run(cmd, if_=fs.is_outdated(outfiles[0], ss))
+    subp.run(cmd, if_=if_)
     return outfiles
 
 
