@@ -495,7 +495,7 @@ def _create_view(species: str, assembly: str) -> dict[str, Any]:
     asm_conf = _find_config_assembly(species)
     _log.info(asm_conf)
     location = asm_conf["location"]
-    mobj = re.search(r"(\w+)\s*:\s*([\d,]+)\s*(?::|\.{2,})\s*([\d,]+)", location)
+    mobj = re.search(r"([^\s:]+)\s*:\s*([\d,]+)\s*(?::|\.{2,})\s*([\d,]+)", location)
     assert mobj is not None, location
     chrom = mobj.group(1)
     start = int(mobj.group(2).replace(",", ""))
