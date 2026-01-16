@@ -92,6 +92,9 @@ solanaceae = "#C8641E"
 lamiids = "#C8B414"
 fabaceae = "#C82828"
 brassicaceae = "#C82828"
+cottperc = "#C82828"
+perciformes = "#C8641E"
+teleostei = "#C8B414"
 
 [[jbrowse.assemblies]]
 species = "oryza_sativa"
@@ -100,6 +103,14 @@ location = "6:27,475,000..27,485,000"
 [[jbrowse.assemblies]]
 species = "solanum_lycopersicum"
 location = "3:1,404,500..1,410,500"
+
+[[jbrowse.assemblies]]
+species = "danio_rerio"
+location = "NC_133189.1:40,810,000..40,870,000"
+
+[[jbrowse.assemblies]]
+species = "gasterosteus_aculeatus"
+location = "NC_135691.1:1,940,000..1,990,000"
 
 [apptainer.galaxy_apps]
 bedtools = []
