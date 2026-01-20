@@ -36,12 +36,11 @@ class GFF:
             self._workaround(source)
 
     def sanitize(self) -> GFF:
-        """Remove chromosome entries and sort by seqid and start position."""
-        self.body = (
-            self.body.sort([pl.col("seqid").str.pad_start(4, "0"), "start"])
-            # remove chromosome for visualization
-            .filter(pl.col("type") != "chromosome")
-        )
+        """Remove some types and sort by seqid and start position."""
+        type_excl = ["chromosome", "region", "cDNA_match"]
+        self.body = self.body.sort(
+            [pl.col("seqid").str.pad_start(4, "0"), "start"]
+        ).filter(pl.col("type").is_in(type_excl).not_())
         return self
 
     def _seqid_replace(self, pattern: str, repl: str) -> GFF:
