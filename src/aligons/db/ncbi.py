@@ -31,10 +31,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("accession", nargs="*")
     args = parser.parse_args(argv or None)
     if args.list:
-        for ds in _builtin_datasets():
-            _log.info(f"{ds['accession']} {ds['species']}")
-        return
-    if args.download or args.check or args.deploy:
+        _ls(verbose=args.verbose > 1)
+    elif args.download or args.check or args.deploy:
         fts = [cli.thread_submit(_download_genome, acc) for acc in args.accession]
         if args.check:
             # not so parallel due to GIL
@@ -226,6 +224,15 @@ def _check_md5(zf: zipfile.ZipFile, sum_file: str = "md5sum.txt") -> None:
                 md5_obs = hashlib.md5(fin.read())  # noqa: S324
                 if md5_obs.hexdigest() != hex_exp:
                     _log.error(f"MD5 mismatch: {path}")
+
+
+def _ls(*, verbose: bool = False) -> None:
+    """List built-in datasets."""
+    for ds in _builtin_datasets():
+        if verbose:
+            _log.info(f"{ds['accession']} {ds['species']}")
+        else:
+            _log.info(ds["accession"])
 
 
 def _builtin_datasets() -> list[dict[str, Any]]:
