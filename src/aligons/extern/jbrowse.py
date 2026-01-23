@@ -98,12 +98,14 @@ class JBrowse:
                 raise ValueError(msg)
 
     def _version(self) -> str:
-        mobj = re.search(r"@jbrowse/cli/(\S+)", self._help())
+        p = _jbrowse(["--version"], stdout=subp.PIPE, quiet=True)
+        line = p.stdout.decode()
+        mobj = re.search(r"@jbrowse/cli.+?(\d+\.\d+\.\d+)", line)
         assert mobj, self._help()
         return mobj.group(1)
 
     def _help(self) -> str:
-        p = _jbrowse(["help"], stdout=subp.PIPE, quiet=True)
+        p = _jbrowse(["--help"], stdout=subp.PIPE, quiet=True)
         return p.stdout.decode()
 
 
