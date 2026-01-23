@@ -241,6 +241,7 @@ class JBrowseConfig:
         # --attributes, --exclude, --file,  --perTrack, --tracks, --dryrun
         args: subp.Args = ["text-index"]
         args.extend(["--target", self.target])
+        args.extend(["--tracks", ",".join(self.tracks)])
         _jbrowse(args)
 
     def set_default_session(self, session: Path | None = None) -> None:
