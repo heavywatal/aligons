@@ -8,6 +8,8 @@ import io
 import logging
 import os
 import re
+import tempfile
+from importlib.resources import as_file
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 from aligons.db import api
-from aligons.util import cli, config, fs, subp
+from aligons.util import cli, config, fs, resources_data, subp
 
 _log = logging.getLogger(__name__)
 
@@ -127,6 +129,29 @@ def bigWigToBed(infile: Path, min_width: int = 15) -> bytes:  # noqa: N802
                 scores.append(float(line))
         write()
     return buf.getvalue()
+
+
+def maf_to_bigbed(maf: Path, species: str) -> Path:
+    """Convert MAF to bigBed format.
+
+    :param maf: Input MAF file.
+    :param species: Species name.
+    :returns: Output bigBed file.
+    """
+    ref_db = api.shorten(species)
+    chrom_sizes = api.fasize(species)
+    out_bb = maf.with_suffix(".bb")
+    if_ = fs.is_outdated(out_bb, maf)
+    to_bigmaf = ["mafToBigMaf", ref_db, maf, "stdout"]
+    srt = ["sort", "-k1,1", "-k2,2n", "-"]
+    with tempfile.NamedTemporaryFile(prefix="aligons-", suffix=".bigmaf") as bigmaf:
+        with subp.popen(to_bigmaf, stdout=subp.PIPE, if_=if_) as p:
+            subp.run(srt, stdin=p.stdout, stdout=bigmaf, quiet=True, if_=if_)
+        with as_file(resources_data("bigMaf.as")) as auto_sql:
+            to_bb: subp.Args = ["bedToBigBed", "-type=bed3+1", f"-as={auto_sql}"]
+        to_bb.extend(["-tab", bigmaf.name, chrom_sizes, out_bb])
+        subp.run(to_bb, if_=if_)
+    return out_bb
 
 
 def faToTwoBit(  # noqa: N802
