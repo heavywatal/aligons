@@ -33,6 +33,21 @@ accession = "GCF_049306965.1"
 clade = "teleostei"
 
 [[dataset]]
+species = "Oryzias latipes"
+accession = "GCF_002234675.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Takifugu rubripes"
+accession = "GCA_901000725.3"
+clade = "teleostei"
+
+[[dataset]]
+species = "Tetraodon nigroviridis"
+accession = "GCA_051020865.1"
+clade = "teleostei"
+
+[[dataset]]
 species = "Anoplopoma fimbria"
 accession = "GCF_027596085.1"
 clade = "teleostei"
