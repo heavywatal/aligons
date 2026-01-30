@@ -302,6 +302,7 @@ class JBrowseConfig:
         return {
             "name": f"New {self.target.name} session",
             "views": [view],
+            "drawerWidth": 240,
             "widgets": {
                 "hierarchicalTrackSelector": {
                     "id": "hierarchicalTrackSelector",
