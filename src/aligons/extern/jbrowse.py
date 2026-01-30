@@ -302,6 +302,14 @@ class JBrowseConfig:
         return {
             "name": f"New {self.target.name} session",
             "views": [view],
+            "widgets": {
+                "hierarchicalTrackSelector": {
+                    "id": "hierarchicalTrackSelector",
+                    "type": "HierarchicalTrackSelectorWidget",
+                    "view": "LinearGenomeView-0",
+                }
+            },
+            "activeWidgets": {"hierarchicalTrackSelector": "hierarchicalTrackSelector"},
         }
 
     def _make_refnamealiases(self) -> dict[str, Any] | None:
