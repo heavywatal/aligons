@@ -431,10 +431,11 @@ def _session_display(track_id: str, track_type: str) -> dict[str, Any]:
         "AlignmentsTrack": "LinearPileupDisplay",
     }
     display_type = display_map[track_type]
+    gene_glyph = {"trackGeneGlyphMode": "longest"} if track_id.endswith(".gff3") else {}
     return {
         "type": display_type,
         "configuration": f"{track_id}-{display_type}",
-    }
+    } | gene_glyph
 
 
 def _add_riceencode(jbc: JBrowseConfig, species: str = "") -> None:
