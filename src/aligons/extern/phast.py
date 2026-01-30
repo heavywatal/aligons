@@ -289,7 +289,11 @@ def consEntropy(  # noqa: N802
     outfile = cons_mod.with_name("entropy.txt")
     if_ = fs.is_outdated(outfile, [cons_mod, noncons_mod])
     with subp.open_(outfile, "wb", if_=if_) as fout:
-        subp.run(args, stdout=fout, if_=if_)
+        try:
+            subp.run(args, stdout=fout, if_=if_)
+        except subp.CalledProcessError as e:
+            _, cmd = subp.prepare_args(args, if_=if_)
+            _log.error(f"{cmd}: {e}")
     return outfile
 
 
