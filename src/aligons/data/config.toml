@@ -93,7 +93,9 @@ lamiids = "#C8B414"
 fabaceae = "#C82828"
 brassicaceae = "#C82828"
 cottperc = "#C82828"
-perciformes = "#C8641E"
+perciformes = "#C82828"
+eupercaria = "#C8641E"
+percomorphaceae = "#C8641E"
 teleostei = "#C8B414"
 
 [[jbrowse.assemblies]]
