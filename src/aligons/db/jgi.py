@@ -64,7 +64,7 @@ def _iter_available() -> Iterator[_rsrc.DataSet]:
     nicknames = {shorten(long): long for long in phylo.list_species()}
     found: set[str] = set()
     for entry in _rsrc.iter_dataset(_dataset_toml()):
-        if species := nicknames.get(entry["species"], None):
+        if species := nicknames.get(entry["species"]):
             entry["species"] = species
             if species in found:
                 _log.debug(f"# {entry['label']}")
@@ -134,7 +134,7 @@ def _simplify_url(url: str) -> str:
 
 
 def _parse_filename_gff(name: str) -> list[str]:
-    stem = name.split(".gene.gff")[0]
+    stem = name.split(".gene.gff", maxsplit=1)[0]
     return stem.split("_", 1)
 
 

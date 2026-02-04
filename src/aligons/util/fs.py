@@ -115,7 +115,7 @@ def _name_if_path(x: str | Path) -> str:
 def _try_pad_zero(s: str) -> str:
     try:
         return f"{int(s):03}"
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return s
 
 
