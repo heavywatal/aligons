@@ -227,8 +227,12 @@ def chrom_sizes(species: str) -> dict[str, int]:
 
 
 def _gff3_size(species: str) -> float:
-    path = genome_gff3(species)
-    return path.stat().st_size / 1e6
+    try:
+        path = genome_gff3(species)
+        size = path.stat().st_size / 1e6
+    except FileNotFoundError:
+        size = 0
+    return size
 
 
 def _sources(species: str) -> Iterator[str]:
