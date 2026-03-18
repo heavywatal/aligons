@@ -3,10 +3,6 @@ accession = "GCA_965637405.1"
 species = "Centaurium erythraea"
 
 [[dataset]]
-accession = "GCA_051253095.1"
-species = "Centaurium scilloides"
-
-[[dataset]]
 accession = "GCA_036186865.1"
 species = "Eustoma grandiflorum"
 synonym = "Eustoma russellianum"
@@ -39,7 +35,7 @@ clade = "teleostei"
 
 [[dataset]]
 species = "Takifugu rubripes"
-accession = "GCA_901000725.3"
+accession = "GCF_901000725.3"
 clade = "teleostei"
 
 [[dataset]]

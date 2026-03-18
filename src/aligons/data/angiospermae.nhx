@@ -15,10 +15,7 @@
             ipomoea_triloba
           )solanales,
           (coffea_canephora,
-           ((
-             eustoma_grandiflorum,
-             (centaurium_erythraea,centaurium_scilloides)centaurium
-            )chironieae,
+           ((eustoma_grandiflorum,centaurium_erythraea)chironieae,
             (
               ((gentiana_dahurica_var._dahurica,gentiana_macrophylla),gentiana_straminea)gentiana,
               gentianella_amarella
