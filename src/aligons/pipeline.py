@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 from .db import api, phylo
-from .extern import bedtools, htslib, kent, lastz, mafs2cram, multiz, phast
+from .extern import htslib, lastz, mafs2cram, multiz, phast
 from .util import cli, fs, log_config
 
 _log = logging.getLogger(__name__)
@@ -97,28 +97,11 @@ def multiz_phast(pairwise: Path, lst_species: Sequence[str], clade: str) -> Path
         clade_alias = multiple.with_name(clade)
         fs.symlink(multiple, clade_alias, relative=True)
     (bigwig, mostcons) = phast.run(multiple)
-    cds = phast.cds_gff3(target)
-    cns_bed = mostcons.with_name("cns.bed.gz")
-    _subtract_cds(mostcons, cds, cns_bed)
-    cns0_bed = bigwig.with_name("cns0.bed.gz")
-    _subtract_cds(bigwig, cds, cns0_bed)
+    cns_bed, _ = phast.subtract_cds(bigwig, mostcons, target)
     if is_clade:
         clade_alias = mostcons.parent.with_name(clade)
         fs.symlink(mostcons.parent, clade_alias, relative=True)
     return cns_bed
-
-
-def _subtract_cds(bed: Path, cds: Path, outfile: Path) -> Path:
-    if bed.suffix == ".bw":
-        bigwig = bed
-        bed = bigwig.with_suffix(".bed.gz")
-        if fs.is_outdated(bed, bigwig):
-            htslib.bgzip(kent.bigWigToBed(bigwig), bed)
-    if fs.is_outdated(outfile, bed):
-        cns = bedtools.subtract(bed, cds)
-        cns = bedtools.remove_short(cns, 15)
-        htslib.tabix(htslib.bgzip(cns, outfile))
-    return outfile
 
 
 def _test_fasize(species: str, max_bp: float) -> bool:

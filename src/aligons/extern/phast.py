@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from aligons.db import api, phylo
+from aligons.extern import bedtools
 from aligons.util import cli, config, fs, gff, maf, subp
 
 from . import htslib, kent
@@ -22,7 +23,9 @@ def main(argv: list[str] | None = None) -> None:
     parser = cli.ArgumentParser()
     parser.add_argument("indir", type=Path, help="multiple/{target}/{clade}")
     args = parser.parse_args(argv or None)
-    run(args.indir)
+    bigwig, mostcons = run(args.indir)
+    target = args.indir.parent.name
+    subtract_cds(bigwig, mostcons, target)
 
 
 def run(input_dir: Path) -> tuple[Path, Path]:
@@ -123,7 +126,7 @@ def estimate_models(output_dir: Path) -> tuple[Path, Path]:
     """
     target = output_dir.parent.name
     if not cli.dry_run:
-        assert cds_gff3(target).exists()
+        assert _cds_gff3(target).exists()
     cons_mod = output_dir / "phylofit.cons.mod"
     noncons_mod = output_dir / "phylofit.noncons.mod"
     tree = phylo.get_subtree(output_dir.name.split("-"), phylo.shorten_names)
@@ -200,7 +203,7 @@ def msa_view_features(
         cmd.append("--4d")
     if_ = fs.is_outdated(outfile, mul_maf)
     shortname = phylo.shorten(species)
-    grep_cmd = ["zstdgrep", f"^{seqid}\t", cds_gff3(species)]
+    grep_cmd = ["zstdgrep", f"^{seqid}\t", _cds_gff3(species)]
     with (
         subp.popen(grep_cmd, stdout=subp.PIPE, if_=if_) as grep,
         subp.popen_sd(r"^(\w)", f"{shortname}.$1", stdin=grep.stdout, if_=if_) as sd,
@@ -334,7 +337,36 @@ def extract_tree(mod: str) -> str:
     return m.group(1)
 
 
-def cds_gff3(species: str) -> Path:
+def subtract_cds(bigwig: Path, mostcons: Path, target: str) -> tuple[Path, Path]:
+    """Subtract CDS regions from conserved elements.
+
+    :param bigwig: Output bigWig from `run()`.
+    :param mostcons: Output BED from `run()`.
+    :param target: Target species name.
+    :returns: Paths to BED files with CNS: (`cns.bed.gz`, `cns0.bed.gz`).
+    """
+    cds = _cds_gff3(target)
+    cns_bed = mostcons.with_name("cns.bed.gz")
+    _subtract_cds_impl(mostcons, cds, cns_bed)
+    cns0_bed = bigwig.with_name("cns0.bed.gz")
+    _subtract_cds_impl(bigwig, cds, cns0_bed)
+    return cns_bed, cns0_bed
+
+
+def _subtract_cds_impl(bed: Path, cds: Path, outfile: Path) -> Path:
+    if bed.suffix == ".bw":
+        bigwig = bed
+        bed = bigwig.with_suffix(".bed.gz")
+        if fs.is_outdated(bed, bigwig):
+            htslib.bgzip(kent.bigWigToBed(bigwig), bed)
+    if fs.is_outdated(outfile, bed):
+        cns = bedtools.subtract(bed, cds)
+        cns = bedtools.remove_short(cns, 15)
+        htslib.tabix(htslib.bgzip(cns, outfile))
+    return outfile
+
+
+def _cds_gff3(species: str) -> Path:
     """Extract CDS features from genome GFF3.
 
     :param species: Species name to get genome GFF3.
