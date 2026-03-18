@@ -187,6 +187,25 @@ def _faToTwoBit_f(fa: Path | cli.Future[Path], twobit: Path | None = None) -> Pa
         return _faToTwoBit_s(zcat.stdout, twobit, if_=if_)
 
 
+def faFilter(  # noqa: N802
+    stdin: subp.FILE,
+    *flags: str,
+    **options: str | int,
+) -> subp.Popen[bytes]:
+    """Filter fa records with minimum size.
+
+    :param stdin: Input FASTA stream.
+    :param flags: Boolean flags: "v", "uniq", "i".
+    :param options: Key-value options:
+      "name=wildCard", "namePatList=filename", "minSize=N", "maxSize=N", "maxN=N".
+    :returns: Popen object with stdout of filtered FASTA.
+    """
+    flgs = [f"-{x}" for x in flags]
+    opts = [f"-{k}={v}" for k, v in options.items()]
+    args = ["faFilter", *flgs, *opts, "stdin", "stdout"]
+    return subp.Popen(args, stdin=stdin, stdout=subp.PIPE)
+
+
 def read_fasize(genome: Path) -> dict[str, int]:
     """Read `fasize.chrom.sizes` of the given genome.
 
