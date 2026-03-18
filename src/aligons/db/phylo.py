@@ -381,6 +381,9 @@ def parse_newick(newick: str, inner: str = "") -> Node:
         newick, nodes = _extract_tip_clade(newick, nodes)
         if inner and (clade := nodes.get(inner)):
             return clade
+    if inner:
+        msg = f"{inner} not found in {newick}"
+        raise ValueError(msg)
     root = nodes.popitem()[1]
     if nodes:
         msg = f"{newick} may have multiple roots: {nodes}"
