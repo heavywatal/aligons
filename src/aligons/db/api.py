@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> None:
     """CLI for manual execution and testing."""
     parser = cli.ArgumentParser()
     parser.add_argument("-S", "--species")
-    parser.add_argument("-C", "--clade", default="eukaryota")
+    parser.add_argument("-C", "--clade")
     args = parser.parse_args(argv or None)
     if args.species:
         print_existing(args.species)
@@ -196,9 +196,9 @@ def _iter_db_origin() -> Iterator[str]:
             yield origin
 
 
-def print_stats(clade: str) -> None:
+def print_stats(clade: str | None) -> None:
     """Print a tree with genome statistics for a given clade."""
-    newick = phylo.get_subtree([clade])
+    newick = phylo.get_subtree([clade] if clade else [])
     root = phylo.parse_newick(newick)
     for pre, species in phylo.rectangular(phylo.render_tips(root, [])):
         words: list[str] = [pre, species]
