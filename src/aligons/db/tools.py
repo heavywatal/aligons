@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 from aligons.extern import htslib, kent
-from aligons.util import cli, dl, fs, gff, subp
+from aligons.util import cli, config, dl, fs, gff, subp
 
 from . import _rsrc, jgi, mask
 
@@ -136,8 +136,12 @@ def unzip_index_bgzip(infile_zip: Path, name: str, outfile: Path) -> Path:
                 assert bgzip.stdin
                 gff3.sanitize().write(bgzip.stdin)
         else:
-            with subp.popen_zcat([infile_zip, Path(name)]) as zcat:
-                htslib.bgzip(zcat.stdout, outfile)
+            min_size = config["db"]["min_chrom_size"]
+            with (
+                subp.popen_zcat([infile_zip, Path(name)]) as zcat,
+                kent.faFilter(zcat.stdout, minSize=min_size) as fafilter,
+            ):
+                htslib.bgzip(fafilter.stdout, outfile)
     htslib.try_index(outfile)
     return outfile
 
@@ -166,7 +170,7 @@ def softmask(genome: Path, species: str = "") -> cli.Future[Path]:
 def _split_genome_fa(genome: Path, subdir: str) -> list[cli.Future[Path]]:
     fai = htslib.read_fai(genome)
     _log.debug(f"{fai = }")
-    min_size = 1000000
+    min_size = config["db"]["min_chrom_size"]
     workdir = genome.parent / subdir
     workdir.mkdir(0o755, exist_ok=True)
     fts: list[cli.Future[Path]] = []
@@ -192,7 +196,7 @@ def genome_to_twobits(genome: Path | cli.Future[Path]) -> list[cli.Future[Path]]
     genome = cli.result(genome)
     fasize = kent.read_fasize(genome)
     _log.debug(f"{fasize = }")
-    min_size = 1000000
+    min_size = config["db"]["min_chrom_size"]
     fts: list[cli.Future[Path]] = []
     for seqid, size in fasize.items():
         if re.search(r"scaffold|contig", seqid):

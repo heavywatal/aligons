@@ -54,6 +54,7 @@ origin = [
 ]
 kmer = false
 exclude = ["oryza_sativa_mh63", "oryza_sativa_zs97"]
+min_chrom_size = 1000000
 # tree = ""  # string in newick format or path to newick file
 
 [db.ncbi]
