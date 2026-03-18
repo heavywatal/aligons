@@ -148,6 +148,8 @@ def _get_info(
         _log.error(f"Bad zip file: {genome_zip}")
     if res.get("species", "") == "Eustoma russellianum":
         res["species"] = "Eustoma grandiflorum"  # NCBI and Wikipedia/en are wrong
+    if res.get("species", "") == "Gentiana dahurica var. dahurica":
+        res["species"] = "Gentiana dahurica"  # for simplicity
     return res
 
 
