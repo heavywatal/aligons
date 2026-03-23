@@ -1,14 +1,16 @@
 [lastz]
 step = 4
+maxwordcount = 254
 # gap = "400,30"  # open,extend
 # hspthresh = 3000
 # gappedthresh = 3000
 # xdrop = 910  # 10 * scores[A][A]
-# ydrop = 9400  # open + 30 * extend
+# ydrop = 9400  # open + 300 * extend
 inner = 2000  # 0
 
 [pairwise.close]
 solanum_lycopersicum = ["solanum_pennellii"]
+eustoma_grandiflorum = ["centaurium_erythraea"]
 
 [axtChain]
 minScore = 3000  # 1000

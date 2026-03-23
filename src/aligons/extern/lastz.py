@@ -181,20 +181,18 @@ def lastz(t2bit: Path, q2bit: Path, outdir: Path, **kwargs: Any) -> Path:
     if not cli.dry_run:
         subdir.mkdir(0o755, parents=True, exist_ok=True)
     axt_gz = subdir / f"{query_label}.axt.gz"
-    opts = subp.optargs(config["lastz"] | kwargs)
+    opts = subp.optargs(kwargs)
     args = ["lastz", t2bit, q2bit, "--format=axt", *opts]
     is_to_run = fs.is_outdated(axt_gz, [t2bit, q2bit])
     with subp.popen(args, stdout=subp.PIPE, if_=is_to_run) as p:
         return subp.gzip(p.stdout, axt_gz, if_=is_to_run)
 
 
-def _lastz_options(target: str, query: str) -> dict[str, Any]:
-    opts: dict[str, Any] = {}
+def _lastz_options(target: str, query: str) -> dict[str, str | int | bool]:
+    opts: dict[str, str | int | bool] = config["lastz"].copy()
     if query in config["pairwise"]["close"].get(target, []):
-        opts["step"] = 10
-        opts["seed"] = "match12"
-        opts["match"] = "1,5"
-        opts["inner"] = int(config["lastz"].get("inner", 0) / 100)
+        opts["step"] = int(opts.get("step", 4)) + 6  # 4
+        opts["notransition"] = True
     return opts
 
 
