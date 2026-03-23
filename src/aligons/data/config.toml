@@ -9,8 +9,12 @@ maxwordcount = 254
 inner = 2000  # 0
 
 [pairwise.close]
-solanum_lycopersicum = ["solanum_pennellii"]
+oryza_sativa = ["leersia_perrieri"]
+solanum_lycopersicum = ["solanum_pennellii", "solanum_tuberosum", "solanum_melongena"]
+arabidopsis_thaliana = ["arabidopsis_lyrata", "camelina_sativa"]
+vigna_angularis = ["phaseolus_vulgaris"]
 eustoma_grandiflorum = ["centaurium_erythraea"]
+gasterosteus_aculeatus = ["pungitius_pungitius"]
 
 [axtChain]
 minScore = 3000  # 1000
