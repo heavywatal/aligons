@@ -4,11 +4,12 @@
 """
 
 import logging
+from importlib.resources import as_file
 from pathlib import Path
 from typing import Any
 
 from aligons.db import api
-from aligons.util import cli, config, fs, maf, subp
+from aligons.util import cli, config, fs, maf, resources_data, subp
 
 from . import kent
 
@@ -193,6 +194,13 @@ def _lastz_options(target: str, query: str) -> dict[str, str | int | bool]:
     if query in config["pairwise"]["close"].get(target, []):
         opts["step"] = int(opts.get("step", 4)) + 6  # 4
         opts["notransition"] = True
+    if query in config["pairwise"]["distant"].get(target, []):
+        with as_file(resources_data("HoxD55.q")) as hoxd55_q:
+            opts["scores"] = f"{hoxd55_q}"
+        opts["notransition"] = False
+        opts["hspthresh"] = 2200  # K=3000
+        opts["ydrop"] = 3400  # Y=9400
+        opts["gappedthresh"] = 6000  # L=K
     return opts
 
 
