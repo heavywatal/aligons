@@ -13,11 +13,17 @@ oryza_sativa = ["leersia_perrieri"]
 solanum_lycopersicum = ["solanum_pennellii", "solanum_tuberosum", "solanum_melongena"]
 arabidopsis_thaliana = ["arabidopsis_lyrata", "camelina_sativa"]
 vigna_angularis = ["phaseolus_vulgaris"]
-eustoma_grandiflorum = ["centaurium_erythraea"]
+eustoma_grandiflorum = [
+  "centaurium_erythraea",
+  "gentiana_dahurica",
+  "gentiana_macrophylla",
+  "gentiana_straminea",
+  "gentianella_amarella"
+]
 gasterosteus_aculeatus = ["pungitius_pungitius"]
 
 [pairwise.distant]
-eustoma_grandiflorum = ["danio_rerio"]
+gasterosteus_aculeatus = ["danio_rerio"]
 danio_rerio = [
   "gasterosteus_aculeatus",
   "pungitius_pungitius",
@@ -111,6 +117,8 @@ poaceae = "#C8641E"
 monocot = "#C8B414"
 solanum = "#C82828"
 solanaceae = "#C8641E"
+gentianaceae = "#C82828"
+gentianales = "#C8641E"
 lamiids = "#C8B414"
 fabaceae = "#C82828"
 brassicaceae = "#C82828"

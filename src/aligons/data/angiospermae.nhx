@@ -14,13 +14,15 @@
             )solanaceae,
             ipomoea_triloba
           )solanales,
-          (coffea_canephora,
-           ((eustoma_grandiflorum,centaurium_erythraea)chironieae,
+          (
+           (
+            (eustoma_grandiflorum,centaurium_erythraea)chironieae,
             (
               ((gentiana_dahurica,gentiana_macrophylla),gentiana_straminea)gentiana,
               gentianella_amarella
             )gentianeae
-           )gentianaceae
+           )gentianaceae,
+           coffea_canephora
           )gentianales
           ),
           (olea_europaea_sylvestris,sesamum_indicum)lamiales
