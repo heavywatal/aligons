@@ -177,6 +177,7 @@ class JBrowseConfig:
             _add_cart(self)
             _add_riceencode(self)
         elif self.species.endswith("_mh63") or self.species.endswith("_zs97"):
+            _add_geo(self, "GSE131202", self.species)
             _add_riceencode(self, self.species)
         elif self.species == "solanum_lycopersicum":
             _add_plantregmap(self, self.species)
@@ -441,13 +442,23 @@ def _session_display(track_id: str, track_type: str) -> dict[str, Any]:
 def _add_riceencode(jbc: JBrowseConfig, species: str = "") -> None:
     for fmt in riceencode.db_prefix().iterdir():
         for strain in fs.sorted_naturally(fmt.iterdir()):
-            session = species.endswith(strain.name.lower())
+            if not species.endswith(strain.name.lower()):
+                continue
             for histone in fs.sorted_naturally(strain.iterdir()):
                 for path in fs.sorted_naturally(histone.iterdir()):
                     if path.suffix not in (".gz", ".bw"):
                         continue
                     category = f"RiceENCODE,{strain.name},{histone.name},{fmt.name}"
-                    jbc.add_track(path, category, trackid=path.stem, session=session)
+                    jbc.add_track(path, category, trackid=path.stem, session=True)
+
+
+def _add_geo(jbc: JBrowseConfig, accession: str, species: str) -> None:
+    prefix = api.prefix("ncbi") / "geo" / accession
+    strain = species.rsplit("_", 1)[1].upper()
+    for path in fs.sorted_naturally(prefix.glob("*.bed.gz")):
+        trackid = path.stem.removeprefix(f"{accession}_").split(".", 1)[0]
+        if trackid.startswith(strain):
+            jbc.add_track(path, accession, trackid=trackid, session=True)
 
 
 def _add_cart(jbc: JBrowseConfig) -> None:

@@ -10,10 +10,13 @@ import tomllib
 import zipfile
 from typing import TYPE_CHECKING, Any
 
+import polars as pl
+
 if TYPE_CHECKING:
     from pathlib import Path
 
-from aligons.util import cli, config, fs, logging, resources_data, subp
+from aligons.extern import htslib
+from aligons.util import cli, config, dl, fs, logging, resources_data, subp
 
 from . import _rsrc, api, tools
 
@@ -28,10 +31,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-D", "--download", action="store_true")
     parser.add_argument("-M", "--deploy", action="store_true")
     parser.add_argument("-l", "--list", action="store_true")
+    parser.add_argument("--geo", action="store_true")
     parser.add_argument("accession", nargs="*")
     args = parser.parse_args(argv or None)
     if args.list:
         _ls(verbose=args.verbose > 1)
+    elif args.geo:
+        for file in args.accession:
+            cache = _download_geo_supplementary(file)
+            _deploy_cluster_bed(cache)
     elif args.download or args.check or args.deploy:
         fts = [cli.thread_submit(_download_genome, acc) for acc in args.accession]
         if args.check:
@@ -50,11 +58,15 @@ def main(argv: list[str] | None = None) -> None:
                     fts.extend(tools.genome_to_twobits(res))
         cli.wait_raise(fts)
     else:
-        for genome_zip in _prefix_mirror().glob("*.zip"):
-            info = _get_info(genome_zip)
-            seq_report = info.pop("seq-report", [])
-            _log.info(info)
-            _log.info(_filter_sequences(seq_report))  # pyright: ignore[reportArgumentType]
+        _view_downloaded_genomes()
+
+
+def _view_downloaded_genomes() -> None:
+    for genome_zip in _prefix_mirror().glob("*.zip"):
+        info = _get_info(genome_zip)
+        seq_report = info.pop("seq-report", [])
+        _log.info(info)
+        _log.info(_filter_sequences(seq_report))  # pyright: ignore[reportArgumentType]
 
 
 def db_prefix() -> Path:
@@ -64,6 +76,59 @@ def db_prefix() -> Path:
 
 def _prefix_mirror() -> Path:
     return _rsrc.db_root(_HOST) / "genomes" / "all"
+
+
+def _download_geo_supplementary(filename: str) -> Path:
+    """Download a GEO supplementary file.
+
+    :param file: File name like `GSE131202_ZS97_H3K4me3.cluster.bed.gz`.
+    :returns: Path to the downloaded file.
+    """
+    accession = filename.split("_", 1)[0]
+    cache_dir = _rsrc.db_root(_HOST) / "geo" / accession
+    if not cli.dry_run:
+        cache_dir.mkdir(0o755, parents=True, exist_ok=True)
+    url = f"https://www.ncbi.nlm.nih.gov/geo/download/?acc={accession}&format=file&file={filename}"
+    response = dl.fetch(url, cache_dir / filename)
+    return response.path
+
+
+def _deploy_cluster_bed(file: Path) -> Path:
+    """Deploy a GEO cluster BED file to the database.
+
+    :param file: Path to a downloaded file.
+    :returns: Path to the deployed file.
+    """
+    stem = file.name.split(".", 1)[0]
+    accession = stem.split("_", 1)[0]
+    outdir = db_prefix() / "geo" / accession
+    if not cli.dry_run:
+        outdir.mkdir(0o755, parents=True, exist_ok=True)
+    outfile = htslib.bgzip(_flatten_cluster(file), outdir / f"{stem}.bed.gz")
+    htslib.tabix(outfile)
+    return outfile
+
+
+def _flatten_cluster(file: Path) -> bytes:
+    """Flatten GSE131202_*.cluster.bed.
+
+    :param file: Path to `GSE131202_*.cluster.bed.gz`.
+    :returns: TSV bytes in three-column BED format.
+    """
+    cols = ["chr1", "start1", "end1", "chr2", "start2", "end2", "count", "p", "p_adj"]
+    lf = pl.scan_csv(file, separator="\t", has_header=False, new_columns=cols)
+    lf1 = lf.select(
+        pl.col("chr1").alias("chr"),
+        pl.col("start1").alias("start"),
+        pl.col("end1").alias("end"),
+    )
+    lf2 = lf.select(
+        pl.col("chr2").alias("chr"),
+        pl.col("start2").alias("start"),
+        pl.col("end2").alias("end"),
+    )
+    lf = pl.concat([lf1, lf2], how="vertical").unique().sort(["chr", "start", "end"])
+    return lf.collect().write_csv(separator="\t", include_header=False).encode()
 
 
 def _download_genome(accession: str) -> Path:
