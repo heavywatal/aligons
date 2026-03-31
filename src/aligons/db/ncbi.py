@@ -8,7 +8,7 @@ import json
 import re
 import tomllib
 import zipfile
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import polars as pl
 
@@ -297,12 +297,45 @@ def _ls(*, verbose: bool = False) -> None:
     """List built-in datasets."""
     for ds in _builtin_datasets():
         if verbose:
-            _log.info(f"{ds['accession']} {ds['species']}")
+            _log.info(f"{ds.get('accession', '')} {ds['species']}")
         else:
-            _log.info(ds["accession"])
+            _log.info(ds.get("accession", ""))
 
 
-def _builtin_datasets() -> list[dict[str, Any]]:
+def ucsc_resources(species: str) -> list[str]:
+    """List UCSC Genome Browser resources for a given species.
+
+    :param species: Species name like `danio_rerio`.
+    :returns: List of URLs.
+    """
+    for dataset in _builtin_datasets():
+        if dataset["species"].replace(" ", "_").lower() == species:
+            break
+    else:
+        msg = f"Species not found in built-in datasets: {species}"
+        raise ValueError(msg)
+    accession = dataset.get("accession", "")
+    name = dataset["version"]
+    slashed = accession.replace("_", "/")
+    for pos in (7, 10):
+        slashed = _insert_str(slashed, pos, "/")
+    host = "hgdownload.soe.ucsc.edu"
+    prefix = f"https://{host}/hubs/{slashed}/{accession}/bbi/{accession}_{name}."
+    files = [
+        "tandemDups.bb",
+        "cpgIslandExt.bb",
+        "rmsk.bb",
+        "simpleRepeat.bb",
+        "windowMasker.bb",
+    ]
+    return [prefix + filename for filename in files]
+
+
+def _insert_str(string: str, pos: int, value: str) -> str:
+    return string[:pos] + value + string[pos:]
+
+
+def _builtin_datasets() -> list[_rsrc.DataSet]:
     """Return datasets defined in the bundled `ncbi.toml`."""
     with resources_data("ncbi.toml").open("rb") as fin:
         return tomllib.load(fin)["dataset"]

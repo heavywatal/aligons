@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from aligons.db import api, cart, phylo, plantdhs, plantregmap, riceencode
+from aligons.db import api, cart, ncbi, phylo, plantdhs, plantregmap, riceencode
 from aligons.util import cli, config, fs, resources_data, subp
 
 _log = logging.getLogger(__name__)
@@ -181,6 +181,8 @@ class JBrowseConfig:
             _add_riceencode(self, self.species)
         elif self.species == "solanum_lycopersicum":
             _add_plantregmap(self, self.species)
+        elif self.species == "gasterosteus_aculeatus":
+            _add_jbrowse_ucsc(self, self.species)
 
     def _add_assembly(self) -> None:
         # --alias, --name, --displayName
@@ -205,7 +207,7 @@ class JBrowseConfig:
 
     def add_track(
         self,
-        file: Path,
+        file: Path | str,
         category: str = "",
         trackid: str = "",
         subdir: str = "",
@@ -223,7 +225,8 @@ class JBrowseConfig:
         # --description, --config
         args: subp.Args = ["add-track"]
         args.extend(["--target", self.target])
-        args.extend(["--load", self.load])
+        if not str(file).startswith("http"):
+            args.extend(["--load", self.load])
         if subdir:
             args.extend(["--subDir", subdir])
         if trackid:
@@ -232,11 +235,12 @@ class JBrowseConfig:
                 self.tracks.append(trackid)
         if category:
             args.extend(["--category", category])
-        if (csi := Path(str(file) + ".csi")).exists():
+        csi = f"{file}.csi"
+        if Path(csi).exists() or re.search(r"^http.+\.bed\.gz$", str(file)):
             args.extend(["--indexFile", csi])
         args.append(file)
-        if not (self.target / subdir / file.name).exists():
-            _jbrowse(args)
+        if not (self.target / subdir / Path(file).name).exists():
+            _jbrowse([*args, "--force"])
 
     def _text_index(self) -> None:
         # --attributes, --exclude, --file,  --perTrack, --tracks, --dryrun
@@ -264,6 +268,7 @@ class JBrowseConfig:
         patt += r"|_DNase$|_NPS$"
         patt += r"|^cns0|^most-cons|cns-poaceae|cns-monocot"
         patt += r"|^NIP_"
+        patt += r"|\.bb$"
         rex = re.compile(patt)
         return [x for x in self.tracks if not rex.search(x)]
 
@@ -493,6 +498,13 @@ def _add_plantregmap(jbc: JBrowseConfig, species: str) -> None:
             continue
         trackid = re.sub(r"(_normal)?\.bed\.gz$", "", path.name)
         jbc.add_track(path, "plantregmap", trackid=trackid)
+
+
+def _add_jbrowse_ucsc(jbc: JBrowseConfig, species: str) -> None:
+    for url in ncbi.ucsc_resources(species):
+        mobj = re.search(r"([^.]+\.bb)$", url)
+        assert mobj, url
+        jbc.add_track(url, "ucsc", trackid=mobj.group(1))
 
 
 def _add_papers_data(jbc: JBrowseConfig) -> None:

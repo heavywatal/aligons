@@ -26,6 +26,7 @@ species = "Gentianella amarella"
 [[dataset]]
 species = "Danio rerio"
 accession = "GCF_049306965.1"
+version = "GRCz12tu"
 clade = "teleostei"
 
 [[dataset]]
@@ -51,6 +52,7 @@ clade = "teleostei"
 [[dataset]]
 species = "Gasterosteus aculeatus"
 accession = "GCF_964276395.1"
+version = "fGasAcu3.hap1.1"
 clade = "teleostei"
 
 [[dataset]]

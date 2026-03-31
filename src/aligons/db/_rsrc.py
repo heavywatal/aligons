@@ -1,7 +1,7 @@
 import os
 import tomllib
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, NotRequired, TypedDict
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -13,6 +13,7 @@ from aligons.util import config, resources_data
 class DataSet(TypedDict):
     url_prefix: str
     species: str
+    accession: NotRequired[str]
     version: str
     draft: bool
     label: str
