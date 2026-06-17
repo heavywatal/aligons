@@ -79,3 +79,48 @@ clade = "teleostei"
 species = "Perca flavescens"
 accession = "GCF_004354835.1"
 clade = "teleostei"
+
+[[dataset]]
+species = "Acanthopagrus latus"
+accession = "GCF_904848185.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Epinephelus fuscoguttatus"
+accession = "GCF_011397635.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Channa argus"
+accession = "GCF_033026475.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Xiphias gladius"
+accession = "GCF_016859285.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Thunnus albacares"
+accession = "GCF_914725855.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Syngnathus acus"
+accession = "GCF_901709675.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Ictalurus punctatus"
+accession = "GCF_001660625.3"
+clade = "teleostei"
+
+[[dataset]]
+species = "Hoplias malabaricus"
+accession = "GCF_029633855.1"
+clade = "teleostei"
+
+[[dataset]]
+species = "Misgurnus anguillicaudatus"
+accession = "GCF_027580225.2"
+clade = "teleostei"

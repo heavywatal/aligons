@@ -7,13 +7,25 @@
             (gasterosteus_aculeatus,pungitius_pungitius)gasterosteidae,
             anoplopoma_fimbria
           )cottioidei,
-          (plectropomus_leopardus,perca_flavescens)
+          (
+            (plectropomus_leopardus,epinephelus_fuscoguttatus)
+            perca_flavescens
+          )
         )cottperc,
         (pagothenia_borchgrevinki,dissostichus_eleginoides)nototheniidae
       )perciformes,
-      (takifugu_rubripes,tetraodon_nigroviridis)tetraodontidae
+      (
+        (takifugu_rubripes,tetraodon_nigroviridis)tetraodontidae,
+        acanthopagrus_latus
+      )
     )eupercaria,
-    oryzias_latipes
+    (
+      (channa_argus,xiphias_gladius),
+      oryzias_latipes
+    )
   )percomorphaceae,
-  danio_rerio
+  (
+    (ictalurus_punctatus,hoplias_malabaricus),
+    (misgurnus_anguillicaudatus,danio_rerio)
+  )ostariophysi
 )teleostei;
